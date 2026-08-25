@@ -8,7 +8,7 @@ state, and generate a static HTML board.
 This README is the primary reference for humans and AI agents working in this
 repo. Read it before changing scrape logic, portable packaging, visa filtering,
 sync, or board HTML/JS. Operator day-to-day steps (Mac ↔ remote host) live in
-[HOWTO.md](HOWTO.md). Portable unzip/run steps live in
+[GETTING_STARTED.md](GETTING_STARTED.md). Portable unzip/run steps live in
 [portable/README.md](portable/README.md) and
 [portable/ARCHITECTURE.txt](portable/ARCHITECTURE.txt).
 
@@ -20,7 +20,6 @@ sync, or board HTML/JS. Operator day-to-day steps (Mac ↔ remote host) live in
 
 | Product | Audience | Entry point |
 |---------|----------|-------------|
-| User / primary fork | The Mac + remote scrape host (remote) | `quickjobs.py` |
 | Portable zip | Any user (e.g. a portable test install) | Built `quickjobs.py` via `run.py` |
 
 Development happens in `quickjobs.*` sources. The portable package is a
@@ -107,13 +106,11 @@ not copy `quickjobs.py` into a portable tree.
 | Intent | Edit here | Then |
 |--------|-----------|------|
 | Scrape / HTML / filters | `quickjobs.py`, `h1b_employer.py`, `run_log.py` | Run tests; rebuild portable zip if behavior ships to others |
-| Employer list / keywords | `quickjobs.base.json` | `validate` then `quickjobs sync` for remote |
 | The personal filters | `quickjobs.profile.json` | Sync if remote should match |
 | Known non-sponsors (visa) | `config/no-visa-sponsor-company-ids.json` | Rebuild portable |
 | Favicon override | `quickjobs.favicon-domains.json` (+ `KNOWN_BY_COMPANY_ID` in generator if needed) | Rebuild portable |
 | Portable UX / configure prompts | `portable/configure.py`, `portable/*` | Rebuild zip |
 | Portable packaging | `build_portable_package.py` | Rebuild zip |
-| Remote CLI wrappers | `~/local/bin/quickjobs-server/` (outside this repo) | `quickjobs sync` |
 | Update a portable *install* | Rebuild zip → re-extract code into install | Preserve that user's `quickjobs.profile.json`, `cache/`, `output/`, `python_venv/` |
 
 ### Validation after code changes
@@ -143,7 +140,6 @@ cd ~/ws/github/quickjobs
 7. Board UI filters, legend, and status writes (File System Access → runtime JSON,
    or localhost pipeline server).
 
-Typical Typical workflow: edit config on Mac → `quickjobs sync` → `quickjobs run`
 (full refresh on remote). Chain: `quickjobs portable,sync,run`.
 
 ---
@@ -193,8 +189,6 @@ from `sector=aviation` in base), `config/no-visa-sponsor-company-ids.json`.
 | `scripts/dice/`, `scripts/hn/`, `scripts/builtin/` | Employer-catalog miners |
 | `scripts/discover/` | `quickjobs discover` / `discover-sync` / `validate` |
 | `scripts/validate/` | Salary/location/scroll validators |
-| `scripts/diagnostics/` | Timing, HTML diff, scrape-phase / step-isolation runbooks |
-| `scripts/maintenance/` | Favicons, regional adds, `fetch_h1b_employer_index.py`, ulimits |
 | `scripts/_shared/` | Shared discovery helpers |
 | `tests/` | Unit/smoke tests (run with `~/.v/bin/python -m pytest`) |
 | `data/` | Hub index URLs, reference lists |
@@ -346,7 +340,6 @@ Build index:
 # Portable install:
 python_venv/bin/python fetch_h1b_employer_index.py
 # Dev:
-~/.v/bin/python scripts/maintenance/fetch_h1b_employer_index.py
 ```
 
 Index paths under `h1b_cache_root()` / portable `cache/h1b/`:
@@ -395,12 +388,10 @@ CLI install: `~/local/bin/quickjobs` (not in this repo).
 | Command | What it does |
 |---------|--------------|
 | `quickjobs portable` | Build portable zip → scriptdir output |
-| `quickjobs sync` | Validate → push code, bins, runtime to remote |
 | `quickjobs run [args…]` | Sync then full scrape on remote |
 | `quickjobs rebuild [args…]` | Sync then regenerate HTML from snapshot (no scrape) |
 | `quickjobs rebuild --local` | Rebuild HTML on Mac from local snapshot |
 | `quickjobs stop` / `resume` / `restart` | Mid-run control via checkpoint |
-| `quickjobs sync,restart` | Push code mid-run then resume |
 | `quickjobs results` / `status` | Tail in-progress or last cron summary |
 | `quickjobs shard [args…]` | Workday Playwright shard on remote |
 | `quickjobs deploy` | First-time / venv / cron setup on remote |
@@ -451,11 +442,9 @@ Hub tooling, discover, tests, and `build_portable_package.py` stay on the dev ma
 - Dice / HN / Built In miners: see each `scripts/*/README.md`.
 - Discover CLI: `scripts/discover/README.md`.
 - Validators: `scripts/validate/*`.
-- Diagnostics runbooks: `scripts/diagnostics/scrape-phase-runbook.md`,
   `step-isolation-runbook.md`.
 
 Typical new-company flow: add → convert/discover → `apply-hub-urls --apply` →
-`quickjobs sync`.
 
 ---
 
@@ -502,7 +491,6 @@ Greenhouse: `type: greenhouse` + `board` slug; API
 `boards-api.greenhouse.io/v1/boards/{board}/jobs`.
 
 Open-file limit on Linux hosts: `quickjobs-raise-nofile` /
-`scripts/maintenance/install-ulimits-remote.sh`.
 
 ---
 
@@ -510,7 +498,6 @@ Open-file limit on Linux hosts: `quickjobs-raise-nofile` /
 
 1. Open board in Chrome/Edge.
 2. Link `$JOB_SEARCH_DIR/job-board-runtime.json` (File System Access API).
-3. Status changes write to that file; `quickjobs sync` pushes to remote.
 4. Safari: use `--pipeline-server` for local `file://` only.
 5. Port **8767** = pipeline autosave — not a free preview port.
 
@@ -535,8 +522,6 @@ tenths versioning (`0.0.9` → `0.1.0`).
 On your Mac (personal `gh` auth):
 
 ```bash
-quickjobs draft --dry-run   # show next version + notes
-quickjobs draft             # create draft at next tenths version
 ```
 
 Bumps from the highest existing release (published or draft). Agents must not run
@@ -575,11 +560,10 @@ Bumps from the highest existing release (published or draft). Agents must not ru
 
 | Doc | Use when |
 |-----|----------|
-| [HOWTO.md](HOWTO.md) | Daily Mac/remote operator workflow |
+| [GETTING_STARTED.md](GETTING_STARTED.md) | Daily Mac/remote operator workflow |
 | [portable/ARCHITECTURE.txt](portable/ARCHITECTURE.txt) | Portable paths + visa layers |
 | [portable/README.md](portable/README.md) | Unzip → configure → run |
 | `scripts/*/README.md` | Discover / Dice / HN / hubs |
-| `scripts/diagnostics/*-runbook.md` | Scrape isolation debugging |
 | `scripts/hubs/HUB_ATS_RESEARCH.md` | ATS probe patterns |
 
 When documentation and code disagree, **code + tests win**; update this README in

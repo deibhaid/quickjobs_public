@@ -59,8 +59,8 @@ For a self-contained install directory with its own venv, see
 ## Notes
 
 - Do not commit a real personal profile to a public fork; keep secrets local.
-- Operator docs in `HOWTO.md` / `README.md` still describe advanced workflows
-  (discovery, hubs). Prefer this file for first run.
-- Re-sync from a private upstream (if you maintain one) via
-  `scripts/_shared/sync_public_repo.sh` on the private side — it re-applies
-  stubs and personal scrubbing.
+- Prefer this file for first run. Advanced catalog tooling lives under
+  `scripts/discover`, `scripts/hubs`, `scripts/dice`, `scripts/hn`, and
+  `scripts/validate` (see README).
+- Maintainers who keep a private upstream sync/scrub on the private side before
+  publishing; that tooling is not shipped in this tree.
