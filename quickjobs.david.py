@@ -29915,6 +29915,11 @@ def edit_config_root_for_board() -> Path:
     Browser File System Access cannot open an absolute path, but we show these
     paths and use stable picker ids so Chrome remembers the last folder used.
     """
+    # PUBLIC_BUILD_STUB — use the cloned repo path (no private Mac mapping)
+    env = os.environ.get("QUICKJOBS_EDIT_CONFIG_ROOT", "").strip()
+    if env:
+        return Path(env).expanduser()
+    return Path(SCRIPT_DIR).expanduser().resolve()
     env = os.environ.get("QUICKJOBS_EDIT_CONFIG_ROOT", "").strip()
     if env:
         return Path(env).expanduser()

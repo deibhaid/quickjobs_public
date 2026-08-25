@@ -80,6 +80,8 @@ copy_tree() {
 for f in \
   HOWTO.md \
   README.md \
+  GETTING_STARTED.md \
+  requirements.txt \
   build_portable_package.py \
   h1b_employer.py \
   run_log.py \
@@ -94,7 +96,8 @@ for f in \
   quickjobs.david.profile.example.json \
   scripts/_shared/draft-release.sh \
   scripts/_shared/sync_public_repo.sh \
-  scripts/_shared/apply_public_stubs.py
+  scripts/_shared/apply_public_stubs.py \
+  scripts/_shared/bootstrap_clone.sh
  do
   copy_file "${f}"
 done

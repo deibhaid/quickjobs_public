@@ -1,3 +1,5 @@
+> **New clone?** Start with [GETTING_STARTED.md](GETTING_STARTED.md) (venv, validate, first scrape).
+
 # quickjobs
 
 Self-contained job board pipeline: scrape employer ATS sources, merge pipeline
@@ -18,7 +20,7 @@ sync, or board HTML/JS. Operator day-to-day steps (Mac ↔ remote host) live in
 
 | Product | Audience | Entry point |
 |---------|----------|-------------|
-| David / primary fork | David's Mac + remote scrape host (remote) | `quickjobs.david.py` |
+| David / primary fork | The Mac + remote scrape host (remote) | `quickjobs.david.py` |
 | Portable zip | Any user (e.g. Naiyyar Farooqui test install) | Built `quickjobs.py` via `run.py` |
 
 Development happens in `quickjobs.david.*` sources. The portable package is a
@@ -106,7 +108,7 @@ not copy `quickjobs.david.py` into a portable tree.
 |--------|-----------|------|
 | Scrape / HTML / filters | `quickjobs.david.py`, `h1b_employer.py`, `run_log.py` | Run tests; rebuild portable zip if behavior ships to others |
 | Employer list / keywords | `quickjobs.david.base.json` | `validate` then `quickjobs sync` for remote |
-| David's personal filters | `quickjobs.david.profile.json` | Sync if remote should match |
+| The personal filters | `quickjobs.david.profile.json` | Sync if remote should match |
 | Known non-sponsors (visa) | `config/no-visa-sponsor-company-ids.json` | Rebuild portable |
 | Favicon override | `quickjobs.david.favicon-domains.json` (+ `KNOWN_BY_COMPANY_ID` in generator if needed) | Rebuild portable |
 | Portable UX / configure prompts | `portable/configure.py`, `portable/*` | Rebuild zip |
@@ -141,7 +143,7 @@ cd ~/ws/github/quickjobs
 7. Board UI filters, legend, and status writes (File System Access → runtime JSON,
    or localhost pipeline server).
 
-Typical David workflow: edit config on Mac → `quickjobs sync` → `quickjobs run`
+Typical Typical workflow: edit config on Mac → `quickjobs sync` → `quickjobs run`
 (full refresh on remote). Chain: `quickjobs portable,sync,run`.
 
 ---
@@ -156,7 +158,7 @@ Typical David workflow: edit config on Mac → `quickjobs sync` → `quickjobs r
 | `run_log.py` | Timestamp-prefixed stdout; skips re-stamping progress status lines |
 | `h1b_employer.py` | DOL LCA index, visa/green-card filters, badges, default text chips |
 | `quickjobs.david.base.json` | ~1100+ employers, ATS type/slug, keywords, sections |
-| `quickjobs.david.profile.json` | David profile: salary floor, skills, `jobs_dir`, excludes, overrides |
+| `quickjobs.david.profile.json` | Profile: salary floor, skills, `jobs_dir`, excludes, overrides |
 | `quickjobs.david.favicon-domains.json` | Favicon domain overrides by company/ATS board |
 | `quickjobs.david.unconvertible-careers.json` | Manual employers that cannot auto-convert |
 | `quickjobs.david.manual-career-meta.json` | Extra metadata for manual careers |
@@ -273,7 +275,7 @@ Skip: `QUICKJOBS_SYNC_SKIP_VALIDATE=1`.
 
 | File | Purpose |
 |------|---------|
-| `<jobs_dir>/job-search-david.html` | David board (name follows profile) |
+| `<jobs_dir>/job-search-david.html` | Job board (name follows profile) |
 | Portable: `output/job-search-quickjobs.html` | Typical portable board path |
 
 ---
@@ -386,7 +388,7 @@ Company DOL badges remain for visa profiles.
 
 ---
 
-## Commands (David CLI)
+## Commands (CLI)
 
 CLI install: `~/local/bin/quickjobs` (not in this repo).
 

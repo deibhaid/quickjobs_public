@@ -73,7 +73,7 @@ Only user-relevant paths are listed here. Developer-only scripts under `scripts/
 
 | Field | Your current setting | Meaning |
 |-------|---------------------|---------|
-| `profile.salary_floor` | 200000 | Annual base floor for salary badges |
+| `profile.salary_floor` | 0 | Annual base floor for salary badges |
 | `profile.jobs_dir` | `~/Downloads/jobs` | Where dev HTML is written |
 | `profile.skills` | devops, k8s, terraform, … | Used in match scoring |
 | `profile.domain_years` | devops/platform/sre years | Domain experience weights |

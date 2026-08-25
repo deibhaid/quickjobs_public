@@ -76,6 +76,14 @@ GLASSDOOR_PREFETCH_STUB = [
     "    return 0\n",
 ]
 
+EDIT_CONFIG_ROOT_STUB = [
+    "    # PUBLIC_BUILD_STUB — use the cloned repo path (no private Mac mapping)\n",
+    '    env = os.environ.get("QUICKJOBS_EDIT_CONFIG_ROOT", "").strip()\n',
+    "    if env:\n",
+    "        return Path(env).expanduser()\n",
+    "    return Path(SCRIPT_DIR).expanduser().resolve()\n",
+]
+
 
 def stub_quickjobs_py(path: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
@@ -86,6 +94,7 @@ def stub_quickjobs_py(path: Path) -> list[str]:
         ("fetch_glassdoor_search_html", GLASSDOOR_HTML_STUB),
         ("prefetch_glassdoor_ratings", GLASSDOOR_PREFETCH_STUB),
         ("prefetch_glassdoor_for_all_companies", GLASSDOOR_PREFETCH_STUB),
+        ("edit_config_root_for_board", EDIT_CONFIG_ROOT_STUB),
     ):
         if _inject_stub(lines, name, stub):
             changed.append(name)
