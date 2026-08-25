@@ -34,10 +34,16 @@ SKIP_TAG=0
 
 usage() {
   cat <<'EOF'
-Usage: quickjobs draft [--dry-run] [--notes-file PATH] [--no-commit-notes] [--no-tag]
+Usage: quickjobs draft|draft_public [--dry-run] [--notes-file PATH] [--no-commit-notes] [--no-tag]
 
   Create a GitHub draft release at the next tenths version after the highest
   existing release (published or draft).
+
+  draft         → YOUR_GITHUB_USER/quickjobs (private)
+  draft_public  → sync private→public, commit+push, then draft on quickjobs_public
+
+  Override with QUICKJOBS_GITHUB_REPO / QUICKJOBS_DIR (or QUICKJOBS_PUBLIC_DIR
+  for draft_public).
 
   Tag:   vX.Y.Z (created and pushed at draft time unless --no-tag)
   Title: X.Y.Z
@@ -50,9 +56,14 @@ Options:
   --no-tag          Do not create/push a git tag (legacy untagged draft URL)
   -h, --help        Show this help
 
+  draft_public also accepts --no-sync / --no-commit / --no-push (see
+  quickjobs draft_public --help).
+
 Examples:
   quickjobs draft --dry-run
   quickjobs draft
+  quickjobs draft_public --dry-run
+  quickjobs draft_public
   quickjobs draft --notes-file /tmp/notes.md
 EOF
 }
@@ -247,6 +258,7 @@ else
 EOF
 fi
 
+log "Target:           ${REPO}  (${REPO_DIR})"
 log "Highest existing: ${HIGHEST:-none} (${HIGHEST_TAG:-})"
 log "Next draft:       ${NEXT_VERSION}  (tag ${NEXT_TAG})"
 if [[ -n "${NOTES_BASELINE_LABEL}" ]]; then

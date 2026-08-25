@@ -20,7 +20,7 @@ meaningful staffing/agency volume; agencies are kept in the catalog with
 `is_agency` (not dropped) and excluded from the add-candidates list.
 
 Runs with the repo venv (`~/.v/bin/python`). It only READS
-`quickjobs.david.base.json` and never writes it. Shared logic lives in
+`quickjobs.base.json` and never writes it. Shared logic lives in
 `scripts/_shared/discovery_common.py`.
 
 ## What it does per run

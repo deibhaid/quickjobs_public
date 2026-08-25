@@ -32,7 +32,7 @@ Dice MCP limits (verified 2026-07):
   * There is no date-sort param; default sortBy is 'relevance'.
 
 Reads (never writes):
-  * quickjobs.david.base.json  (only to compute the "already in base" flag)
+  * quickjobs.base.json  (only to compute the "already in base" flag)
 
 Writes:
   * ~/ws/scriptdir/output/dice-employer-catalog.json          (persistent)
@@ -68,7 +68,7 @@ SCRIPT_PATH = Path(__file__).resolve()
 REPO_ROOT = SCRIPT_PATH.parents[2]  # .../quickjobs
 SHARED_DIR = REPO_ROOT / "scripts" / "_shared"
 HUBS_DIR = REPO_ROOT / "scripts" / "hubs"
-DEFAULT_BASE = REPO_ROOT / "quickjobs.david.base.json"
+DEFAULT_BASE = REPO_ROOT / "quickjobs.base.json"
 OUTPUT_DIR = Path.home() / "ws" / "scriptdir" / "output"
 DEFAULT_CATALOG = OUTPUT_DIR / "dice-employer-catalog.json"
 

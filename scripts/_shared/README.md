@@ -10,7 +10,7 @@ Provides:
   `collapse`, `catalog_key`, `slugify`, `is_agency`).
 - Salary parsing, annualized and tolerant of the HN shared-suffix form
   `$200-298k` (`parse_salary`).
-- A read-only index of `quickjobs.david.base.json` + membership test
+- A read-only index of `quickjobs.base.json` + membership test
   (`load_base_index`, `base_match`). base.json is never written.
 - A persistent employer catalog: `load_catalog`, `save_catalog` (atomic),
   `new_entry`, `merge_common` (idempotent when given a stable per-posting id).

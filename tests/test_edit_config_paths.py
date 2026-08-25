@@ -16,8 +16,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_qj():
-    path = REPO_ROOT / "quickjobs.david.py"
-    spec = importlib.util.spec_from_file_location("quickjobs_david_edit_paths", path)
+    path = REPO_ROOT / "quickjobs.py"
+    spec = importlib.util.spec_from_file_location("quickjobs_mod_edit_paths", path)
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
@@ -42,15 +42,15 @@ class EditConfigPathsTests(unittest.TestCase):
             paths = dict(qj.resolve_config_display_paths())
         self.assertEqual(
             paths["Base config"],
-            "/path/to/quickjobs/quickjobs.david.base.json",
+            "/path/to/quickjobs/quickjobs.base.json",
         )
         self.assertEqual(
             paths["Companies"],
-            "/path/to/quickjobs/quickjobs.david.companies.json",
+            "/path/to/quickjobs/quickjobs.companies.json",
         )
         self.assertEqual(
             paths["Profile"],
-            "/path/to/quickjobs/quickjobs.david.profile.json",
+            "/path/to/quickjobs/quickjobs.profile.json",
         )
 
     def test_env_override(self) -> None:
@@ -73,7 +73,7 @@ class EditConfigPathsTests(unittest.TestCase):
         self.assertEqual(out["editConfigRoot"], "/path/to/quickjobs")
         self.assertTrue(out["baseConfigPath"].startswith("/Users/example/"))
         self.assertTrue(out["profileConfigPath"].startswith("/Users/example/"))
-        self.assertEqual(out["editConfigFilePickerId"], "quickjobs-david-runtime")
+        self.assertEqual(out["editConfigFilePickerId"], "quickjobs-quickjobs-runtime")
         self.assertEqual(out["editConfigFilePickerId"], out["runtimeFilePickerId"])
 
     def test_ensure_picker_symlinks(self) -> None:
@@ -84,9 +84,9 @@ class EditConfigPathsTests(unittest.TestCase):
             edit_root.mkdir()
             picker_dir.mkdir()
             for name in (
-                "quickjobs.david.base.json",
-                "quickjobs.david.companies.json",
-                "quickjobs.david.profile.json",
+                "quickjobs.base.json",
+                "quickjobs.companies.json",
+                "quickjobs.profile.json",
             ):
                 (edit_root / name).write_text("{}\n", encoding="utf-8")
             linked = qj.ensure_edit_config_picker_symlinks(
@@ -113,12 +113,12 @@ class EditConfigPathsTests(unittest.TestCase):
             edit_root.mkdir()
             runtime_dir.mkdir()
             for name in (
-                "quickjobs.david.base.json",
-                "quickjobs.david.companies.json",
-                "quickjobs.david.profile.json",
+                "quickjobs.base.json",
+                "quickjobs.companies.json",
+                "quickjobs.profile.json",
             ):
                 (edit_root / name).write_text("{}\n", encoding="utf-8")
-            (edit_root / "quickjobs.david.profile.json").write_text(
+            (edit_root / "quickjobs.profile.json").write_text(
                 json.dumps({"profile": {"jobs_dir": str(jobs_dir), "name": "T"}}),
                 encoding="utf-8",
             )
@@ -126,17 +126,17 @@ class EditConfigPathsTests(unittest.TestCase):
                 linked = qj.ensure_edit_config_picker_symlinks(edit_root=edit_root)
                 removed = qj.remove_stale_edit_config_picker_symlinks(edit_root=edit_root)
             self.assertEqual(len(linked), 3)
-            self.assertTrue((jobs_dir / "quickjobs.david.base.json").is_symlink())
-            self.assertFalse((runtime_dir / "quickjobs.david.base.json").exists())
+            self.assertTrue((jobs_dir / "quickjobs.base.json").is_symlink())
+            self.assertFalse((runtime_dir / "quickjobs.base.json").exists())
             self.assertEqual(removed, [])
             # Stale runtime-dir links are removed
-            (runtime_dir / "quickjobs.david.base.json").symlink_to(
-                edit_root / "quickjobs.david.base.json"
+            (runtime_dir / "quickjobs.base.json").symlink_to(
+                edit_root / "quickjobs.base.json"
             )
             with mock.patch.object(qj, "edit_config_picker_dir", return_value=runtime_dir):
                 removed2 = qj.remove_stale_edit_config_picker_symlinks(edit_root=edit_root)
             self.assertEqual(len(removed2), 1)
-            self.assertFalse((runtime_dir / "quickjobs.david.base.json").exists())
+            self.assertFalse((runtime_dir / "quickjobs.base.json").exists())
 
 
 if __name__ == "__main__":

@@ -116,7 +116,7 @@ run — prefer waiting for stall resolution before `sync-code`).
 ### 3 `sync-validate`
 
 ```bash
-~/.v/bin/python quickjobs.david.py validate-static-config -q --dir .
+~/.v/bin/python quickjobs.py validate-static-config -q --dir .
 ```
 
 | Expected | < 10s | Pass: exit 0 |
@@ -125,7 +125,7 @@ run — prefer waiting for stall resolution before `sync-code`).
 
 Rsync static code/config only (`rsync --delete` for listed files). See `sync-remote` `sync_code`.
 
-| Expected | 5–30s | Pass: exit 0; remote `quickjobs.david.py` mtime updates |
+| Expected | 5–30s | Pass: exit 0; remote `quickjobs.py` mtime updates |
 
 ### 5 `sync-bins`
 
@@ -312,7 +312,7 @@ On remote:
 ssh user@remote-host \
   'cd /path/to/quickjobs && \
    QUICKJOBS_JOBS_DIR=/path/to/html JOB_SEARCH_DIR=/path/to/html \
-   /path/to/venv/bin/python quickjobs.david.py rebuild-snapshot'
+   /path/to/venv/bin/python quickjobs.py rebuild-snapshot'
 ```
 
 Or dev machine:
@@ -375,5 +375,5 @@ cd /path/to/quickjobs/scripts/diagnostics
 
 Output: step log path, timing report when applicable, final line `RESULT: OK|WARN|FAIL`.
 
-Scrape steps refuse to start if remote host already has `quickjobs.david.py` running (unless
+Scrape steps refuse to start if remote host already has `quickjobs.py` running (unless
 `QUICKJOBS_ISOLATION_FORCE=1`).

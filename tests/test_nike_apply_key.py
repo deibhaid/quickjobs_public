@@ -23,8 +23,8 @@ CANON = "https://careers.nike.com/job/R-88271"
 
 
 def _load_qj():
-    path = REPO_ROOT / "quickjobs.david.py"
-    spec = importlib.util.spec_from_file_location("quickjobs_david_nike_key", path)
+    path = REPO_ROOT / "quickjobs.py"
+    spec = importlib.util.spec_from_file_location("quickjobs_mod_nike_key", path)
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod

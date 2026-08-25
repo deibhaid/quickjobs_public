@@ -1,7 +1,7 @@
 # quickjobs discover CLI
 
 Dev-machine commands to run employer-catalog miners and sync conservative
-add-candidates into `quickjobs.david.base.json`.
+add-candidates into `quickjobs.base.json`.
 
 Invoke via the top-level `quickjobs` wrapper or directly:
 
@@ -16,7 +16,7 @@ quickjobs discover dice
 
 Runs the schedulable miners under `scripts/{dice,hn,builtin}/`. Outputs land in
 `~/ws/scriptdir/output/` (persistent catalogs + dated `*-new-candidates-*.json`
-reports). Does not modify `quickjobs.david.base.json`.
+reports). Does not modify `quickjobs.base.json`.
 
 Default profile (widest net):
 
@@ -69,10 +69,10 @@ After write: runs `quickjobs validate` and fails with restore instructions if in
 
 Checks:
 
-- `quickjobs.david.base.json` — valid JSON, duplicate ids, required fields per ATS type
-- `quickjobs.david.profile.json` — valid JSON when present
-- `quickjobs.david.py` — `py_compile`
-- Delegates to `quickjobs.david.py validate-static-config` for tier keywords and core rules
+- `quickjobs.base.json` — valid JSON, duplicate ids, required fields per ATS type
+- `quickjobs.profile.json` — valid JSON when present
+- `quickjobs.py` — `py_compile`
+- Delegates to `quickjobs.py validate-static-config` for tier keywords and core rules
 
 ## Examples
 

@@ -12,8 +12,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_qj():
-    path = REPO_ROOT / "quickjobs.david.py"
-    spec = importlib.util.spec_from_file_location("quickjobs_david_legend_or", path)
+    path = REPO_ROOT / "quickjobs.py"
+    spec = importlib.util.spec_from_file_location("quickjobs_mod_legend_or", path)
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
@@ -50,7 +50,7 @@ class LegendLocationOrTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.qj = _load_qj()
-        cls.src = (REPO_ROOT / "quickjobs.david.py").read_text(encoding="utf-8")
+        cls.src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
 
     def test_board_js_does_not_preblock_location_pass(self) -> None:
         """Aggregate location filters must not call *BlockedFromRemote*(..., locKeys)."""

@@ -383,13 +383,13 @@ class ProfileDefaultCompanyExcludeTests(unittest.TestCase):
         self.assertEqual(excludes, [])
 
     def test_scrape_source_merges_profile_default_company_excludes(self) -> None:
-        src = (REPO_ROOT / "quickjobs.david.py").read_text(encoding="utf-8")
+        src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
         self.assertIn("profile_default_company_ids_exclude", src)
         self.assertIn("h1b_cache_root()", src)
 
 
     def test_board_source_wires_profile_text_filter_presets(self) -> None:
-        src = (REPO_ROOT / "quickjobs.david.py").read_text(encoding="utf-8")
+        src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
         self.assertNotIn('data-legend-filter="visa-sponsor"', src)
         self.assertNotIn("LEGEND_VISA_KEYS", src)
         self.assertNotIn("visa_legend_filter_button", src)

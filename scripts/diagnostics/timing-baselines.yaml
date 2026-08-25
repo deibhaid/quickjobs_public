@@ -129,7 +129,7 @@ phases:
     warn_sec: 15
     stall_sec: 60
     notes: >
-      "Validated badge structure" through "Wrote … job-search-david.html". Atomic write
+      "Validated badge structure" through "Wrote … job-search-quickjobs.html". Atomic write
       + verify_written_file; typically a few seconds.
 
   - phase: rolling_backup

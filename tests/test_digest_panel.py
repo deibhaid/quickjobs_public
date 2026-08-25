@@ -11,11 +11,11 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
-SOURCE = REPO / "quickjobs.david.py"
+SOURCE = REPO / "quickjobs.py"
 
 
 def load_module():
-    spec = importlib.util.spec_from_file_location("quickjobs_david_test", SOURCE)
+    spec = importlib.util.spec_from_file_location("quickjobs_mod_test", SOURCE)
     mod = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     sys.modules[spec.name] = mod

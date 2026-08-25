@@ -10,7 +10,7 @@ import urllib.request
 from pathlib import Path
 
 OUT = Path.home() / "ws/scriptdir/output/quickjobs-reports/probe-seattle-nyc-2026-06-15.json"
-BASE = Path(__file__).resolve().parents[2] / "quickjobs.david.base.json"
+BASE = Path(__file__).resolve().parents[2] / "quickjobs.base.json"
 
 PLATFORM_RE = re.compile(
     r"sre|site reliability|platform|infrastructure|devops|kubernetes|terraform|"

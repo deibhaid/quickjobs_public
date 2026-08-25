@@ -13,8 +13,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_qj():
-    path = REPO_ROOT / "quickjobs.david.py"
-    spec = importlib.util.spec_from_file_location("quickjobs_david_search_kw", path)
+    path = REPO_ROOT / "quickjobs.py"
+    spec = importlib.util.spec_from_file_location("quickjobs_mod_search_kw", path)
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
@@ -26,7 +26,7 @@ class SearchKeywordEditorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.qj = _load_qj()
-        cls.src = (REPO_ROOT / "quickjobs.david.py").read_text(encoding="utf-8")
+        cls.src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
 
     def test_board_keyword_lists_from_cfg(self) -> None:
         qj = self.qj
@@ -60,7 +60,7 @@ class SearchKeywordEditorTests(unittest.TestCase):
 
     def test_search_params_panel_has_editable_sections(self) -> None:
         qj = self.qj
-        cfg = json.loads((REPO_ROOT / "quickjobs.david.base.json").read_text(encoding="utf-8"))
+        cfg = json.loads((REPO_ROOT / "quickjobs.base.json").read_text(encoding="utf-8"))
         cfg.setdefault("profile", {"name": "Test", "home_zip": "00000", "resident_status": "citizen"})
         panel = qj.render_search_parameters_panel(cfg)
         for key in qj.SEARCH_KEYWORD_LIST_KEYS:

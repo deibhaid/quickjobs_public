@@ -12,8 +12,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_quickjobs_module():
-    path = REPO_ROOT / "quickjobs.david.py"
-    spec = importlib.util.spec_from_file_location("quickjobs_david_board_filters", path)
+    path = REPO_ROOT / "quickjobs.py"
+    spec = importlib.util.spec_from_file_location("quickjobs_mod_board_filters", path)
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
@@ -75,12 +75,12 @@ class BoardProfileFilterTests(unittest.TestCase):
         self.assertTrue(all(chip["mode"] == "not" for chip in filters))
 
     def test_no_visa_sponsor_legend_in_html_template(self) -> None:
-        src = (REPO_ROOT / "quickjobs.david.py").read_text(encoding="utf-8")
+        src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
         self.assertNotIn('data-legend-filter="visa-sponsor"', src)
         self.assertNotIn("visa_legend_filter_button", src)
 
     def test_lazy_board_split_scripts_present(self) -> None:
-        src = (REPO_ROOT / "quickjobs.david.py").read_text(encoding="utf-8")
+        src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
         self.assertIn('id="lazy-board-index"', src)
         self.assertIn('id="lazy-board-payload"', src)
         self.assertIn('id="lazy-board-descriptions"', src)

@@ -12,8 +12,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load():
-    path = REPO_ROOT / "quickjobs.david.py"
-    spec = importlib.util.spec_from_file_location("quickjobs_david_gd_name_row", path)
+    path = REPO_ROOT / "quickjobs.py"
+    spec = importlib.util.spec_from_file_location("quickjobs_mod_gd_name_row", path)
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
@@ -57,7 +57,7 @@ class GlassdoorNameRowTests(unittest.TestCase):
         self.assertNotIn("company-gd-rating-empty", html)
 
     def test_company_name_row_css_uses_block_flex_nowrap(self) -> None:
-        src = (REPO_ROOT / "quickjobs.david.py").read_text(encoding="utf-8")
+        src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
         self.assertIn(".company-name-row {{", src)
         self.assertIn("flex-flow: row nowrap", src)
         self.assertNotIn("display: inline-flex;\n      flex-wrap: wrap;", src)

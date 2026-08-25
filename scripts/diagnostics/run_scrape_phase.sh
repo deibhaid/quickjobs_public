@@ -236,7 +236,7 @@ test_verify_on_openai() {
 
 test_post_rolling_backup() {
   run_shell "rolling-backup" \
-    "${PYTHON} ${REPO_ROOT}/quickjobs.david.py test-rolling-backup -q"
+    "${PYTHON} ${REPO_ROOT}/quickjobs.py test-rolling-backup -q"
 }
 
 test_check_latest() {

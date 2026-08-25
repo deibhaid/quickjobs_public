@@ -20,8 +20,8 @@ def _load_module(path: Path, name: str):
 
 def _load_cfg() -> dict:
     candidates = [
-        Path.home() / ".job_search/quickjobs/david/quickjobs.profile.json",
-        Path(__file__).resolve().parents[2] / "quickjobs.david.profile.json",
+        Path.home() / ".job_search/quickjobs/quickjobs/quickjobs.profile.json",
+        Path(__file__).resolve().parents[2] / "quickjobs.profile.json",
     ]
     for path in candidates:
         if path.is_file():
@@ -491,7 +491,7 @@ def _run_legend_and_filter_and_logic(cfg: dict) -> list[str]:
         print("  [ok] match OR: strong+good accepts good entries")
 
     jobs_dir = Path(cfg.get("profile", {}).get("jobs_dir", "~/Downloads/jobs")).expanduser()
-    board_path = jobs_dir / "job-search-david.html"
+    board_path = jobs_dir / "job-search-quickjobs.html"
     if not board_path.is_file():
         print(f"  [skip] no board at {board_path}")
         return failures
@@ -834,8 +834,8 @@ def main() -> int:
     ]
     failures: list[str] = []
     for script_name, mod_name in (
-        ("quickjobs.david.py", "validate_qj"),
-        ("../job-board/job_board.david.py", "validate_jb"),
+        ("quickjobs.py", "validate_qj"),
+        ("../job-board/job_board.py", "validate_jb"),
     ):
         path = (root / script_name).resolve()
         if not path.is_file():
@@ -843,7 +843,7 @@ def main() -> int:
             continue
         mod = _load_module(path, mod_name)
         failures.extend(_run_cases(mod, cfg, path.name, common_cases))
-        if script_name == "quickjobs.david.py":
+        if script_name == "quickjobs.py":
             failures.extend(_run_eightfold_posting_url_cases(mod))
             failures.extend(_run_cases(mod, cfg, f"{path.name} (NVIDIA/Workday)", nvidia_cases))
             ca_cfg = {

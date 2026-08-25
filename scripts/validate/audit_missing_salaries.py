@@ -13,10 +13,10 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_HTML = Path.home() / "Downloads" / "jobs" / "job-search-david.html"
+DEFAULT_HTML = Path.home() / "Downloads" / "jobs" / "job-search-quickjobs.html"
 DEFAULT_PIPELINE = Path.home() / "Downloads" / "jobs" / "job-board-pipeline.json"
 DEFAULT_SNAPSHOT = (
-    Path.home() / ".job_search" / "quickjobs" / "david" / "job-search-david.snapshot.json"
+    Path.home() / ".job_search" / "quickjobs" / "quickjobs" / "job-search-quickjobs.snapshot.json"
 )
 DEFAULT_OUTPUT = Path.home() / "ws" / "scriptdir" / "output" / "missing-salary-audit.json"
 DEFAULT_SUMMARY = Path.home() / "ws" / "scriptdir" / "output" / "missing-salary-audit.md"
@@ -47,10 +47,10 @@ ANNUAL_COMP_MARKERS = re.compile(
 
 
 def load_quickjobs_module():
-    path = REPO_ROOT / "quickjobs.david.py"
-    spec = importlib.util.spec_from_file_location("quickjobs_david_audit", path)
+    path = REPO_ROOT / "quickjobs.py"
+    spec = importlib.util.spec_from_file_location("quickjobs_mod_audit", path)
     mod = importlib.util.module_from_spec(spec)
-    sys.modules["quickjobs_david_audit"] = mod
+    sys.modules["quickjobs_mod_audit"] = mod
     spec.loader.exec_module(mod)
     return mod
 

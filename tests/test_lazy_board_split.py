@@ -13,7 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_quickjobs_module():
-    path = REPO_ROOT / "quickjobs.david.py"
+    path = REPO_ROOT / "quickjobs.py"
     spec = importlib.util.spec_from_file_location("quickjobs_lazy_test", path)
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
@@ -125,7 +125,7 @@ class LazyBoardSplitTests(unittest.TestCase):
         collector.sections["excluded"] = "<p>excluded</p>"
 
         with tempfile.TemporaryDirectory() as tmp:
-            out = Path(tmp) / "job-search-david.html"
+            out = Path(tmp) / "job-search-quickjobs.html"
             out.write_text(
                 '<script type="application/json" id="lazy-board-index">[]</script>'
                 '<script type="application/json" id="lazy-board-payload">{}</script>'
@@ -166,7 +166,7 @@ class LazyBoardSplitTests(unittest.TestCase):
     def test_client_bootstrap_guards_empty_stub_poison(self) -> None:
         """Stub embeds are [] / {}; early getJobBoardIndex must not block fetch."""
         mod = self.qj
-        src = (REPO_ROOT / "quickjobs.david.py").read_text(encoding="utf-8")
+        src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
         self.assertIn("lazyBoardIndexFetchDone", src)
         self.assertIn("lazyBoardPayloadFetchDone", src)
         self.assertIn(
@@ -185,7 +185,7 @@ class LazyBoardSplitTests(unittest.TestCase):
 
     def test_client_guards_flat_sort_empty_payload_trap(self) -> None:
         """Salary/date flat-sort must not hide shells when sidecar payload is empty."""
-        src = (REPO_ROOT / "quickjobs.david.py").read_text(encoding="utf-8")
+        src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
         self.assertIn("resetEmptyLazyCompanyShells", src)
         self.assertIn("cache: 'no-cache'", src)
         self.assertNotIn("cache: 'force-cache'", src)
@@ -248,7 +248,7 @@ class LazyBoardSplitTests(unittest.TestCase):
             '<script type="application/json" id="lazy-board-payload">{}</script>'
         )
         with tempfile.TemporaryDirectory() as tmp:
-            out = Path(tmp) / "job-search-david.html"
+            out = Path(tmp) / "job-search-quickjobs.html"
             out.write_text(stub_html, encoding="utf-8")
             issues = mod.validate_lazy_board_sidecars(
                 out, stub_html, expect_listing_jobs=True
@@ -265,7 +265,7 @@ class LazyBoardSplitTests(unittest.TestCase):
             '<script type="application/json" id="lazy-board-payload">{}</script>'
         )
         with tempfile.TemporaryDirectory() as tmp:
-            out = Path(tmp) / "job-search-david.html"
+            out = Path(tmp) / "job-search-quickjobs.html"
             out.write_text(stub_html, encoding="utf-8")
             side = mod.lazy_board_sidecars_dir(out)
             side.mkdir(parents=True, exist_ok=True)
@@ -299,7 +299,7 @@ class LazyBoardSplitTests(unittest.TestCase):
             '<script type="application/json" id="lazy-board-payload">{}</script>'
         )
         with tempfile.TemporaryDirectory() as tmp:
-            out = Path(tmp) / "job-search-david.html"
+            out = Path(tmp) / "job-search-quickjobs.html"
             out.write_text(stub_html, encoding="utf-8")
             side = mod.lazy_board_sidecars_dir(out)
             side.mkdir(parents=True, exist_ok=True)

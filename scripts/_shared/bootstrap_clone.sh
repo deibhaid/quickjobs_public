@@ -22,10 +22,10 @@ echo "Installing Playwright Chromium ..."
 "${PY}" -m playwright install chromium
 
 echo "Validating static config ..."
-"${PY}" "${ROOT}/quickjobs.david.py" validate-static-config --dir "${ROOT}"
+"${PY}" "${ROOT}/quickjobs.py" validate-static-config --dir "${ROOT}"
 
 echo
 echo "Bootstrap OK."
 echo "Activate:  source ${VENV}/bin/activate"
-echo "Try:       python quickjobs.david.py --only remotive,remoteok"
+echo "Try:       python quickjobs.py --only remotive,remoteok"
 echo "Docs:      GETTING_STARTED.md"

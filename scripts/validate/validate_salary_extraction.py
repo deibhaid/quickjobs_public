@@ -556,8 +556,8 @@ def run_checks(module_path: Path, label: str) -> list[str]:
 
 def main() -> int:
     targets = (
-        ("quickjobs", REPO_ROOT / "quickjobs.david.py"),
-        ("job_board", REPO_ROOT.parent / "job-board" / "job_board.david.py"),
+        ("quickjobs", REPO_ROOT / "quickjobs.py"),
+        ("job_board", REPO_ROOT.parent / "job-board" / "job_board.py"),
     )
     quickjobs_failures: list[str] = []
     job_board_failures: list[str] = []

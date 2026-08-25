@@ -2,7 +2,7 @@
 """quickjobs discover / discover-sync / validate CLI (dev machine only).
 
 Wraps the employer-catalog miners under scripts/{dice,hn,builtin}/ and can
-append conservative API-scrapable direct employers to quickjobs.david.base.json.
+append conservative API-scrapable direct employers to quickjobs.base.json.
 
 Candidate source for discover-sync: the newest dated report JSON per source
 (``<source>-new-candidates-YYYY-MM-DD.json`` under OUTPUT_DIR), field
@@ -25,10 +25,10 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[1]
 SHARED_DIR = REPO_ROOT / "scripts" / "_shared"
 OUTPUT_DIR = Path.home() / "ws" / "scriptdir" / "output"
-DEFAULT_BASE = REPO_ROOT / "quickjobs.david.base.json"
-DEFAULT_PROFILE = REPO_ROOT / "quickjobs.david.profile.json"
+DEFAULT_BASE = REPO_ROOT / "quickjobs.base.json"
+DEFAULT_PROFILE = REPO_ROOT / "quickjobs.profile.json"
 PYTHON = Path.home() / ".v" / "bin" / "python"
-MAIN_PY = REPO_ROOT / "quickjobs.david.py"
+MAIN_PY = REPO_ROOT / "quickjobs.py"
 
 if str(SHARED_DIR) not in sys.path:
     sys.path.insert(0, str(SHARED_DIR))
@@ -502,7 +502,7 @@ def cmd_validate(argv: list[str]) -> int:
 
 def cmd_dedup(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
-        description="Report duplicate ATS keys in quickjobs.david.base.json (report-only by default).",
+        description="Report duplicate ATS keys in quickjobs.base.json (report-only by default).",
     )
     parser.add_argument("--base", type=Path, default=DEFAULT_BASE)
     parser.add_argument(
@@ -625,7 +625,7 @@ def _sync_one_source(
 
 def cmd_discover_sync(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
-        description="Append conservative discovery candidates to quickjobs.david.base.json.",
+        description="Append conservative discovery candidates to quickjobs.base.json.",
     )
     parser.add_argument("source", choices=[*SOURCES, "all"])
     parser.add_argument("--dry-run", action="store_true", help="Print would-add ids/names; no backup/write")

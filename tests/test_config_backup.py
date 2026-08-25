@@ -18,7 +18,7 @@ class ConfigBackupTests(unittest.TestCase):
     def test_rolling_backup_and_prune(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            source = root / "quickjobs.david.base.json"
+            source = root / "quickjobs.base.json"
             source.write_text('{"keywords_include_tier1":["a"]}\n', encoding="utf-8")
             old_root = config_backup.BACKUP_ROOT
             backup_root = root / "backups"
@@ -26,7 +26,7 @@ class ConfigBackupTests(unittest.TestCase):
             try:
                 dest = config_backup.rolling_backup(source, retention_days=7)
                 self.assertTrue(dest.is_file())
-                self.assertIn("quickjobs.david.base.json", dest.name)
+                self.assertIn("quickjobs.base.json", dest.name)
 
                 stale_stamp = datetime.now() - timedelta(days=10)
                 stale = config_backup.backup_dest_for(source, now=stale_stamp)
@@ -43,8 +43,8 @@ class ConfigBackupTests(unittest.TestCase):
     def test_rolling_backup_bundle_includes_companies(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            base = root / "quickjobs.david.base.json"
-            companies = root / "quickjobs.david.companies.json"
+            base = root / "quickjobs.base.json"
+            companies = root / "quickjobs.companies.json"
             base.write_text('{"keywords_include_tier1":["a"]}\n', encoding="utf-8")
             companies.write_text('{"companies":[{"id":"acme"}]}\n', encoding="utf-8")
             old_root = config_backup.BACKUP_ROOT

@@ -11,11 +11,11 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-DAVID = Path(__file__).resolve().parents[1] / "quickjobs.david.py"
+QUICKJOBS_PY = Path(__file__).resolve().parents[1] / "quickjobs.py"
 
 
-def load_david():
-    spec = importlib.util.spec_from_file_location("quickjobs_david", DAVID)
+def load_quickjobs():
+    spec = importlib.util.spec_from_file_location("quickjobs_david", QUICKJOBS_PY)
     mod = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     sys.modules["quickjobs_david"] = mod
@@ -26,7 +26,7 @@ def load_david():
 class ScrapeStallFixTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.mod = load_david()
+        cls.mod = load_quickjobs()
 
     def test_company_timeout_same_for_bucketed_and_flat(self) -> None:
         mod = self.mod

@@ -7,7 +7,7 @@ site, salary ranges, and job types/titles seen), NOT tracking live jobs.
 Recency of a posting does not matter; scheduled reruns keep widening coverage.
 
 Run with the repo's venv (`~/.v/bin/python`). It only READS
-`quickjobs.david.base.json` (to flag employers already tracked) and never
+`quickjobs.base.json` (to flag employers already tracked) and never
 writes it.
 
 ## What it does per run

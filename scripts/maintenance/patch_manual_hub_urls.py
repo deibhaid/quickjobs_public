@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-BASE_JSON = REPO_ROOT / "quickjobs.david.base.json"
-UNC_JSON = REPO_ROOT / "quickjobs.david.unconvertible-careers.json"
+BASE_JSON = REPO_ROOT / "quickjobs.base.json"
+UNC_JSON = REPO_ROOT / "quickjobs.unconvertible-careers.json"
 
 # User-verified careers URLs (and a few obvious fixes for screenshot duplicates).
 HUB_URL_PATCHES: dict[str, str] = {

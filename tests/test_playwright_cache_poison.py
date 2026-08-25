@@ -12,8 +12,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load():
-    path = REPO_ROOT / "quickjobs.david.py"
-    spec = importlib.util.spec_from_file_location("quickjobs_david_pw_cache", path)
+    path = REPO_ROOT / "quickjobs.py"
+    spec = importlib.util.spec_from_file_location("quickjobs_mod_pw_cache", path)
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
@@ -68,7 +68,7 @@ class SmartRecruitersConfigRetypeTests(unittest.TestCase):
         sys.path.insert(0, str(REPO_ROOT / "scripts" / "_shared"))
         import config_bundle  # noqa: E402
 
-        cfg = config_bundle.load_base_bundle(REPO_ROOT / "quickjobs.david.base.json")
+        cfg = config_bundle.load_base_bundle(REPO_ROOT / "quickjobs.base.json")
         by = {c["id"]: c for c in cfg["companies"] if isinstance(c, dict) and c.get("id")}
         self.assertEqual(by["visa"]["type"], "playwright")
         self.assertEqual(by["visa"].get("workday_fetch"), "cxs")

@@ -3,7 +3,7 @@
 
 Reads employers that were on Workday shard or blocked-sources TSV, probes
 careers/jobs URLs for Phenom, Oracle, Greenhouse, Lever, Eightfold, SF, etc.,
-and optionally applies quickjobs.david.base.json (--apply).
+and optionally applies quickjobs.base.json (--apply).
 
 Output: ~/ws/scriptdir/output/quickjobs-career-endpoints.tsv
 """
@@ -600,7 +600,7 @@ def main() -> int:
         print(f"  {r['id']}: {r['recommended_type']} via {r['ats_method']} ({r['total_jobs']} jobs)")
     if len(ok) > 20:
         print(f"  … +{len(ok) - 20} more")
-    print("\nRun with --apply to update quickjobs.david.base.json")
+    print("\nRun with --apply to update quickjobs.base.json")
     return 0
 
 

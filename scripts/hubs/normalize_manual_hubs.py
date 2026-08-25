@@ -22,7 +22,7 @@ import hub_tools
 
 REPO_ROOT = hub_tools.REPO_ROOT
 BASE_JSON = hub_tools.BASE_JSON
-PROFILE_JSON = REPO_ROOT / "quickjobs.david.profile.json"
+PROFILE_JSON = REPO_ROOT / "quickjobs.profile.json"
 
 IT_SEARCH_KEYWORDS = [
     "devops",

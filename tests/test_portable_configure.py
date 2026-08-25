@@ -32,7 +32,7 @@ class AviationCompanyIdsTests(unittest.TestCase):
             "aviation_company_ids_test",
             PORTABLE_DIR / "aviation_company_ids.py",
         )
-        base_path = REPO_ROOT / "quickjobs.david.base.json"
+        base_path = REPO_ROOT / "quickjobs.base.json"
         sys.path.insert(0, str(REPO_ROOT / "scripts" / "_shared"))
         import config_bundle  # noqa: E402
 
@@ -115,7 +115,7 @@ class ConfigureProfileBuilderTests(unittest.TestCase):
             sys.path.insert(0, str(REPO_ROOT / "scripts" / "_shared"))
             import config_bundle  # noqa: E402
 
-            base = config_bundle.load_base_bundle(REPO_ROOT / "quickjobs.david.base.json")
+            base = config_bundle.load_base_bundle(REPO_ROOT / "quickjobs.base.json")
             snippet = pkg / "config" / "aviation-company-ids.json"
             snippet.write_text(
                 json.dumps(

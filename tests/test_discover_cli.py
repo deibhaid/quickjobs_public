@@ -70,7 +70,7 @@ def test_build_company_entry_ashby():
 
 
 def test_numbered_backup_creates_file(tmp_path, monkeypatch):
-    src = tmp_path / "repo" / "quickjobs.david.base.json"
+    src = tmp_path / "repo" / "quickjobs.base.json"
     src.parent.mkdir(parents=True)
     src.write_text('{"companies": []}\n', encoding="utf-8")
     monkeypatch.setattr(dc.Path, "home", classmethod(lambda cls: tmp_path))

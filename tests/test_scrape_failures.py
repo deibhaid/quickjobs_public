@@ -8,11 +8,11 @@ import sys
 import unittest
 from pathlib import Path
 
-DAVID = Path(__file__).resolve().parents[1] / "quickjobs.david.py"
+QUICKJOBS_PY = Path(__file__).resolve().parents[1] / "quickjobs.py"
 
 
-def load_david():
-    spec = importlib.util.spec_from_file_location("quickjobs_david", DAVID)
+def load_quickjobs():
+    spec = importlib.util.spec_from_file_location("quickjobs_david", QUICKJOBS_PY)
     mod = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     sys.modules["quickjobs_david"] = mod
@@ -23,7 +23,7 @@ def load_david():
 class ScrapeFailureDedupeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.mod = load_david()
+        cls.mod = load_quickjobs()
 
     def setUp(self) -> None:
         self.mod.begin_scrape_failure_run()

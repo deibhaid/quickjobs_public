@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Add S&P 500 and Nasdaq-100 companies as hub entries in quickjobs.david.base.json.
+"""Add S&P 500 and Nasdaq-100 companies as hub entries in quickjobs.base.json.
 
 Sources:
   - S&P 500: Wikipedia table (saved markdown or live fetch)
   - Nasdaq-100: slickcharts.com table
 
-Skips symbols/names already in quickjobs.david.base.json. New rows use type=hub
+Skips symbols/names already in quickjobs.base.json. New rows use type=hub
 (section=hubs) with a best-guess careers URL (verify via probe later).
 """
 from __future__ import annotations

@@ -32,7 +32,7 @@ HN Algolia API notes (verified 2026-07):
     is hiring?" titles.
   * ``items/<id>`` returns the full nested comment tree in one JSON document.
 
-Reads (never writes): quickjobs.david.base.json (only for the in-base flag).
+Reads (never writes): quickjobs.base.json (only for the in-base flag).
 Writes: ~/ws/scriptdir/output/hn-employer-catalog.json (+ dated report .md/.json).
 
 Cron-friendly: absolute paths, ~/.v python, idempotent. NEVER installs cron;

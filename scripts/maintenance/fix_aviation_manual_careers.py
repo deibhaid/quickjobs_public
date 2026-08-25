@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-BASE_JSON = REPO_ROOT / "quickjobs.david.base.json"
-META_JSON = REPO_ROOT / "quickjobs.david.manual-career-meta.json"
+BASE_JSON = REPO_ROOT / "quickjobs.base.json"
+META_JSON = REPO_ROOT / "quickjobs.manual-career-meta.json"
 
 # Job boards / duplicates / rotary-wing employers (fixed-wing pilot board).
 # IT hubs mis-tagged aviation — hide from aviation manual-career list.

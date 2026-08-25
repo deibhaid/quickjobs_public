@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Add or update non-military aviation employers with pilot-focused search_keywords.
 
-Idempotent: re-run with --apply to merge into quickjobs.david.base.json.
+Idempotent: re-run with --apply to merge into quickjobs.base.json.
 """
 
 from __future__ import annotations
@@ -939,7 +939,7 @@ def apply(base: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--apply", action="store_true", help="Write quickjobs.david.base.json")
+    parser.add_argument("--apply", action="store_true", help="Write quickjobs.base.json")
     args = parser.parse_args()
 
     base = hub_tools.load_base_bundle()

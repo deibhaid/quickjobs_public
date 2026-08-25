@@ -19,7 +19,7 @@ class IdleSummaryTests(unittest.TestCase):
             self.skipTest(f"missing {RUN}")
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            html = tmp_path / "job-search-david.html"
+            html = tmp_path / "job-search-quickjobs.html"
             html.write_text(
                 "<html>Updated 07/01/26 15:25:00 PDT</html>\n", encoding="utf-8"
             )
@@ -68,7 +68,7 @@ class IdleSummaryTests(unittest.TestCase):
             self.skipTest(f"missing {RUN}")
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
-            html = tmp_path / "job-search-david.html"
+            html = tmp_path / "job-search-quickjobs.html"
             html.write_text(
                 "<html>Updated 07/02/26 08:17:21 PDT</html>\n", encoding="utf-8"
             )
@@ -83,13 +83,13 @@ class IdleSummaryTests(unittest.TestCase):
             run_log.write_text(
                 "===== 2026-07-02 14:54:16 UTC | start =====\n"
                 "455 zero-yield\n"
-                "Wrote /mnt/Uploads/html/job-search-david.html\n"
+                "Wrote /mnt/Uploads/html/job-search-quickjobs.html\n"
                 "===== 2026-07-02 15:17:23 UTC | exit 0 =====\n",
                 encoding="utf-8",
             )
             cron_block = (
                 "===== 2026-07-02 00:00:01 UTC | start =====\n"
-                "quickjobs.david.py\n"
+                "quickjobs.py\n"
                 "466 zero-yield\n"
                 "===== 2026-07-02 00:11:29 UTC | exit 0 =====\n"
             )

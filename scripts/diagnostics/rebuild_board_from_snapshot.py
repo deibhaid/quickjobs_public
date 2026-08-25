@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 def main() -> int:
-    script = Path(__file__).resolve().parents[2] / "quickjobs.david.py"
+    script = Path(__file__).resolve().parents[2] / "quickjobs.py"
     sys.argv = [str(script), "rebuild-snapshot"]
     runpy.run_path(str(script), run_name="__main__")
     return 0

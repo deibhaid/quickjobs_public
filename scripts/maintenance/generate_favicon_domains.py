@@ -531,8 +531,8 @@ def main(argv: list[str] | None = None) -> int:
         "base_json",
         nargs="?",
         type=Path,
-        default=REPO_ROOT / "quickjobs.david.base.json",
-        help="Base config JSON (default: quickjobs.david.base.json)",
+        default=REPO_ROOT / "quickjobs.base.json",
+        help="Base config JSON (default: quickjobs.base.json)",
     )
     parser.add_argument(
         "out_json",

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Job board builder — quickjobs fork (self-contained under scripts/personal/quickjobs/).
 
-Run: ~/.v/bin/python .../quickjobs/quickjobs.david.py
-Config (same directory): quickjobs.david.base.json + quickjobs.david.companies.json
-  + quickjobs.david.profile.json
+Run: ~/.v/bin/python .../quickjobs/quickjobs.py
+Config (same directory): quickjobs.base.json + quickjobs.companies.json
+  + quickjobs.profile.json
   JOB_BOARD_BASE / JOB_BOARD_PROFILE — override base or profile paths
   JOB_BOARD_CONFIG — monolithic JSON instead of base+profile
   JOB_BOARD_CONFIG_OVERLAY — deep-merge overlay on top
@@ -85,7 +85,7 @@ except ImportError:
 
 
 def quickjobs_script_stem(script_path: Path | None = None) -> str:
-    """Return script stem: quickjobs, quickjobs.david, quickjobs.naiyyar, …"""
+    """Return script stem: quickjobs, quickjobs, quickjobs.<name>, …"""
     path = (script_path or Path(__file__)).resolve()
     stem = path.stem
     if stem == "quickjobs" or stem.startswith("quickjobs."):
@@ -98,7 +98,7 @@ def quickjobs_script_stem(script_path: Path | None = None) -> str:
 
 
 def quickjobs_namespace(script_path: Path | None = None) -> str:
-    """Namespace for output HTML and sidecars: quickjobs, david, naiyyar, …"""
+    """Namespace for output HTML and sidecars: quickjobs, quickjobs, or <name>."""
     stem = quickjobs_script_stem(script_path)
     if stem == "quickjobs":
         return "quickjobs"
@@ -106,7 +106,7 @@ def quickjobs_namespace(script_path: Path | None = None) -> str:
 
 
 def quickjobs_config_stem(namespace: str | None = None) -> str:
-    """Config file basename: quickjobs.david, quickjobs, …"""
+    """Config file basename: quickjobs, quickjobs, …"""
     name = namespace if namespace is not None else quickjobs_namespace()
     if name == "quickjobs":
         return "quickjobs"
@@ -4346,9 +4346,9 @@ def _make_pipeline_handler(out_path: Path):
 
 
 def pipeline_autosave_port(suffix: str | None = None) -> int:
-    """Distinct localhost port per quickjobs.<suffix>.py (david 8765, naiyyar 8766, …)."""
+    """Distinct localhost port per quickjobs.<suffix>.py (quickjobs 8765, portable 8767)."""
     name = suffix if suffix is not None else BOARD_SUFFIX
-    slots = {"david": 8765, "naiyyar": 8766, "quickjobs": 8767}
+    slots = {"quickjobs": 8767}
     if name in slots:
         return slots[name]
     return 8765 + (sum(ord(c) for c in name) % 200)
@@ -30306,7 +30306,7 @@ def render_search_parameters_panel(cfg: dict[str, Any]) -> str:
             '          <h3>Config files</h3>',
             '          <p class="search-params-hint">Link base and profile JSON (Chrome/Edge). '
             "Opens in your jobs folder (same place as the board / pipeline file) — pick "
-            "<code>quickjobs.david.base.json</code> or <code>quickjobs.david.profile.json</code> "
+            "<code>quickjobs.base.json</code> or <code>quickjobs.profile.json</code> "
             "(symlinks; writes go to the Mac edit paths below). Then "
             "<code>quickjobs sync,run</code> for scrape changes.</p>",
             '          <p class="search-params-hint">'
@@ -30600,7 +30600,7 @@ def build_html(
     deferred_json_raw = lazy_board.to_deferred_payload_json()
     if out_path is not None:
         write_lazy_board_sidecars(out_path, lazy_board)
-    # Portable embeds full payloads (file:// fallback). NAS/david HTTP boards
+    # Portable embeds full payloads (file:// fallback). NAS HTTP boards
     # omit large inline blobs; the browser loads json_sidecars/ via fetch first.
     if embed_lazy_board_in_html():
         lazy_board_index_json = index_json_raw.replace("</", r"<\/")
@@ -32305,7 +32305,7 @@ def build_html(
         if (!profileConfigFileHandle || prompt) {{
           const cfg = readPipelineConfig();
           const suggested = String(cfg.profileConfigPath || '').split(/[/\\\\]/).pop()
-            || 'quickjobs.david.profile.json';
+            || 'quickjobs.profile.json';
           [profileConfigFileHandle] = await window.showOpenFilePicker(
             await buildEditConfigPickerOpts(suggested, 'Quickjobs profile config'),
           );
@@ -32539,7 +32539,7 @@ def build_html(
       try {{
         if (!baseConfigFileHandle || prompt) {{
           const cfg = readPipelineConfig();
-          const suggested = String(cfg.baseConfigPath || '').split(/[/\\\\]/).pop() || 'quickjobs.david.base.json';
+          const suggested = String(cfg.baseConfigPath || '').split(/[/\\\\]/).pop() || 'quickjobs.base.json';
           [baseConfigFileHandle] = await window.showOpenFilePicker(
             await buildEditConfigPickerOpts(suggested, 'Quickjobs base config'),
           );

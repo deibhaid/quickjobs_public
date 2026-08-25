@@ -12,8 +12,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_qj():
-    path = REPO_ROOT / "quickjobs.david.py"
-    spec = importlib.util.spec_from_file_location("quickjobs_david_applied", path)
+    path = REPO_ROOT / "quickjobs.py"
+    spec = importlib.util.spec_from_file_location("quickjobs_mod_applied", path)
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
@@ -66,7 +66,7 @@ class TestAppliedFlatLayout(unittest.TestCase):
         self.assertGreater(older, newer)
 
     def test_client_sorts_applied_panel_by_date(self) -> None:
-        src = (REPO_ROOT / "quickjobs.david.py").read_text(encoding="utf-8")
+        src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
         self.assertIn("function sortAppliedPanelByDate()", src)
         self.assertIn("job-applied-company-col", src)
         self.assertIn("grid-template-columns: 4.5rem 4.75rem minmax(0, 1fr)", src)
@@ -80,7 +80,7 @@ class TestAppliedFlatLayout(unittest.TestCase):
         self.assertIn(".job.job-applied .badge-col-loc {{ display: none !important; }}", src)
 
     def test_applied_section_preview_limit(self) -> None:
-        src = (REPO_ROOT / "quickjobs.david.py").read_text(encoding="utf-8")
+        src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
         for needle in (
             "applied-section-limit-note",
             "APPLIED_SECTION_PREVIEW_LIMIT = 10",

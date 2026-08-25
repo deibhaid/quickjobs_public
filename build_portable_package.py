@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assemble the portable quickjobs/ zip bundle from quickjobs.david.* sources."""
+"""Assemble the portable quickjobs/ zip bundle from quickjobs.* sources."""
 
 from __future__ import annotations
 
@@ -11,9 +11,9 @@ import zipfile
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-SOURCE_PY = SCRIPT_DIR / "quickjobs.david.py"
-SOURCE_BASE = SCRIPT_DIR / "quickjobs.david.base.json"
-SOURCE_COMPANIES = SCRIPT_DIR / "quickjobs.david.companies.json"
+SOURCE_PY = SCRIPT_DIR / "quickjobs.py"
+SOURCE_BASE = SCRIPT_DIR / "quickjobs.base.json"
+SOURCE_COMPANIES = SCRIPT_DIR / "quickjobs.companies.json"
 SOURCE_HUB_TOOLS = SCRIPT_DIR / "scripts" / "hubs" / "hub_tools.py"
 SOURCE_HUBS = SCRIPT_DIR / "quickjobs_hubs.py"
 SCRIPTDIR_ROOT = Path(__file__).resolve().parents[2] / "scriptdir"
@@ -432,7 +432,7 @@ def write_package() -> Path:
     fetch_h1b = SCRIPT_DIR / "scripts" / "maintenance" / "fetch_h1b_employer_index.py"
     if fetch_h1b.is_file():
         fetch_h1b_text = fetch_h1b.read_text(encoding="utf-8").replace(
-            "quickjobs.david.py",
+            "quickjobs.py",
             "quickjobs.py",
         ).replace(
             "REPO_ROOT = Path(__file__).resolve().parents[2]",
@@ -457,14 +457,14 @@ def write_package() -> Path:
             raise RuntimeError(f"Missing portable template: {src}")
         shutil.copy2(src, OUTPUT_ROOT / name)
 
-    david_meta = SCRIPT_DIR / "quickjobs.david.manual-career-meta.json"
+    david_meta = SCRIPT_DIR / "quickjobs.manual-career-meta.json"
     portable_meta = OUTPUT_ROOT / "quickjobs.manual-career-meta.json"
     if david_meta.is_file():
         shutil.copy2(david_meta, portable_meta)
     else:
         portable_meta.write_text('{"employers": {}}\n', encoding="utf-8")
 
-    favicon_domains = SCRIPT_DIR / "quickjobs.david.favicon-domains.json"
+    favicon_domains = SCRIPT_DIR / "quickjobs.favicon-domains.json"
     portable_favicon = OUTPUT_ROOT / "quickjobs.favicon-domains.json"
     if favicon_domains.is_file():
         shutil.copy2(favicon_domains, portable_favicon)

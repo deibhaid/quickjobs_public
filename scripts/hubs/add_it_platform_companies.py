@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Add or upgrade IT/platform employers across all industry sectors.
 
-Idempotent merge into quickjobs.david.base.json. Prefer live scrapers (Greenhouse,
+Idempotent merge into quickjobs.base.json. Prefer live scrapers (Greenhouse,
 Lever, Phenom, Playwright) in section=matching; fall back to matching hubs when ATS
 is blocked or unknown.
 
@@ -558,7 +558,7 @@ def apply(base: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--apply", action="store_true", help="Write quickjobs.david.base.json")
+    parser.add_argument("--apply", action="store_true", help="Write quickjobs.base.json")
     args = parser.parse_args()
 
     base = hub_tools.load_base_bundle()

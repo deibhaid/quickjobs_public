@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Manual timing harness for ATS list vs detail fetch patterns in quickjobs.david.py.
+"""Manual timing harness for ATS list vs detail fetch patterns in quickjobs.py.
 
 Times (a) board/list only, (b) full scrape-shaped detail loops (capped), and
 (c) optional 4-way parallel vs sequential detail fetches. Does not import
-quickjobs.david.py (avoids side effects); mirrors http_get URLs and caps.
+quickjobs.py (avoids side effects); mirrors http_get URLs and caps.
 """
 
 from __future__ import annotations
@@ -52,7 +52,7 @@ DEFAULT_SEARCH_KEYWORD = "devops"
 PARALLEL_WORKERS = 4
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-BASE_JSON = SCRIPT_DIR / "quickjobs.david.base.json"
+BASE_JSON = SCRIPT_DIR / "quickjobs.base.json"
 
 TALENTBREW_LINK_RE = re.compile(
     r'href="(/job/[^"?#]+|/jobs/[^"?#]+)"',

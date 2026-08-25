@@ -11,10 +11,10 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("quickjobs_david_ats_opt", ROOT / "quickjobs.david.py")
+spec = importlib.util.spec_from_file_location("quickjobs_mod_ats_opt", ROOT / "quickjobs.py")
 assert spec and spec.loader
 mod = importlib.util.module_from_spec(spec)
-sys.modules["quickjobs_david_ats_opt"] = mod
+sys.modules["quickjobs_mod_ats_opt"] = mod
 spec.loader.exec_module(mod)
 
 

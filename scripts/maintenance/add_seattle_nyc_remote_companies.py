@@ -5,7 +5,7 @@ Sources:
   ~/ws/scriptdir/output/quickjobs-reports/seattle-remote-scrapeable-companies-2026-06-15.md
   ~/ws/scriptdir/output/quickjobs-reports/nyc-remote-scrapeable-companies-2026-06-15.md
 
-Idempotent merge into quickjobs.david.base.json. Greenhouse/Lever boards verified via
+Idempotent merge into quickjobs.base.json. Greenhouse/Lever boards verified via
 public API before inclusion. Upgrades Okta entries -> greenhouse (okta).
 
 Run: ~/.v/bin/python add_seattle_nyc_remote_companies.py --apply
@@ -175,7 +175,7 @@ def apply(base: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--apply", action="store_true", help="Write quickjobs.david.base.json")
+    parser.add_argument("--apply", action="store_true", help="Write quickjobs.base.json")
     args = parser.parse_args()
 
     base = hub_tools.load_base_bundle()

@@ -28,5 +28,5 @@ data/
 .idea/
 .vscode/
 
-# Note: quickjobs.david.profile.json IS tracked here (public placeholder only).
+# Note: quickjobs.profile.json IS tracked here (public placeholder only).
 # The private repo gitignores the real personal profile.

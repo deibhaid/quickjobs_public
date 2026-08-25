@@ -54,8 +54,8 @@ def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]
 
 
 def load_merged_config() -> dict[str, Any]:
-    base = config_bundle.load_base_bundle(REPO_ROOT / "quickjobs.david.base.json")
-    profile = json.loads((REPO_ROOT / "quickjobs.david.profile.json").read_text(encoding="utf-8"))
+    base = config_bundle.load_base_bundle(REPO_ROOT / "quickjobs.base.json")
+    profile = json.loads((REPO_ROOT / "quickjobs.profile.json").read_text(encoding="utf-8"))
     cfg = _deep_merge(base, profile)
     by_id = {c["id"]: c for c in base.get("companies", []) if c.get("id")}
     for company in profile.get("companies", []):

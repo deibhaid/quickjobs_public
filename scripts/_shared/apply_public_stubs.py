@@ -135,9 +135,11 @@ def main(argv: list[str] | None = None) -> int:
     if not root.is_dir():
         print(f"Public dir not found: {root}", file=sys.stderr)
         return 1
-    py_path = root / "quickjobs.david.py"
+    py_path = root / "quickjobs.py"
     if not py_path.is_file():
-        print(f"Missing {py_path}", file=sys.stderr)
+        py_path = root / "quickjobs.py"
+    if not py_path.is_file():
+        print(f"Missing quickjobs.py or quickjobs.py under {root}", file=sys.stderr)
         return 1
     changed = stub_quickjobs_py(py_path)
     portable = stub_cli_glassdoor(root / "portable" / "fetch_glassdoor.py")
@@ -145,9 +147,9 @@ def main(argv: list[str] | None = None) -> int:
         root / "scripts" / "maintenance" / "fetch_manual_career_glassdoor.py"
     )
     if changed:
-        print(f"Stubbed in quickjobs.david.py: {', '.join(changed)}")
+        print(f"Stubbed in {py_path.name}: {', '.join(changed)}")
     else:
-        print("quickjobs.david.py stubs already present or unchanged")
+        print(f"{py_path.name} stubs already present or unchanged")
     if portable:
         print("Stubbed portable/fetch_glassdoor.py")
     if maint:

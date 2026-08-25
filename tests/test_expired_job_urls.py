@@ -14,8 +14,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_qj():
-    path = REPO_ROOT / "quickjobs.david.py"
-    spec = importlib.util.spec_from_file_location("quickjobs_david_expired", path)
+    path = REPO_ROOT / "quickjobs.py"
+    spec = importlib.util.spec_from_file_location("quickjobs_mod_expired", path)
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
     # Register before exec so dataclasses can resolve cls.__module__.
@@ -50,7 +50,7 @@ class TestExpiredJobUrls(unittest.TestCase):
         mod = self.qj
         url = "https://www.att.jobs/job/remote/sr-network-engineer/117/96869927648"
         with tempfile.TemporaryDirectory() as tmp:
-            out = Path(tmp) / "job-search-david.html"
+            out = Path(tmp) / "job-search-quickjobs.html"
             out.write_text("<html></html>", encoding="utf-8")
             side = mod.job_search_data_dir(out)
             side.mkdir(parents=True, exist_ok=True)
@@ -73,7 +73,7 @@ class TestExpiredJobUrls(unittest.TestCase):
         mod = self.qj
         url = "https://example.com/expired-role-xyz"
         with tempfile.TemporaryDirectory() as tmp:
-            out = Path(tmp) / "job-search-david.html"
+            out = Path(tmp) / "job-search-quickjobs.html"
             out.write_text("<html></html>", encoding="utf-8")
 
             def fake_live(u: str) -> bool:
@@ -107,7 +107,7 @@ class TestExpiredJobUrls(unittest.TestCase):
         self.assertTrue(mod.posting_url_skip_verify(url))
         self.assertTrue(mod.url_is_linkedin_job_posting(url))
         with tempfile.TemporaryDirectory() as tmp:
-            out = Path(tmp) / "job-search-david.html"
+            out = Path(tmp) / "job-search-quickjobs.html"
             out.write_text("<html></html>", encoding="utf-8")
             before = mod.load_expired_job_urls(out)
             added = mod.remember_expired_job_urls([url], out)
@@ -153,7 +153,7 @@ class TestExpiredJobUrls(unittest.TestCase):
         sys.path.insert(0, str(REPO_ROOT / "scripts" / "_shared"))
         import config_bundle  # noqa: E402
 
-        data = config_bundle.load_base_bundle(REPO_ROOT / "quickjobs.david.base.json")
+        data = config_bundle.load_base_bundle(REPO_ROOT / "quickjobs.base.json")
         tb = [c for c in data["companies"] if c.get("type") == "talentbrew"]
         self.assertGreaterEqual(len(tb), 30)
         still_skip = [c["id"] for c in tb if c.get("skip_verify")]
@@ -162,7 +162,7 @@ class TestExpiredJobUrls(unittest.TestCase):
         self.assertNotIn("skip_verify", att)
 
     def test_rebuild_snapshot_documents_verify_urls(self) -> None:
-        src = (REPO_ROOT / "quickjobs.david.py").read_text(encoding="utf-8")
+        src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
         self.assertIn("--verify-urls", src)
         self.assertIn("ignore_skip=True", src)
         self.assertIn("expired-job-urls.json", src)

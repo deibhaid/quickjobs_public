@@ -10,14 +10,14 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-DAVID = Path(__file__).resolve().parents[1] / "quickjobs.david.py"
+QUICKJOBS_PY = Path(__file__).resolve().parents[1] / "quickjobs.py"
 
 
-def load_david():
-    spec = importlib.util.spec_from_file_location("quickjobs_david_ashby", DAVID)
+def load_quickjobs():
+    spec = importlib.util.spec_from_file_location("quickjobs_mod_ashby", QUICKJOBS_PY)
     mod = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
-    sys.modules["quickjobs_david_ashby"] = mod
+    sys.modules["quickjobs_mod_ashby"] = mod
     spec.loader.exec_module(mod)
     return mod
 
@@ -25,7 +25,7 @@ def load_david():
 class AshbyTimeoutTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.mod = load_david()
+        cls.mod = load_quickjobs()
 
     def test_ashby_read_timeout_default(self) -> None:
         mod = self.mod

@@ -84,7 +84,7 @@ def main() -> int:
     parser.add_argument(
         "--snapshot",
         type=Path,
-        default=Path.home() / ".job_search/quickjobs/david/job-search-david.snapshot.json",
+        default=Path.home() / ".job_search/quickjobs/quickjobs/job-search-quickjobs.snapshot.json",
     )
     parser.add_argument(
         "--output",
@@ -100,7 +100,7 @@ def main() -> int:
     args = parser.parse_args()
 
     root = Path(__file__).resolve().parent
-    mod = _load_module(root / "quickjobs.david.py", "audit_loc_labels_qj")
+    mod = _load_module(root / "quickjobs.py", "audit_loc_labels_qj")
     companies = load_snapshot(args.snapshot)
 
     bad_rows: list[dict] = []

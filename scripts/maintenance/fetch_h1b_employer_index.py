@@ -35,7 +35,7 @@ def _load_h1b_module():
 def _load_quickjobs_cache_root() -> Path:
     import importlib.util
 
-    path = REPO_ROOT / "quickjobs.david.py"
+    path = REPO_ROOT / "quickjobs.py"
     spec = importlib.util.spec_from_file_location("quickjobs_david", path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Cannot load {path}")

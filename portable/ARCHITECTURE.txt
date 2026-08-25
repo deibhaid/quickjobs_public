@@ -1,7 +1,7 @@
 Quickjobs (portable) — layout and reference
 ==========================================
 
-Full agent/developer reference (invariants, visa/DOL, david vs portable):
+Full agent/developer reference (invariants, visa/DOL, source vs portable):
 see the repo README.md at the quickjobs git root. This file is the portable
 bundle layout only.
 
@@ -110,4 +110,4 @@ Sharing
 -------
 
 Distribute quickjobs-portable.zip. Recipients should not need ~/.job_search or a
-personal quickjobs.david.* install.
+personal quickjobs.* install.

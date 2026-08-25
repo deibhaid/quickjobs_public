@@ -17,7 +17,7 @@ def main() -> int:
     parser.add_argument(
         "--no-legacy-mirror",
         action="store_true",
-        help="Do not copy to quickjobs.david.unconvertible-careers.json in repo",
+        help="Do not copy to quickjobs.unconvertible-careers.json in repo",
     )
     args = parser.parse_args()
     hub_tools.rebuild_manual_careers(

@@ -26,7 +26,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 def _load_quickjobs_module():
     import importlib.util
 
-    path = REPO_ROOT / "quickjobs.david.py"
+    path = REPO_ROOT / "quickjobs.py"
     spec = importlib.util.spec_from_file_location("quickjobs_david", path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Cannot load {path}")
@@ -38,7 +38,7 @@ def _load_quickjobs_module():
 
 qj = _load_quickjobs_module()
 
-META_PATH = REPO_ROOT / "quickjobs.david.manual-career-meta.json"
+META_PATH = REPO_ROOT / "quickjobs.manual-career-meta.json"
 PROFILE_DIR = Path(__file__).resolve().parents[2] / "output" / "glassdoor-browser-profile"
 
 

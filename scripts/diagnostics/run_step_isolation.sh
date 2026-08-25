@@ -43,7 +43,7 @@ remote_ssh() {
 }
 
 wulf_scrape_running() {
-  remote_ssh 'pgrep -f quickjobs\.david\.py >/dev/null 2>&1'
+  remote_ssh 'pgrep -f quickjobs\.py >/dev/null 2>&1'
 }
 
 scrape_guard() {
@@ -52,7 +52,7 @@ scrape_guard() {
     return 0
   fi
   if wulf_scrape_running; then
-    log "FAIL: remote quickjobs.david.py already running (see quickjobs results)"
+    log "FAIL: remote quickjobs.py already running (see quickjobs results)"
     log "Stop the stuck run or set QUICKJOBS_ISOLATION_FORCE=1 to override."
     return 1
   fi
@@ -187,7 +187,7 @@ step_ssh_ping() {
 step_sync_validate() {
   init_step_log "sync-validate"
   set +e
-  "${TIMING_PY}" "${QUICKJOBS_DIR}/quickjobs.david.py" validate-static-config -q \
+  "${TIMING_PY}" "${QUICKJOBS_DIR}/quickjobs.py" validate-static-config -q \
     --dir "${QUICKJOBS_DIR}" 2>&1 | tee -a "${STEP_LOG}"
   finalize_result $?
 }
@@ -198,14 +198,14 @@ step_sync_code() {
   local remote_dir='~/ws/scriptdir/scripts/personal/quickjobs'
   set +e
   {
-    "${py}" "${QUICKJOBS_DIR}/quickjobs.david.py" validate-static-config -q --dir "${QUICKJOBS_DIR}"
+    "${py}" "${QUICKJOBS_DIR}/quickjobs.py" validate-static-config -q --dir "${QUICKJOBS_DIR}"
     remote_ssh "mkdir -p ${remote_dir}"
     rsync -az -e "ssh ${SSH_OPTS}" --delete \
-      --include 'quickjobs.david.py' \
-      --include 'quickjobs.david.base.json' \
-      --include 'quickjobs.david.profile.json' \
-      --include 'quickjobs.david.unconvertible-careers.json' \
-      --include 'quickjobs.david.manual-career-meta.json' \
+      --include 'quickjobs.py' \
+      --include 'quickjobs.base.json' \
+      --include 'quickjobs.profile.json' \
+      --include 'quickjobs.unconvertible-careers.json' \
+      --include 'quickjobs.manual-career-meta.json' \
       --include 'run_log.py' \
       --include 'README.md' \
       --include 'portable/' \
@@ -240,9 +240,9 @@ step_sync_bins() {
 
 step_sync_pipeline() {
   init_step_log "sync-pipeline"
-  local local_data="${HOME}/.job_search/quickjobs/david"
+  local local_data="${HOME}/.job_search/quickjobs/quickjobs"
   local runtime="${local_data}/job-board-runtime.json"
-  local remote_david='/mnt/Uploads/html/david'
+  local remote_board='/mnt/Uploads/html/quickjobs'
   if [[ ! -f "${runtime}" ]]; then
     log "no runtime at ${runtime}"
     finalize_result 1
@@ -250,17 +250,17 @@ step_sync_pipeline() {
   fi
   set +e
   {
-    remote_ssh "mkdir -p '${remote_david}'"
+    remote_ssh "mkdir -p '${remote_board}'"
     rsync -rltz --omit-dir-times --no-perms --no-owner --no-group \
       -e "ssh ${SSH_OPTS}" \
-      "${runtime}" "${REMOTE}:${remote_david}/job-board-runtime.json"
+      "${runtime}" "${REMOTE}:${remote_board}/job-board-runtime.json"
   } 2>&1 | tee -a "${STEP_LOG}"
   finalize_result $?
 }
 
 step_sync_glassdoor() {
   init_step_log "sync-glassdoor"
-  local src="${HOME}/.job_search/quickjobs/david/glassdoor"
+  local src="${HOME}/.job_search/quickjobs/quickjobs/glassdoor"
   if [[ ! -d "${src}" ]]; then
     log "skip: no glassdoor cache at ${src}"
     finalize_result 0
@@ -268,9 +268,9 @@ step_sync_glassdoor() {
   fi
   set +e
   {
-    remote_ssh "mkdir -p /mnt/Uploads/html/david/glassdoor"
+    remote_ssh "mkdir -p /mnt/Uploads/html/quickjobs/glassdoor"
     rsync -rltz --omit-dir-times --no-perms --no-owner --no-group \
-      -e "ssh ${SSH_OPTS}" "${src}/" "${REMOTE}:/mnt/Uploads/html/david/glassdoor/"
+      -e "ssh ${SSH_OPTS}" "${src}/" "${REMOTE}:/mnt/Uploads/html/quickjobs/glassdoor/"
   } 2>&1 | tee -a "${STEP_LOG}"
   finalize_result $?
 }
@@ -383,7 +383,7 @@ step_post_scrape_rebuild() {
   remote_ssh \
     'cd ~/ws/scriptdir/scripts/personal/quickjobs && \
      QUICKJOBS_JOBS_DIR=/mnt/Uploads/html JOB_SEARCH_DIR=/mnt/Uploads/html \
-     ~/.v/bin/python quickjobs.david.py rebuild-snapshot' 2>&1 | tee -a "${STEP_LOG}"
+     ~/.v/bin/python quickjobs.py rebuild-snapshot' 2>&1 | tee -a "${STEP_LOG}"
   STEP_RC=$?
   set -e
   if [[ "${STEP_RC}" -eq 0 ]] && grep -q '^Wrote ' "${STEP_LOG}"; then

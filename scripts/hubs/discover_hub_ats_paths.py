@@ -4,8 +4,8 @@
 Uses curl for fetches, tries many careers/jobs URL variants and public APIs.
 Writes ~/ws/scriptdir/output/quickjobs-hub-ats-discovery.tsv
 
---apply: patch quickjobs.david.base.json (convert scrape-ready rows)
---exclude-unresolved: add still-unresolved ids to quickjobs.david.profile.json company_ids_exclude
+--apply: patch quickjobs.base.json (convert scrape-ready rows)
+--exclude-unresolved: add still-unresolved ids to quickjobs.profile.json company_ids_exclude
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ import hub_tools  # noqa: E402
 
 REPO_ROOT = hub_tools.REPO_ROOT
 BASE = hub_tools.BASE_JSON
-PROFILE = REPO_ROOT / "quickjobs.david.profile.json"
+PROFILE = REPO_ROOT / "quickjobs.profile.json"
 sys.path.insert(0, str(hub_tools.HUBS_DIR))
 
 BLOCKED_TSV = hub_tools.BLOCKED_TSV
@@ -484,7 +484,7 @@ def apply_ashby_fetch(quickjobs_path: Path) -> None:
     text = quickjobs_path.read_text()
     if '"ashby"' in text and "def fetch_ashby" in text:
         return
-    # Ashby support added separately in quickjobs.david.py
+    # Ashby support added separately in quickjobs.py
 
 
 def load_blocked() -> dict[str, dict]:

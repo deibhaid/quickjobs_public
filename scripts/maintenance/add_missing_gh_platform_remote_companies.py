@@ -3,7 +3,7 @@
 
 Source: ~/ws/scriptdir/output/quickjobs-reports/missing-greenhouse-platform-remote-2026-06-17.md
 
-Idempotent merge into quickjobs.david.base.json. Greenhouse boards verified via
+Idempotent merge into quickjobs.base.json. Greenhouse boards verified via
 public API before inclusion (2026-06-17). Hub upgrades (e.g. Coinbase) out of scope.
 
 Run: ~/.v/bin/python add_missing_gh_platform_remote_companies.py --apply
@@ -138,7 +138,7 @@ def apply(base: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--apply", action="store_true", help="Write quickjobs.david.base.json")
+    parser.add_argument("--apply", action="store_true", help="Write quickjobs.base.json")
     args = parser.parse_args()
 
     base = hub_tools.load_base_bundle()

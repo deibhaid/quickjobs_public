@@ -14,11 +14,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 spec = importlib.util.spec_from_file_location(
-    "quickjobs_david_greenhouse_window", ROOT / "quickjobs.david.py"
+    "quickjobs_mod_greenhouse_window", ROOT / "quickjobs.py"
 )
 assert spec and spec.loader
 mod = importlib.util.module_from_spec(spec)
-sys.modules["quickjobs_david_greenhouse_window"] = mod
+sys.modules["quickjobs_mod_greenhouse_window"] = mod
 spec.loader.exec_module(mod)
 
 

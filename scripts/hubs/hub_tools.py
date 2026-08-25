@@ -43,10 +43,10 @@ if is_portable_layout():
     OUTPUT_ROOT = REPO_ROOT / "output"
     MANUAL_CAREERS_LEGACY = REPO_ROOT / "quickjobs.unconvertible-careers.json"
 else:
-    BASE_JSON = REPO_ROOT / "quickjobs.david.base.json"
-    COMPANIES_JSON = REPO_ROOT / "quickjobs.david.companies.json"
+    BASE_JSON = REPO_ROOT / "quickjobs.base.json"
+    COMPANIES_JSON = REPO_ROOT / "quickjobs.companies.json"
     OUTPUT_ROOT = Path.home() / "ws/scriptdir/output"
-    MANUAL_CAREERS_LEGACY = REPO_ROOT / "quickjobs.david.unconvertible-careers.json"
+    MANUAL_CAREERS_LEGACY = REPO_ROOT / "quickjobs.unconvertible-careers.json"
 
 
 def load_base_bundle(base_path: Path | None = None) -> dict:

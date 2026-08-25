@@ -17,9 +17,9 @@ import config_bundle  # noqa: E402
 
 class ConfigBundleTests(unittest.TestCase):
     def test_dev_paths_and_round_trip(self) -> None:
-        base_path = REPO_ROOT / "quickjobs.david.base.json"
+        base_path = REPO_ROOT / "quickjobs.base.json"
         companies_path = config_bundle.companies_path_for_base(base_path)
-        self.assertEqual(companies_path.name, "quickjobs.david.companies.json")
+        self.assertEqual(companies_path.name, "quickjobs.companies.json")
         merged = config_bundle.load_base_bundle(base_path)
         self.assertGreaterEqual(len(merged.get("companies") or []), 1000)
         self.assertIn("keywords_include_tier1", merged)
@@ -29,7 +29,7 @@ class ConfigBundleTests(unittest.TestCase):
     def test_save_writes_split_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            base_path = root / "quickjobs.david.base.json"
+            base_path = root / "quickjobs.base.json"
             base_path.write_text(
                 json.dumps(
                     {

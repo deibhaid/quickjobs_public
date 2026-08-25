@@ -30,13 +30,13 @@ class RunLogSuccessTests(unittest.TestCase):
 
     def test_legacy_wrote_line(self) -> None:
         self.assertTrue(
-            self._has_success("Wrote /mnt/Uploads/html/job-search-david.html\n")
+            self._has_success("Wrote /mnt/Uploads/html/job-search-quickjobs.html\n")
         )
 
     def test_board_publish_complete_line(self) -> None:
         self.assertTrue(
             self._has_success(
-                "Board publish complete: /mnt/Uploads/html/job-search-david.html (1378 KB)\n"
+                "Board publish complete: /mnt/Uploads/html/job-search-quickjobs.html (1378 KB)\n"
             )
         )
 
@@ -47,7 +47,7 @@ class RunLogSuccessTests(unittest.TestCase):
         with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as fh:
             fh.write(
                 "===== start =====\n"
-                "Board publish complete: /mnt/Uploads/html/job-search-david.html (1378 KB)\n"
+                "Board publish complete: /mnt/Uploads/html/job-search-quickjobs.html (1378 KB)\n"
             )
             path = Path(fh.name)
         try:

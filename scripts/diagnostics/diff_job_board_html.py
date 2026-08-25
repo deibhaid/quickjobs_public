@@ -16,9 +16,9 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-DEFAULT_HTML = Path.home() / "Downloads/jobs/job-search-david.html"
-DEFAULT_SNAPSHOT = Path.home() / ".job_search/quickjobs/david/job-search-david.snapshot.json"
-SCRIPT = Path(__file__).resolve().parents[2] / "quickjobs.david.py"
+DEFAULT_HTML = Path.home() / "Downloads/jobs/job-search-quickjobs.html"
+DEFAULT_SNAPSHOT = Path.home() / ".job_search/quickjobs/quickjobs/job-search-quickjobs.snapshot.json"
+SCRIPT = Path(__file__).resolve().parents[2] / "quickjobs.py"
 
 
 def _html_section_kind(section_id: str) -> str:

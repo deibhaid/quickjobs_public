@@ -1521,7 +1521,7 @@ def main() -> int:
     parser.add_argument(
         "--apply",
         action="store_true",
-        help="Apply rows with apply=yes from --recommend-out to quickjobs.david.base.json",
+        help="Apply rows with apply=yes from --recommend-out to quickjobs.base.json",
     )
     args = parser.parse_args()
 

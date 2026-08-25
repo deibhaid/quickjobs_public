@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply probed careers URLs to hub rows missing hub_url in quickjobs.david.base.json."""
+"""Apply probed careers URLs to hub rows missing hub_url in quickjobs.base.json."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import hub_tools
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--apply", action="store_true", help="Write quickjobs.david.base.json")
+    parser.add_argument("--apply", action="store_true", help="Write quickjobs.base.json")
     args = parser.parse_args()
 
     log = hub_tools.apply_discovered_hub_urls(apply=args.apply)

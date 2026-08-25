@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SRC = (REPO_ROOT / "quickjobs.david.py").read_text(encoding="utf-8")
+SRC = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
 
 
 class DefaultCompanySortTests(unittest.TestCase):

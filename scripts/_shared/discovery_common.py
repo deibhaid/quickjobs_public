@@ -12,7 +12,7 @@ widening coverage.
 This module provides:
   * employer-name normalization + agency / body-shop heuristics
   * salary parsing (annualized, tolerant of ``200-298k`` shared-suffix ranges)
-  * a read-only index of ``quickjobs.david.base.json`` + a membership test
+  * a read-only index of ``quickjobs.base.json`` + a membership test
   * a persistent employer catalog (load / save / new_entry / merge_common)
   * ATS fingerprinting that REUSES the ``scripts/hubs`` probe machinery
     (greenhouse / lever / ashby / workday_cxs / smartrecruiters / icims /
@@ -20,7 +20,7 @@ This module provides:
     seeded with an employer-provided careers URL for higher accuracy
   * a shared "new candidates" report writer + a finalize pipeline
 
-No miner writes ``quickjobs.david.base.json``; it is only READ to flag employers
+No miner writes ``quickjobs.base.json``; it is only READ to flag employers
 already tracked.
 """
 
@@ -46,7 +46,7 @@ import config_bundle  # noqa: E402
 SHARED_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SHARED_DIR.parents[1]  # .../quickjobs
 HUBS_DIR = REPO_ROOT / "scripts" / "hubs"
-DEFAULT_BASE = REPO_ROOT / "quickjobs.david.base.json"
+DEFAULT_BASE = REPO_ROOT / "quickjobs.base.json"
 OUTPUT_DIR = Path.home() / "ws" / "scriptdir" / "output"
 
 # quickjobs ATS types we consider "API-scrapable" (clean HTTP/JSON board).

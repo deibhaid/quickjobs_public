@@ -10,7 +10,7 @@ Company order helper: `list_scrape_positions.py`
 
 ## Pipeline map (`_run_full_board_scrape`)
 
-Source: `quickjobs.david.py` → `_run_full_board_scrape` (≈ line 22916).
+Source: `quickjobs.py` → `_run_full_board_scrape` (≈ line 22916).
 
 | Phase | What runs | Code / handler | Log markers | timing-baselines phase |
 |-------|-----------|----------------|-------------|------------------------|
@@ -25,7 +25,7 @@ Source: `quickjobs.david.py` → `_run_full_board_scrape` (≈ line 22916).
 | Visa enrichment | Employer index lookup | `enrich_results_h1b` | (no dedicated line) | part of `post_scrape` |
 | Dedupe / normalize | Cross-company posting dedupe | `dedupe_jobs_across_companies` | `Cross-company dedupe: removed N duplicate posting(s)` | `post_scrape` (30s) |
 | Glassdoor prefetch | Rating cache before HTML render | `build_html` → `prefetch_glassdoor_for_all_companies` | `Glassdoor prefetch: N companies (×W workers)…` then `Glassdoor prefetch: ok/N cached` | `post_scrape` |
-| HTML render / write | Template assembly + atomic write | `build_html`, `atomic_write_text`, `verify_written_file` | `Validated badge structure (N job cards, 4-column grid)` then `Wrote …job-search-david.html` | `html_write` (5s) |
+| HTML render / write | Template assembly + atomic write | `build_html`, `atomic_write_text`, `verify_written_file` | `Validated badge structure (N job cards, 4-column grid)` then `Wrote …job-search-quickjobs.html` | `html_write` (5s) |
 | Snapshot validate / save | Shrink guard vs prior snapshot | `save_run_snapshot` | `Snapshot not saved: …` on failure; silent on success | part of post-scrape |
 | Rolling backup | Numbered backups of script + HTML + snapshot | `rolling_backup_on_success` → `numbered_backup_copy` | `Rolling backup: saved N artifacts to ~/.numbered_backups/` (often silent) | `rolling_backup` (10s) |
 | Wall clock | Full run | banner → log mtime | (implicit) | `total_wall_clock` (~644s @393, scale @406) |
@@ -137,8 +137,8 @@ Override workers: `QUICKJOBS_VERIFY_WORKERS=1` (serial verify).
 
 | Test | Command | Pass | expected_sec |
 |------|---------|------|--------------|
-| `post-dedupe-html` | `~/.v/bin/python quickjobs.david.py rebuild-snapshot` then `rebuild_board_from_snapshot.py` | HTML written | `post_scrape` 30s |
-| `post-rolling-backup` | `quickjobs.david.py test-rolling-backup` | prints OK | `rolling_backup` 10s |
+| `post-dedupe-html` | `~/.v/bin/python quickjobs.py rebuild-snapshot` then `rebuild_board_from_snapshot.py` | HTML written | `post_scrape` 30s |
+| `post-rolling-backup` | `quickjobs.py test-rolling-backup` | prints OK | `rolling_backup` 10s |
 
 ### F. Full-board timing smoke (short path)
 

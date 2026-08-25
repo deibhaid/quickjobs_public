@@ -15,8 +15,8 @@ LEGEND_MATCH_CUMULATIVE_RANK = {"strong": 0, "good": 1, "stretch": 2}
 
 
 def _load_qj():
-    path = REPO_ROOT / "quickjobs.david.py"
-    spec = importlib.util.spec_from_file_location("quickjobs_david_legend_ceiling", path)
+    path = REPO_ROOT / "quickjobs.py"
+    spec = importlib.util.spec_from_file_location("quickjobs_mod_legend_ceiling", path)
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
@@ -72,7 +72,7 @@ class LegendMatchCeilingTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.qj = _load_qj()
-        cls.src = (REPO_ROOT / "quickjobs.david.py").read_text(encoding="utf-8")
+        cls.src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
 
     def test_board_js_has_ceiling_helpers(self) -> None:
         for name in (

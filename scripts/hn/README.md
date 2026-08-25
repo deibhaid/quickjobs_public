@@ -14,7 +14,7 @@ salary, a remote flag, and a link to the company's own careers/ATS page — idea
 for a remote senior DevOps/Platform/SRE/Infra search.
 
 Runs with the repo venv (`~/.v/bin/python`). It only READS
-`quickjobs.david.base.json` (to flag employers already tracked) and never writes
+`quickjobs.base.json` (to flag employers already tracked) and never writes
 it. Shared logic (name normalization, agency heuristics, salary parsing, ATS
 fingerprinting, catalog IO, reporting) lives in `scripts/_shared/discovery_common.py`.
 

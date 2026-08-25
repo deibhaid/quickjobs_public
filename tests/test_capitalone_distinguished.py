@@ -13,8 +13,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_qj():
-    path = REPO_ROOT / "quickjobs.david.py"
-    spec = importlib.util.spec_from_file_location("quickjobs_david_capitalone", path)
+    path = REPO_ROOT / "quickjobs.py"
+    spec = importlib.util.spec_from_file_location("quickjobs_mod_capitalone", path)
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
@@ -106,8 +106,8 @@ class CapitalOneTitleFilterTests(unittest.TestCase):
         self.assertTrue(self.qj.job_is_remote_workable_from_home(job, self.cfg))
 
     def test_base_json_parses(self) -> None:
-        base_path = REPO_ROOT / "quickjobs.david.base.json"
-        companies_path = REPO_ROOT / "quickjobs.david.companies.json"
+        base_path = REPO_ROOT / "quickjobs.base.json"
+        companies_path = REPO_ROOT / "quickjobs.companies.json"
         base = json.loads(base_path.read_text(encoding="utf-8"))
         companies = json.loads(companies_path.read_text(encoding="utf-8"))
         self.assertNotIn("companies", base)

@@ -20,28 +20,28 @@ sync, or board HTML/JS. Operator day-to-day steps (Mac ↔ remote host) live in
 
 | Product | Audience | Entry point |
 |---------|----------|-------------|
-| David / primary fork | The Mac + remote scrape host (remote) | `quickjobs.david.py` |
-| Portable zip | Any user (e.g. Naiyyar Farooqui test install) | Built `quickjobs.py` via `run.py` |
+| User / primary fork | The Mac + remote scrape host (remote) | `quickjobs.py` |
+| Portable zip | Any user (e.g. a portable test install) | Built `quickjobs.py` via `run.py` |
 
-Development happens in `quickjobs.david.*` sources. The portable package is a
+Development happens in `quickjobs.*` sources. The portable package is a
 *build artifact* produced by `build_portable_package.py`. Do not treat a portable
 install directory (e.g. `~/temp_test/quickjobs/`) as the source of truth, and do
-not copy `quickjobs.david.py` into a portable tree.
+not copy `quickjobs.py` into a portable tree.
 
 ### Hard invariants — do not change by accident
 
-1. **Source of truth for scraper logic** is `quickjobs.david.py` (+ `h1b_employer.py`,
+1. **Source of truth for scraper logic** is `quickjobs.py` (+ `h1b_employer.py`,
    `run_log.py`). Portable installs run a *patched copy* named `quickjobs.py`.
    Edit source files, then rebuild the zip (`quickjobs portable` /
    `build_portable_package.py`). Never “fix” a portable install by dropping
-   `quickjobs.david.py` next to `quickjobs.py`.
+   `quickjobs.py` next to `quickjobs.py`.
 
 2. **Three data layers stay separate.** Do not merge pipeline/runtime into
    `base.json`. Do not treat HTML as the source of pipeline state.
 
    | Layer | Role |
    |-------|------|
-   | Static | Python + `quickjobs.david.*.json` in git |
+   | Static | Python + `quickjobs.*.json` in git |
    | Runtime | `$JOB_SEARCH_DIR/job-board-runtime.json` (+ snapshot/digest) |
    | HTML | Generated board under `profile.jobs_dir` (view only) |
 
@@ -100,17 +100,17 @@ not copy `quickjobs.david.py` into a portable tree.
     `X.Y.Z`, drafts unless asked to publish.
 
 14. **Upstream `../job-board/`** is reference only. Do not modify it from this
-    tree. Experiments stay in `quickjobs.david.py`.
+    tree. Experiments stay in `quickjobs.py`.
 
 ### Before you edit — decision checklist
 
 | Intent | Edit here | Then |
 |--------|-----------|------|
-| Scrape / HTML / filters | `quickjobs.david.py`, `h1b_employer.py`, `run_log.py` | Run tests; rebuild portable zip if behavior ships to others |
-| Employer list / keywords | `quickjobs.david.base.json` | `validate` then `quickjobs sync` for remote |
-| The personal filters | `quickjobs.david.profile.json` | Sync if remote should match |
+| Scrape / HTML / filters | `quickjobs.py`, `h1b_employer.py`, `run_log.py` | Run tests; rebuild portable zip if behavior ships to others |
+| Employer list / keywords | `quickjobs.base.json` | `validate` then `quickjobs sync` for remote |
+| The personal filters | `quickjobs.profile.json` | Sync if remote should match |
 | Known non-sponsors (visa) | `config/no-visa-sponsor-company-ids.json` | Rebuild portable |
-| Favicon override | `quickjobs.david.favicon-domains.json` (+ `KNOWN_BY_COMPANY_ID` in generator if needed) | Rebuild portable |
+| Favicon override | `quickjobs.favicon-domains.json` (+ `KNOWN_BY_COMPANY_ID` in generator if needed) | Rebuild portable |
 | Portable UX / configure prompts | `portable/configure.py`, `portable/*` | Rebuild zip |
 | Portable packaging | `build_portable_package.py` | Rebuild zip |
 | Remote CLI wrappers | `~/local/bin/quickjobs-server/` (outside this repo) | `quickjobs sync` |
@@ -121,7 +121,7 @@ not copy `quickjobs.david.py` into a portable tree.
 ```bash
 cd ~/ws/github/quickjobs
 ~/.v/bin/python -m pytest tests/ -q
-~/.v/bin/python quickjobs.david.py validate-static-config
+~/.v/bin/python quickjobs.py validate-static-config
 # If portable users need the change:
 ~/.v/bin/python build_portable_package.py
 # Zip: ~/ws/scriptdir/output/quickjobs-portable.zip
@@ -154,14 +154,14 @@ Typical Typical workflow: edit config on Mac → `quickjobs sync` → `quickjobs
 
 | Path | Role |
 |------|------|
-| `quickjobs.david.py` | Main scraper + HTML builder (david). Portable build → `quickjobs.py` |
+| `quickjobs.py` | Main scraper + HTML builder . Portable build → `quickjobs.py` |
 | `run_log.py` | Timestamp-prefixed stdout; skips re-stamping progress status lines |
 | `h1b_employer.py` | DOL LCA index, visa/green-card filters, badges, default text chips |
-| `quickjobs.david.base.json` | ~1100+ employers, ATS type/slug, keywords, sections |
-| `quickjobs.david.profile.json` | Profile: salary floor, skills, `jobs_dir`, excludes, overrides |
-| `quickjobs.david.favicon-domains.json` | Favicon domain overrides by company/ATS board |
-| `quickjobs.david.unconvertible-careers.json` | Manual employers that cannot auto-convert |
-| `quickjobs.david.manual-career-meta.json` | Extra metadata for manual careers |
+| `quickjobs.base.json` | ~1100+ employers, ATS type/slug, keywords, sections |
+| `quickjobs.profile.json` | Profile: salary floor, skills, `jobs_dir`, excludes, overrides |
+| `quickjobs.favicon-domains.json` | Favicon domain overrides by company/ATS board |
+| `quickjobs.unconvertible-careers.json` | Manual employers that cannot auto-convert |
+| `quickjobs.manual-career-meta.json` | Extra metadata for manual careers |
 | `config/no-visa-sponsor-company-ids.json` | Curated non-sponsors for visa profiles |
 
 ### Portable packaging
@@ -206,8 +206,8 @@ from `sector=aviation` in base), `config/no-visa-sponsor-company-ids.json`.
 |------|------|
 | `~/local/bin/quickjobs` | User CLI (`portable`, `sync`, `run`, `hubs`, …) |
 | `~/local/bin/quickjobs-server/` | Remote wrappers synced as `quickjobs-run`, etc. |
-| `$JOB_SEARCH_DIR` | Runtime sidecar (david default under `~/.job_search/quickjobs/…`) |
-| `profile.jobs_dir` | HTML output (david: often `~/Downloads/jobs`) |
+| `$JOB_SEARCH_DIR` | Runtime sidecar (default under `~/.job_search/quickjobs/…`) |
+| `profile.jobs_dir` | HTML output (often `~/Downloads/jobs`) |
 | `~/ws/scriptdir/output/quickjobs-portable.zip` | Portable zip output |
 | Remote host (remote) | Cron / `quickjobs-run` scrape + published HTML |
 
@@ -237,7 +237,7 @@ On first load, legacy `job-board-pipeline.json` / `job-board-state.json` /
 `job-board-applied.json` migrate into runtime. Optional pipeline-shaped JSON
 beside HTML is a mirror only — never the source of truth.
 
-Single propagation path for David: `quickjobs portable,sync,run` (or `sync,run`).
+Single propagation path for User: `quickjobs portable,sync,run` (or `sync,run`).
 No ad-hoc `cp`/`rsync` of source files into portable installs.
 
 ---
@@ -248,17 +248,17 @@ No ad-hoc `cp`/`rsync` of source files into portable installs.
 
 | File | Purpose | Who writes | Sync |
 |------|---------|------------|------|
-| `quickjobs.david.base.json` | Companies, keywords, scrapers, sections | You / hub / discover | Always |
-| `quickjobs.david.profile.json` | Profile, salary floor, overrides, `jobs_dir` | You | Always |
-| `quickjobs.david.favicon-domains.json` | Favicon overrides | Generator / audit | Always |
-| `quickjobs.david.unconvertible-careers.json` | Unconvertible manuals | Hub tooling | Always |
-| `quickjobs.david.manual-career-meta.json` | Manual career meta | Hub tooling | Always |
+| `quickjobs.base.json` | Companies, keywords, scrapers, sections | You / hub / discover | Always |
+| `quickjobs.profile.json` | Profile, salary floor, overrides, `jobs_dir` | You | Always |
+| `quickjobs.favicon-domains.json` | Favicon overrides | Generator / audit | Always |
+| `quickjobs.unconvertible-careers.json` | Unconvertible manuals | Hub tooling | Always |
+| `quickjobs.manual-career-meta.json` | Manual career meta | Hub tooling | Always |
 | `config/no-visa-sponsor-company-ids.json` | Visa static excludes | Manual edit | Via portable build / repo |
 
 Validate before sync:
 
 ```bash
-~/.v/bin/python quickjobs.david.py validate-static-config
+~/.v/bin/python quickjobs.py validate-static-config
 ```
 
 Skip: `QUICKJOBS_SYNC_SKIP_VALIDATE=1`.
@@ -268,14 +268,14 @@ Skip: `QUICKJOBS_SYNC_SKIP_VALIDATE=1`.
 | File | Purpose |
 |------|---------|
 | `job-board-runtime.json` | Pipeline + scrape state (canonical) |
-| `job-search-david.snapshot.json` | Full scrape snapshot (`--only` / rebuild) |
+| `job-search-quickjobs.snapshot.json` | Full scrape snapshot (`--only` / rebuild) |
 | `job-board-digest.txt` | Plain-text run summary |
 
 ### HTML
 
 | File | Purpose |
 |------|---------|
-| `<jobs_dir>/job-search-david.html` | Job board (name follows profile) |
+| `<jobs_dir>/job-search-quickjobs.html` | Job board (name follows profile) |
 | Portable: `output/job-search-quickjobs.html` | Typical portable board path |
 
 ---
@@ -295,7 +295,7 @@ Configure prompt hint: `citizen, green_card, visa` — never show `h1b` or
 
 ### Visa profile (`h1b`) — current behavior
 
-Implemented mainly in `h1b_employer.py`, called from `quickjobs.david.py` at
+Implemented mainly in `h1b_employer.py`, called from `quickjobs.py` at
 scrape start and HTML build.
 
 1. **Company excludes (scrape skip entire employer)**  
@@ -368,7 +368,7 @@ non-sponsors that DOL would miss or wrongly keep.
 
 ## Board UI (generated HTML)
 
-Embedded in `quickjobs.david.py` template/JS:
+Embedded in `quickjobs.py` template/JS:
 
 - Legend filters, match tiers, location chips, bottom text-filter bar.
 - Profile defaults injected via `#pipeline-config` → `defaultTextFilters` /
@@ -378,7 +378,7 @@ Embedded in `quickjobs.david.py` template/JS:
 - Lazy company shells; job bodies from `lazy-board-index` + `lazy-board-payload`
   (legacy `lazy-board-data` still parsed if present).
 - Pipeline: File System Access API → `job-board-runtime.json`, or
-  `--pipeline-server` on profile port (david **8765**).
+  `--pipeline-server` on profile port (quickjobs **8767**).
 - Favicons: Google `www.google.com/s2/favicons?domain={domain}&sz=64` using domains from
   `favicon-domains.json`. Fix bad overrides there (and pin in
   `generate_favicon_domains.py` `KNOWN_BY_COMPANY_ID` so regen does not revert).
@@ -413,7 +413,7 @@ Local scrape:
 
 ```bash
 cd ~/ws/github/quickjobs
-~/.v/bin/python quickjobs.david.py
+~/.v/bin/python quickjobs.py
 # Flags: --only id[,id…], --exclude …, --dry-run, --rebuild-from-snapshot, --resume-scrape, …
 ```
 
@@ -434,7 +434,7 @@ cd ~/ws/github/quickjobs
 ## Sync behavior (dev → remote)
 
 1. `validate-static-config` (unless skipped).
-2. Code: `quickjobs.david.py`, static JSON set, `run_log.py`, `README.md`, portable
+2. Code: `quickjobs.py`, static JSON set, `run_log.py`, `README.md`, portable
    icons → remote checkout (`rsync --delete` for included files only).
 3. Bins from `~/local/bin/quickjobs-server/` → remote `quickjobs-run`, etc.
 4. Runtime from `$JOB_SEARCH_DIR/job-board-runtime.json`.
@@ -471,14 +471,14 @@ quickjobs portable
 | `~/ws/scriptdir/output/quickjobs/` | Extracted tree |
 | `~/ws/scriptdir/output/quickjobs-portable.zip` | Zip of that tree |
 
-Portable `run.py` always runs `quickjobs.py`, never `quickjobs.david.py`.
+Portable `run.py` always runs `quickjobs.py`, never `quickjobs.py`.
 
 Configure prompts: resume, resident status (`citizen, green_card, visa`), aviation
 include (default no), ZIP, salary, name; optional DOL index build for visa.
 
 Refreshing an existing portable install: re-extract **code** from the zip; preserve
 that user's `quickjobs.profile.json`, `cache/` (including `cache/h1b/`), `output/`,
-and `python_venv/`. Delete any stray `quickjobs.david.py` if present.
+and `python_venv/`. Delete any stray `quickjobs.py` if present.
 
 ---
 
@@ -512,7 +512,7 @@ Open-file limit on Linux hosts: `quickjobs-raise-nofile` /
 2. Link `$JOB_SEARCH_DIR/job-board-runtime.json` (File System Access API).
 3. Status changes write to that file; `quickjobs sync` pushes to remote.
 4. Safari: use `--pipeline-server` for local `file://` only.
-5. Port **8765** = david pipeline autosave — not a free preview port.
+5. Port **8767** = pipeline autosave — not a free preview port.
 
 ---
 
@@ -565,7 +565,7 @@ Bumps from the highest existing release (published or draft). Agents must not ru
 | Sync validation fail | `validate-static-config --dir .` |
 | Visa filter “finds nothing” | Defaults are Doesn't-contain; clear old Contains chips from localStorage; regenerate board |
 | No DOL badges | Need `resident_status: h1b` + built `employer-index.json` |
-| Portable “still old code” | Re-unzip code; confirm `run.py` → `quickjobs.py`; no david.py shadow |
+| Portable “still old code” | Re-unzip code; confirm `run.py` → `quickjobs.py`; no shadowed scraper |
 | Double timestamps in progress | Ensure latest `run_log.py` + progress newline fix |
 | Page unresponsive on huge board | Confirm lazy index/payload split, not monolithic `lazy-board-data` |
 

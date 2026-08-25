@@ -26,11 +26,11 @@ class PortablePathResolutionTests(unittest.TestCase):
         self.assertEqual(hub_tools.HUBS_DIR.resolve(), HUBS_DIR.resolve())
         self.assertEqual(
             hub_tools.BASE_JSON.resolve(),
-            (REPO_ROOT / "quickjobs.david.base.json").resolve(),
+            (REPO_ROOT / "quickjobs.base.json").resolve(),
         )
         self.assertEqual(
             hub_tools.COMPANIES_JSON.resolve(),
-            (REPO_ROOT / "quickjobs.david.companies.json").resolve(),
+            (REPO_ROOT / "quickjobs.companies.json").resolve(),
         )
         self.assertEqual(
             hub_tools.OUTPUT_ROOT.resolve(),
@@ -101,7 +101,7 @@ class PortablePathResolutionTests(unittest.TestCase):
 
         spec = importlib.util.spec_from_file_location(
             "quickjobs_dev_paths",
-            REPO_ROOT / "quickjobs.david.py",
+            REPO_ROOT / "quickjobs.py",
         )
         assert spec and spec.loader
         mod = importlib.util.module_from_spec(spec)
@@ -118,7 +118,7 @@ class PortablePathResolutionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             pkg = Path(tmp) / "quickjobs"
             pkg.mkdir()
-            src = (REPO_ROOT / "quickjobs.david.py").read_text(encoding="utf-8")
+            src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
             (pkg / "quickjobs.py").write_text(patch_quickjobs_py(src), encoding="utf-8")
 
             old_cwd = Path.cwd()

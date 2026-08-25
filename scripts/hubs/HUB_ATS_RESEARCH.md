@@ -72,7 +72,7 @@ Use:
   --workers 4
 ```
 
-Add `--apply` to patch `quickjobs.david.base.json` when `apply=yes` in discovery TSV.
+Add `--apply` to patch `quickjobs.base.json` when `apply=yes` in discovery TSV.
 
 ## Pause and resume on network loss
 
@@ -98,7 +98,7 @@ Full laptop pass:
 # same command after WiFi reconnect, or add --resume
 ```
 
-`--apply` conversions in `quickjobs.david.base.json` are incremental and persist across
+`--apply` conversions in `quickjobs.base.json` are incremental and persist across
 pause/resume. Mid-hub pause clears partial progress for that hub and retries it from the
 start when connectivity returns.
 

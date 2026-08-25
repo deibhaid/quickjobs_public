@@ -3,7 +3,7 @@
 
 Journal: ~/ws/scriptdir/output/quickjobs-hub-probe-journal.json
 Deferred: ~/ws/scriptdir/output/quickjobs-deferred-hubs.json
-Rebuild: quickjobs.david.unconvertible-careers.json via build_unconvertible_careers_list.py
+Rebuild: quickjobs.unconvertible-careers.json via build_unconvertible_careers_list.py
 """
 
 from __future__ import annotations
@@ -234,7 +234,7 @@ def journal_is_complete(rec: dict[str, Any] | None) -> bool:
 def load_all_hidden_hub_companies() -> list[dict[str, Any]]:
     """Every hidden hub: base type=hub + deferred file + existing unconvertible list."""
     by_id: dict[str, dict[str, Any]] = {}
-    unconv_path = hub_tools.REPO_ROOT / "quickjobs.david.unconvertible-careers.json"
+    unconv_path = hub_tools.REPO_ROOT / "quickjobs.unconvertible-careers.json"
     if BASE.is_file():
         for co in hub_tools.load_base_bundle().get("companies") or []:
             if str(co.get("type") or "").lower() == "hub" and co.get("id"):

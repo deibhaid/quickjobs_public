@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Read-only ATS fingerprint for quickjobs hub employers only.
 
-Does not read or write quickjobs.david.base.json except to list type=hub rows.
+Does not read or write quickjobs.base.json except to list type=hub rows.
 Output: ~/ws/scriptdir/output/quickjobs-hub-ats-fingerprint.tsv
 """
 

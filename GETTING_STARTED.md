@@ -29,10 +29,10 @@ Or:
 ## 2. Confirm config loads
 
 ```bash
-python quickjobs.david.py validate-static-config --dir .
+python quickjobs.py validate-static-config --dir .
 ```
 
-Edit `quickjobs.david.profile.json` for your name, ZIP, salary floor, and
+Edit `quickjobs.profile.json` for your name, ZIP, salary floor, and
 `jobs_dir` (HTML output directory). Defaults write under `~/Downloads/jobs`.
 
 ## 3. First scrape (small)
@@ -41,13 +41,13 @@ Full catalog scrapes take a long time. Start with a few API-friendly employers.
 With no prior snapshot, `--only` seeds a new one from just these sources:
 
 ```bash
-python quickjobs.david.py --only remotive,remoteok,weworkremotely
+python quickjobs.py --only remotive,remoteok,weworkremotely
 ```
 
 Open the HTML path printed at the end (under `profile.jobs_dir`). Later, run
 without `--only` once for a full catalog, or keep using `--only` for smoke checks.
 
-Default title filters in `quickjobs.david.base.json` are DevOps-oriented; a first
+Default title filters in `quickjobs.base.json` are DevOps-oriented; a first
 `--only remotive` run may write an empty board (exit 0) until you edit search
 keywords / profile. That still proves scrape + HTML write work.
 

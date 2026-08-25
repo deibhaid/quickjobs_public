@@ -27,7 +27,7 @@ Data flow (one pass, idempotent):
   4. Fingerprint NEW, non-agency employers' ATS once; flag agencies, base.json
      membership, API-scrapability; emit a dated candidates report.
 
-Reads (never writes): quickjobs.david.base.json (only for the in-base flag).
+Reads (never writes): quickjobs.base.json (only for the in-base flag).
 Writes: ~/ws/scriptdir/output/builtin-employer-catalog.json (+ dated report).
 
 Cron-friendly: absolute paths, ~/.v python, idempotent. NEVER installs cron;

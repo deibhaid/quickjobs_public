@@ -13,8 +13,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _load_qj():
-    path = REPO_ROOT / "quickjobs.david.py"
-    spec = importlib.util.spec_from_file_location("quickjobs_david_profile_editor", path)
+    path = REPO_ROOT / "quickjobs.py"
+    spec = importlib.util.spec_from_file_location("quickjobs_mod_profile_editor", path)
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = mod
@@ -26,7 +26,7 @@ class ProfileEditorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.qj = _load_qj()
-        cls.src = (REPO_ROOT / "quickjobs.david.py").read_text(encoding="utf-8")
+        cls.src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
         cls.cfg = cls.qj.load_config_raw()
 
     def test_board_profile_fields(self) -> None:

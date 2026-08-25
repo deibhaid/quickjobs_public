@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-spec = importlib.util.spec_from_file_location("quickjobs_david", ROOT / "quickjobs.david.py")
+spec = importlib.util.spec_from_file_location("quickjobs_david", ROOT / "quickjobs.py")
 mod = importlib.util.module_from_spec(spec)
 sys.modules["quickjobs_david"] = mod
 assert spec.loader is not None

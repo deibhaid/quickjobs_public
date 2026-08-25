@@ -62,12 +62,12 @@ def main() -> int:
     snap = Path(
         sys.argv[2]
         if len(sys.argv) > 2
-        else "/mnt/Uploads/html/david/job-search-david.snapshot.json"
+        else "/mnt/Uploads/html/quickjobs/job-search-quickjobs.snapshot.json"
     )
     html = Path(
         sys.argv[3]
         if len(sys.argv) > 3
-        else "/mnt/Uploads/html/job-search-david.html"
+        else "/mnt/Uploads/html/job-search-quickjobs.html"
     )
     snap_counts = count_snapshot(snap)
     listings_sg = count_listings_pool_sg(html) if html.is_file() else -1
