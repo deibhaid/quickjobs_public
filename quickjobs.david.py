@@ -29295,7 +29295,7 @@ def lazy_board_sidecars_dir(out_path: Path) -> Path:
 def embed_lazy_board_in_html() -> bool:
     """Portable (QUICKJOBS_ROOT) embeds payloads so file:// still works.
 
-    David/NAS HTTP boards omit large inline blobs and load json_sidecars via
+    Host/NAS HTTP boards omit large inline blobs and load json_sidecars via
     fetch. Override with QUICKJOBS_EMBED_LAZY_BOARD=0|1.
     """
     raw = str(os.environ.get("QUICKJOBS_EMBED_LAZY_BOARD") or "").strip().lower()
@@ -37177,8 +37177,13 @@ def validate_html_structure(
     *,
     html_path: Path | None = None,
     sample_size: int | None = None,
+    expect_jobs: bool = True,
 ) -> list[str]:
-    """Static checks: every job card uses the five-column badge row."""
+    """Static checks: every job card uses the five-column badge row.
+
+    When expect_jobs is False (all postings filtered / first smoke with no
+    matches), skip job-card markup requirements so an empty shell board is OK.
+    """
     issues: list[str] = []
     issues.extend(validate_embedded_board_js(html_text))
     issues.extend(validate_company_filter_keys(html_text, html_path=html_path))
@@ -37186,9 +37191,10 @@ def validate_html_structure(
     for needle in _STYLE_NEEDLES:
         if needle not in html_text:
             issues.append(f"Missing required markup/CSS fragment: {needle}")
-    for needle in _JOB_MARKUP_NEEDLES:
-        if needle not in markup_pool:
-            issues.append(f"Missing required markup/CSS fragment: {needle}")
+    if expect_jobs:
+        for needle in _JOB_MARKUP_NEEDLES:
+            if needle not in markup_pool:
+                issues.append(f"Missing required markup/CSS fragment: {needle}")
     if ".job {{ background:" in html_text and "display: grid; grid-template-columns: 1fr" in html_text:
         issues.append("Legacy .job grid layout stacks title and badges on separate rows")
     if '.job-header {{ display: flex; flex-wrap: wrap' in html_text:
@@ -37213,7 +37219,9 @@ def validate_html_structure(
                 article_bodies.extend(_job_article_bodies(str(company_html)))
 
     if not article_bodies:
-        issues.append("No job articles found in DOM or lazy-board payloads")
+        if expect_jobs:
+            issues.append("No job articles found in DOM or lazy-board payloads")
+        return issues
 
     total_articles = len(article_bodies)
     sample_cap = structure_validation_sample_size() if sample_size is None else sample_size
@@ -37571,7 +37579,11 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
     atomic_write_text(out_path, html)
     verify_written_file(out_path, min_bytes, out_path.name)
     persist_pipeline_store(out_path, pipeline, patch_html=False)
-    structure_issues = validate_html_structure(html, html_path=out_path)
+    structure_issues = validate_html_structure(
+        html,
+        html_path=out_path,
+        expect_jobs=results_expect_listing_jobs(results),
+    )
     if structure_issues:
         print("Badge structure validation failed:", file=sys.stderr)
         for issue in structure_issues:
@@ -37693,7 +37705,8 @@ def main(argv: list[str] | None = None) -> int:
         metavar="ID[,ID...]",
         help=(
             "Refresh only these company ids (comma-separated, e.g. akamai,netflix); "
-            "merge others from the last snapshot (requires a prior full run)"
+            "merge others from the last snapshot when present. Without a prior "
+            "snapshot, seeds a new one from these ids only (first clone / smoke run)"
         ),
     )
     parser.add_argument(
@@ -37850,13 +37863,15 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Aviation profile: scraping {aviation_count} aviation employers only.")
     # Snapshot merge is only for --only refreshes. Profile excludes use the full-run path below.
     snapshot = load_run_snapshot(out_path) if only_company_ids else None
-    if only_company_ids and not snapshot:
-        print(
-            "No run snapshot found — run a full board once, or omit --only.\n"
-            f"Expected: {run_snapshot_path(out_path)}",
-            file=sys.stderr,
-        )
-        return 1
+    if only_company_ids and snapshot is None:
+        # Fresh clone / first smoke run: allow --only without a prior full board.
+        snapshot = {"run_at": None, "companies": []}
+        if not args.quiet:
+            print(
+                "No prior snapshot; --only will seed a new snapshot from these "
+                f"companies only ({run_snapshot_path(out_path)}).",
+                file=sys.stderr,
+            )
 
     scrape_lock: GlobalScrapeLock | None = None
     if not only_company_ids:
@@ -38431,7 +38446,11 @@ def _run_board_scrape_phase4_body(
         f"Validating badge structure ({article_total} job cards, checking {checking}) …",
         quiet=args.quiet,
     )
-    structure_issues = validate_html_structure(html_text, html_path=out_path)
+    structure_issues = validate_html_structure(
+        html_text,
+        html_path=out_path,
+        expect_jobs=results_expect_listing_jobs(results),
+    )
     if structure_issues:
         print("Badge structure validation failed:", file=sys.stderr)
         for issue in structure_issues:

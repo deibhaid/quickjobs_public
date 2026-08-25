@@ -188,7 +188,7 @@ def infer_keywords_helper() -> str:
     return '''
 
 def infer_keywords_from_resume(resume_text: str, base_cfg: dict[str, Any] | None = None) -> list[str]:
-    """Role/search keywords inferred from resume (not David IT defaults)."""
+    """Role/search keywords inferred from resume (not default IT keywords)."""
     _ = base_cfg
     lower = resume_text.lower()
     found: list[str] = []

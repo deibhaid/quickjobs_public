@@ -32,7 +32,7 @@ not copy `quickjobs.david.py` into a portable tree.
 
 1. **Source of truth for scraper logic** is `quickjobs.david.py` (+ `h1b_employer.py`,
    `run_log.py`). Portable installs run a *patched copy* named `quickjobs.py`.
-   Edit david sources, then rebuild the zip (`quickjobs portable` /
+   Edit source files, then rebuild the zip (`quickjobs portable` /
    `build_portable_package.py`). Never “fix” a portable install by dropping
    `quickjobs.david.py` next to `quickjobs.py`.
 
@@ -71,14 +71,14 @@ not copy `quickjobs.david.py` into a portable tree.
    visa/citizenship text chips.
 
 8. **Pipeline server port 8765** is reserved for `quickjobs run --pipeline-server`
-   (david autosave). Ad-hoc HTML previews must use another port (e.g. 8768).
+   (pipeline autosave). Ad-hoc HTML previews must use another port (e.g. 8768).
 
 9. **Lazy board payload** is split across `json_sidecars/` files
    (`lazy_board_index.json`, `lazy_board_payload.json`,
    `lazy_board_descriptions.json`, `lazy_board_deferred.json`) next to the HTML.
    The browser `fetch`es those first. Portable builds also embed the same JSON in
    `<script id="lazy-board-*">` tags so `file://` still works if fetch fails.
-   David/NAS HTTP boards omit the large inline blobs (stubs only). Do not
+   Host/NAS HTTP boards omit the large inline blobs (stubs only). Do not
    re-merge into a single giant `lazy-board-data` inline JSON. Prefer gzip/brotli
    on the sidecar JSON at the HTTP server (precompressed `.gz`/`.br` are written
    next to each sidecar when libraries allow).
@@ -238,7 +238,7 @@ On first load, legacy `job-board-pipeline.json` / `job-board-state.json` /
 beside HTML is a mirror only — never the source of truth.
 
 Single propagation path for David: `quickjobs portable,sync,run` (or `sync,run`).
-No ad-hoc `cp`/`rsync` of david sources into portable installs.
+No ad-hoc `cp`/`rsync` of source files into portable installs.
 
 ---
 

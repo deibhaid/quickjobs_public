@@ -37,7 +37,7 @@ if [[ ! -d "${PRIVATE_DIR}" ]]; then
   exit 1
 fi
 if [[ ! -d "${PUBLIC_DIR}" ]]; then
-  echo "Public dir missing: ${PUBLIC_DIR} (clone YOUR_GITHUB_USER/quickjobs_public first)" >&2
+  echo "Public dir missing: ${PUBLIC_DIR} (clone deibhaid/quickjobs_public first)" >&2
   exit 1
 fi
 
@@ -95,12 +95,12 @@ for f in \
   quickjobs.david.unconvertible-careers.json \
   quickjobs.david.profile.example.json \
   scripts/_shared/draft-release.sh \
-  scripts/_shared/sync_public_repo.sh \
   scripts/_shared/apply_public_stubs.py \
   scripts/_shared/bootstrap_clone.sh
  do
   copy_file "${f}"
 done
+# Do not copy sync_public_repo.sh here — overwriting this script mid-run breaks bash.
 # sanitize_public_tree.py stays private-only (its pattern table contains personal needles)
 
 # Trees (omit personal remote-host setup helpers)
@@ -108,7 +108,7 @@ for d in config portable scripts tests; do
   copy_tree "${d}"
 done
 # Personal / private-only tooling — never publish
-rm -f "${PUBLIC_DIR}/scripts/maintenance/install-ulimits-remote.sh"
+rm -f "${PUBLIC_DIR}/scripts/maintenance/install-ulimits-wulf.sh"
 rm -f "${PUBLIC_DIR}/scripts/_shared/sanitize_public_tree.py"
 
 # Public .gitignore: track placeholder profile (do not ignore *.profile.json).
@@ -124,6 +124,8 @@ __pycache__/
 *.py[cod]
 *.pyo
 .Python
+.venv/
+venv/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
@@ -149,6 +151,23 @@ cp -f "${EXAMPLE_PROFILE}" "${PUBLIC_DIR}/quickjobs.david.profile.json"
 
 "${PY}" "${PRIVATE_DIR}/scripts/_shared/apply_public_stubs.py" --public-dir "${PUBLIC_DIR}"
 "${PY}" "${PRIVATE_DIR}/scripts/_shared/sanitize_public_tree.py" --public-dir "${PUBLIC_DIR}"
+
+# Point clone users at GETTING_STARTED first.
+if [[ -f "${PUBLIC_DIR}/README.md" && -f "${PUBLIC_DIR}/GETTING_STARTED.md" ]]; then
+  if ! grep -q 'GETTING_STARTED.md' "${PUBLIC_DIR}/README.md"; then
+    {
+      echo '> **New clone?** Start with [GETTING_STARTED.md](GETTING_STARTED.md) (venv, validate, first scrape).'
+      echo
+      cat "${PUBLIC_DIR}/README.md"
+    } >"${PUBLIC_DIR}/README.md.tmp"
+    mv "${PUBLIC_DIR}/README.md.tmp" "${PUBLIC_DIR}/README.md"
+  fi
+fi
+chmod +x "${PUBLIC_DIR}/scripts/_shared/bootstrap_clone.sh" 2>/dev/null || true
+
+# Copy this script last so mid-run overwrite cannot shift bash line offsets.
+copy_file "scripts/_shared/sync_public_repo.sh"
+chmod +x "${PUBLIC_DIR}/scripts/_shared/sync_public_repo.sh" 2>/dev/null || true
 
 echo "Synced private → public: ${PUBLIC_DIR}"
 echo "Placeholder profile installed; stubs + personal scrub applied."

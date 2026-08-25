@@ -37,13 +37,19 @@ Edit `quickjobs.david.profile.json` for your name, ZIP, salary floor, and
 
 ## 3. First scrape (small)
 
-Full catalog scrapes take a long time. Start with a few API-friendly employers:
+Full catalog scrapes take a long time. Start with a few API-friendly employers.
+With no prior snapshot, `--only` seeds a new one from just these sources:
 
 ```bash
 python quickjobs.david.py --only remotive,remoteok,weworkremotely
 ```
 
-Open the HTML path printed at the end (under `profile.jobs_dir`).
+Open the HTML path printed at the end (under `profile.jobs_dir`). Later, run
+without `--only` once for a full catalog, or keep using `--only` for smoke checks.
+
+Default title filters in `quickjobs.david.base.json` are DevOps-oriented; a first
+`--only remotive` run may write an empty board (exit 0) until you edit search
+keywords / profile. That still proves scrape + HTML write work.
 
 ## 4. Optional: portable layout
 
