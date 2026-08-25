@@ -1,0 +1,95 @@
+{
+  "employers": {
+    "3m": {
+      "glassdoor": {
+        "rating": "3.7",
+        "reviews": "551",
+        "url": "https://www.glassdoor.com/Overview/Working-at-3M-EI_IE6520181.11,13.htm"
+      }
+    },
+    "amazon-air-ati": {
+      "glassdoor": {
+        "rating": "3.3",
+        "reviews": "154",
+        "url": "https://www.glassdoor.com/Reviews/AmazonAir-Reviews-E2765785.htm"
+      }
+    },
+    "contour-airlines": {
+      "glassdoor": {
+        "rating": "3.1",
+        "reviews": "102",
+        "url": "https://www.glassdoor.com/Overview/Working-at-Contour-Aviation-EI_IE464438.11,27.htm"
+      }
+    },
+    "fedex-pilot-recruiting": {
+      "glassdoor": {
+        "rating": "4.0",
+        "reviews": "47",
+        "url": "https://www.glassdoor.com/Reviews/FedEx-Pilot-Reviews-EI_IE246.0,5_KO6,11.htm"
+      }
+    },
+    "otis-worldwide": {
+      "glassdoor": {
+        "rating": "3.6",
+        "reviews": "2443",
+        "url": "https://www.glassdoor.com/Overview/Working-at-OTIS-EI_IE7865.11,15.htm"
+      }
+    },
+    "10-tanker": {
+      "glassdoor": {
+        "rating": "3.4",
+        "reviews": "8",
+        "url": "https://www.glassdoor.com/Overview/Working-at-10-Tanker-Air-Carrier-EI_IE2336485.11,32.htm"
+      }
+    },
+    "aero-agricultural": {
+      "glassdoor": {
+        "rating": "3.5",
+        "reviews": "50",
+        "url": "https://www.glassdoor.com/Overview/Working-at-Aerial-Applications-EI_IE1415919.11,30.htm"
+      }
+    },
+    "airevac-lifeteam": {
+      "glassdoor": {
+        "rating": "3.7",
+        "reviews": "250",
+        "url": "https://www.glassdoor.com/Overview/Working-at-Air-Evac-Lifeteam-EI_IE152654.11,28.htm"
+      }
+    },
+    "fedex": {
+      "glassdoor": {
+        "rating": "3.4",
+        "reviews": "34122",
+        "url": "https://www.glassdoor.com/Reviews/FedEx-Reviews-E246.htm"
+      }
+    },
+    "fedex-it": {
+      "glassdoor": {
+        "rating": "3.5",
+        "reviews": "500",
+        "url": "https://www.glassdoor.com/Reviews/FedEx-Information-Technology-Reviews-EI_IE246.0,5_KO6,28.htm"
+      }
+    },
+    "paramount-aviation": {
+      "glassdoor": {
+        "rating": "3.4",
+        "reviews": "120",
+        "url": "https://www.glassdoor.com/Reviews/Paramount-Resources-Reviews-E8761.htm"
+      }
+    },
+    "piedmont-airlines": {
+      "glassdoor": {
+        "rating": "3.2",
+        "reviews": "957",
+        "url": "https://www.glassdoor.com/Overview/Working-at-Piedmont-Airlines-EI_IE14513.11,28.htm"
+      }
+    },
+    "rusts-flying-service": {
+      "glassdoor": {
+        "rating": "4.2",
+        "reviews": "12",
+        "url": "https://www.glassdoor.com/Salary/Rust-s-Flying-Service-Salaries-E10990136.htm"
+      }
+    }
+  }
+}

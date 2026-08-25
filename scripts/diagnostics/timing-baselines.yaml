@@ -1,0 +1,188 @@
+# Quickjobs full-board run timing baselines (wulf cron / quickjobs run).
+# Derived from successful logs under ~/ws/scriptdir/output/quickjobs-reports/
+# on wulf (dawib@dawib.synology.me). Re-run analysis after major scrape changes.
+#
+# Primary anchor: quickjobs-run-2026-06-23T024526Z.log
+#   Jun 22 19:45 PDT start, 393 companies, scrape 10.2 min, wall ~10.7 min, Wrote OK.
+#
+# Company count context:
+#   baseline 393 (368 HTTP + 25 Playwright) — Jun 22 success anchor
+#   current  406 (381 HTTP + 25 Playwright) — Jun 23 runs (+13 HTTP from SmartRecruiters/hub adds)
+#   Scale scrape phases linearly: expected_sec * (company_count / 393).
+#
+# Log format notes (Jun 2026):
+#   - Worker banner timestamp is Pacific (PDT/PST); log filename suffix is UTC (Z).
+#   - Non-TTY runs buffer per-company rows until flush_company_progress; phase headers
+#     are adjacent with no per-phase timestamps. Use "Elapsed: N min" for scrape total
+#     and file mtime minus banner time for wall clock on completed runs.
+#   - Heartbeats ("still scraping …") appear when a phase is idle >60s; include
+#     done/total and elapsed minutes — best signal for in-progress monitoring.
+#   - HTTP vs Playwright split is not timestamped separately in buffered logs; values
+#     below for http_scrape_total and playwright_scrape are estimates from anchor
+#     company mix (~76% / ~24% of scrape time). Treat as soft thresholds.
+#   - rolling_backup often produces no log line (backup still runs after Wrote).
+#
+# HTTP pool (Jun 23 2026): CLOSE-WAIT/orphan fix — QUICKJOBS_HTTP_CONCURRENCY defaults to
+# PARALLEL_HTTP_MAX_WORKERS (16); per-request Connection: close, body drain, fresh opener.
+# Stall at ~190/406 reproduced at w16 and w8; worker count ruled out as root cause.
+# Fix: semaphore cap aligned to workers, socket read cap, non-blocking company timeout.
+
+meta:
+  anchor_log: quickjobs-run-2026-06-23T024526Z.log
+  anchor_date_pacific: "2026-06-22 19:45:26 PDT"
+  baseline_company_count: 393
+  baseline_http_companies: 368
+  baseline_playwright_companies: 25
+  current_company_count: 406
+  current_http_companies: 381
+  scale_formula: "expected_sec * (company_count / 393)"
+  sample_success_logs:
+    - quickjobs-run-2026-06-23T024526Z.log
+    - quickjobs-run-2026-06-22T051940Z.log
+    - quickjobs-run-2026-06-21T060215Z.log
+    - quickjobs-run-2026-06-21T030639Z.log
+  sample_stats_full_board:
+    scrape_sec_median: 570
+    scrape_sec_p95: 1056
+    wall_sec_median: 603
+    wall_sec_p95: 1086
+    post_scrape_sec_median: 29
+    post_scrape_sec_p95: 35
+    n_logs: 27
+
+phases:
+  - phase: startup
+    expected_sec: 5
+    warn_sec: 20
+    stall_sec: 120
+    notes: >
+      Worker banner to "Scraping N companies" / first phase header. Config load and
+      pool setup; normally immediate.
+
+  - phase: http_scrape_total
+    expected_sec: 480
+    warn_sec: 720
+    stall_sec: 1500
+    scale_with_companies: true
+    notes: >
+      "HTTP/API scrape" header through start of Playwright phase (or scrape complete
+      if no Playwright companies). Anchor estimate ~480s for 368 HTTP @393 companies
+      (~1.3s/company mean). Not separately timestamped in buffered logs; compare
+      heartbeat done/total during HTTP or total scrape minus playwright estimate.
+      At 406 companies scale to ~495s expected.
+      Jun 2026 fix: QUICKJOBS_HTTP_CONCURRENCY default lowered from 32 to 16
+      (matches PARALLEL_HTTP_MAX_WORKERS); urllib fetch path uses per-request
+      opener + Connection close + full body read under _HTTP_SEMAPHORE. Stall at
+      ~190/406 was not worker-count dependent (same at w8 and w16); orphan threads
+      and CLOSE-WAIT were the suspects — socket timeout + semaphore wait + non-blocking
+      company timeout prevent pool wedge.
+
+  - phase: http_per_company_p50
+    expected_sec: 2
+    warn_sec: 5
+    stall_sec: 30
+    notes: >
+      Per-company median during healthy HTTP phase (derived: 480s / 368 ≈ 1.3s).
+      Use heartbeat rate: elapsed / done should stay near 1.5–2.5s/co at 393 baseline.
+      Thin data — heartbeats report aggregate done/total, not per-company lines.
+
+  - phase: http_per_company_p95
+    expected_sec: 15
+    warn_sec: 45
+    stall_sec: 120
+    notes: >
+      Tail latency for slow ATS (phenom, oracle, smartrecruiters). No direct p95 in
+      logs; stall_sec aligns with QUICKJOBS_COMPANY_TIMEOUT_SEC warning territory.
+      Flag when heartbeat shows no progress for stall_sec while in HTTP phase.
+
+  - phase: playwright_scrape
+    expected_sec: 120
+    warn_sec: 240
+    stall_sec: 600
+    scale_with_companies: false
+    notes: >
+      "Playwright scrape" header through "N/N sources" summary. Anchor estimate ~120s
+      for 25 companies (~5s/co). Playwright count stable at 25; do not scale with
+      total company count.
+
+  - phase: scrape_total
+    expected_sec: 612
+    warn_sec: 900
+    stall_sec: 1500
+    scale_with_companies: true
+    notes: >
+      Full scrape pool: HTTP + Playwright + hubs. Logged as "Elapsed: N min" in company
+      table footer. Anchor 612s (10.2 min) @393 co. Healthy recent median ~570s @373 co;
+      p95 ~1056s. At 406 co expected ~632s.
+
+  - phase: post_scrape
+    expected_sec: 30
+    warn_sec: 60
+    stall_sec: 180
+    notes: >
+      After scrape table through "Validated badge structure": cross-company dedupe,
+      Glassdoor prefetch, HTML build, badge validation. Anchor wall minus scrape ≈32s.
+      Median 29s across 27 successful runs (24–51s range).
+
+  - phase: html_write
+    expected_sec: 5
+    warn_sec: 15
+    stall_sec: 60
+    notes: >
+      "Validated badge structure" through "Wrote … job-search-david.html". Atomic write
+      + verify_written_file; typically a few seconds.
+
+  - phase: rolling_backup
+    expected_sec: 10
+    warn_sec: 30
+    stall_sec: 120
+    notes: >
+      numbered_backup_copy after successful write. Often silent in log (no "Rolling backup"
+      line observed in Jun 2026 success logs). Treat absence as OK if Wrote present.
+
+  - phase: total_wall_clock
+    expected_sec: 644
+    warn_sec: 960
+    stall_sec: 1800
+    scale_with_companies: true
+    notes: >
+      Worker banner timestamp to log file mtime on completed run. Anchor 644s (~10.7 min)
+      @393 co. Cron budget: flag STALL beyond 30 min wall; WARN beyond 16 min.
+
+monitoring:
+  checker: scripts/personal/quickjobs/check_run_timing.py
+  baselines: scripts/personal/quickjobs/timing-baselines.yaml
+  # Jun 2026 HTTP stall fix: company timeout orphans no longer wedge the pool — socket
+  # reads capped (QUICKJOBS_HTTP_SOCKET_TIMEOUT_SEC default 300s), semaphore acquire
+  # times out (QUICKJOBS_HTTP_SEMAPHORE_WAIT_SEC default 120s), stderr logs orphan count.
+  # If heartbeats stop advancing with no "HTTP orphan" lines, check CLOSE-WAIT / semaphore slots.
+  log_progress: QUICKJOBS_LOG_PROGRESS=1 per-company lines in log files; 0 for quiet (pre-2026-06)
+  log_glob: ~/ws/scriptdir/output/quickjobs-reports/quickjobs-run-*.log
+  ssh_host: dawib@dawib.synology.me
+  ssh_port: 222
+  commands:
+    latest_log: |
+      ssh -p 222 dawib@dawib.synology.me \
+        'ls -t ~/ws/scriptdir/output/quickjobs-reports/quickjobs-run-*.log | head -1'
+    check_latest: |
+      ssh -p 222 dawib@dawib.synology.me \
+        '/home/dawib/.v/bin/python /home/dawib/ws/scriptdir/scripts/personal/quickjobs/check_run_timing.py \
+          --baselines /home/dawib/ws/scriptdir/scripts/personal/quickjobs/timing-baselines.yaml \
+          $(ls -t ~/ws/scriptdir/output/quickjobs-reports/quickjobs-run-*.log | head -1)'
+    check_anchor: |
+      /home/dawib/.v/bin/python \
+        ~/ws/scriptdir/scripts/personal/quickjobs/check_run_timing.py \
+        ~/ws/scriptdir/output/quickjobs-reports/quickjobs-run-2026-06-23T024526Z.log
+    check_specific: |
+      /home/dawib/.v/bin/python \
+        ~/ws/scriptdir/scripts/personal/quickjobs/check_run_timing.py \
+        ~/ws/scriptdir/output/quickjobs-reports/quickjobs-run-YYYY-MM-DDTHHMMSSZ.log
+    stdin_from_tail: |
+      ssh -p 222 dawib@dawib.synology.me \
+        'tail -f ~/ws/scriptdir/output/quickjobs-reports/quickjobs-run-*.log' | \
+        ~/.v/bin/python ~/ws/scriptdir/scripts/personal/quickjobs/check_run_timing.py -
+  exit_codes:
+    "0": all checked phases OK (or RUNNING within bounds)
+    "1": one or more WARN
+    "2": one or more STALL
+    "3": run still in progress with deviation (HTTP heartbeat lag)

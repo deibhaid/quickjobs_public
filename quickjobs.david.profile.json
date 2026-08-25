@@ -1,0 +1,25 @@
+{
+  "profile": {
+    "name": "User",
+    "home_zip": "00000",
+    "local_radius_miles": 50,
+    "salary_floor": 0,
+    "default_domain_years": 0,
+    "domain_years": {},
+    "skills": [],
+    "jd_blocklist": [],
+    "jobs_dir": "~/Downloads/jobs",
+    "resident_status": "citizen",
+    "board_ui": {
+      "hide_zero_yield_sidebar": false,
+      "hide_manual_careers_sidebar": false,
+      "hide_empty_stub_entries": false,
+      "hide_manual_career_index": false
+    }
+  },
+  "overrides": {},
+  "remote_sync": {
+    "enabled": false
+  },
+  "company_ids_exclude": []
+}

@@ -1,0 +1,10 @@
+{
+  "comment": "Employers known not to sponsor work visas. Excluded by default when resident_status is visa (h1b). IDs resolved from quickjobs base JSON: Airship, Cayuse Holdings LLC (Greenhouse board cayuse), Chainguard, Defense Unicorns, Tria Federal.",
+  "company_ids": [
+    "airship",
+    "cayuse-holdings-llc",
+    "chainguard",
+    "defense-unicorns",
+    "tria-federal"
+  ]
+}

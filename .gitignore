@@ -1,0 +1,33 @@
+# Secrets
+.env
+.env.*
+*credentials*
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Local runtime cache
+cache/
+data/
+
+# Generated portable packages
+*.zip
+
+# Accidental local junk
+]*
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Note: quickjobs.david.profile.json IS tracked here (public placeholder only).
+# The private repo gitignores the real personal profile.

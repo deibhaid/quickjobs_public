@@ -1,0 +1,113 @@
+Quickjobs (portable) — layout and reference
+==========================================
+
+Full agent/developer reference (invariants, visa/DOL, david vs portable):
+see the repo README.md at the quickjobs git root. This file is the portable
+bundle layout only.
+
+Layout
+------
+
+configure.py          One-time setup: venv, Playwright, profile from resume
+quickjobs.py          Main scraper and HTML generator
+quickjobs.base.json   Company sources and default keywords
+quickjobs.profile.json  Created by configure.py (your settings)
+cache/data/           Pipeline, snapshot, digest (was ~/.job_search/)
+cache/scrape/         HTTP scrape cache (TTL .txt files)
+cache/glassdoor/      Glassdoor rating cache (<company-id>.json)
+cache/run/            Autosave pid/meta, Wellfound session, removed-job log
+cache/pycache/        Python bytecode cache
+output/               Generated HTML and hub-tool artifacts
+config/               Setup metadata (setup.json)
+python_venv/          Python dependencies (created by configure)
+
+Configure prompts
+-----------------
+
+- Resume (on macOS, Finder opens first; cancel or invalid file → type a path
+  or press Enter to reopen Finder)
+- Supported: .pdf, .docx, .doc, or plain text
+- US resident status: citizen, green_card, or visa
+- Home ZIP code (for local/remote matching)
+- Desired base salary (USD; used as salary_floor in matching)
+
+configure.py reads your resume, infers skills and extra role keywords, and writes
+quickjobs.profile.json.
+
+Environment (set by run.py)
+---------------------------
+
+QUICKJOBS_ROOT        This directory
+JOB_SEARCH_DIR        cache/data/
+QUICKJOBS_JOBS_DIR    output/
+QUICKJOBS_NO_REMOTE_SYNC=1  No SSH/rsync unless you enable it in profile
+
+Optional run flags
+------------------
+
+python_venv/bin/python run.py --dry-run -q
+python_venv/bin/python run.py rebuild-snapshot
+python_venv/bin/python run.py --only netflix --only gitlab
+
+Job Sites — Glassdoor ratings
+-----------------------------
+
+Ratings are pulled live from Glassdoor search (no login). Results are cached under
+cache/glassdoor/<company-id>.json. On rebuild-snapshot, any hub missing cache is
+fetched automatically (set QUICKJOBS_GLASSDOOR_NO_FETCH=1 to disable).
+
+Requires curl_cffi (in requirements.txt). Bulk backfill:
+
+python_venv/bin/python fetch_glassdoor.py --limit 20
+python_venv/bin/python fetch_glassdoor.py
+python_venv/bin/python run.py rebuild-snapshot
+
+If anonymous fetch is blocked on your network, use a one-time browser pass:
+
+python_venv/bin/python fetch_glassdoor.py --browser --headed --limit 5
+
+Work visa validation (resident_status: visa)
+-------------------------------------------
+
+When your profile uses a work visa (visa in configure.py), quickjobs uses several layers:
+
+1. Company exclude list: config/no-visa-sponsor-company-ids.json skips employers
+   known not to sponsor work visas (merged into company_ids_exclude at run start).
+2. DOL LCA index (recommended): when employer-index.json is built, employers with no
+   DOL visa filings are skipped at scrape time (same layer as company_ids_exclude).
+   If the index is missing, only the static list and JD filters apply (no mass skip).
+3. Job text (scrape): drops postings that explicitly deny visa sponsorship.
+4. Location: UK-only and other non-US remote roles stay excluded.
+5. Board text filters: default Doesn't contain chips hide explicit no-sponsorship and
+   citizenship-only wording in title and description. You can turn these off in the filter bar.
+6. DOL badges: company headers show Visa filer · grade or No DOL visa filings.
+
+Build the DOL employer index once for scrape gating, badges, and LCA salary
+fallback when postings omit pay (requires openpyxl):
+
+python_venv/bin/pip install openpyxl
+python_venv/bin/python fetch_h1b_employer_index.py
+
+Index paths: cache/h1b/employer-index.json, cache/h1b/lca-wage-index.json
+Per-company lookups: cache/h1b/<company-id>.json
+
+Salary badges use JD pay first, then company Levels.fyi labels, then LCA
+p25–p75 (labeled · DOL LCA) for US-workable roles with no disclosed pay.
+
+Hub tooling (optional)
+----------------------
+
+python_venv/bin/python quickjobs_hubs.py sync-manual
+
+Requirements
+------------
+
+- Python 3.10+
+- Network access for scraping
+- Chromium via Playwright (configure.py installs it)
+
+Sharing
+-------
+
+Distribute quickjobs-portable.zip. Recipients should not need ~/.job_search or a
+personal quickjobs.david.* install.
