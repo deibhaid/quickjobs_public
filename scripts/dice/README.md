@@ -96,5 +96,5 @@ This script never touches your crontab. Print an example line with
 
 ```cron
 # Weekly Dice employer-catalog refresh (Mondays 07:15). Uses ~/.v python; no cd needed.
-15 7 * * 1 cron-exec /Users/deibhaid/.v/bin/python /Users/deibhaid/ws/github/quickjobs/scripts/dice/discover_dice_employers.py --max-fingerprint 40
+15 7 * * 1 cron-exec /path/to/venv/bin/python /path/to/quickjobs/scripts/dice/discover_dice_employers.py --max-fingerprint 40
 ```

@@ -6,7 +6,7 @@ add-candidates into `quickjobs.david.base.json`.
 Invoke via the top-level `quickjobs` wrapper or directly:
 
 ```bash
-~/.v/bin/python /Users/deibhaid/ws/github/quickjobs/scripts/discover/discover_cli.py discover dice
+~/.v/bin/python /path/to/quickjobs/scripts/discover/discover_cli.py discover dice
 quickjobs discover dice
 ```
 

@@ -61,7 +61,7 @@ class SearchKeywordEditorTests(unittest.TestCase):
     def test_search_params_panel_has_editable_sections(self) -> None:
         qj = self.qj
         cfg = json.loads((REPO_ROOT / "quickjobs.david.base.json").read_text(encoding="utf-8"))
-        cfg.setdefault("profile", {"name": "Test", "home_zip": "97035", "resident_status": "citizen"})
+        cfg.setdefault("profile", {"name": "Test", "home_zip": "00000", "resident_status": "citizen"})
         panel = qj.render_search_parameters_panel(cfg)
         for key in qj.SEARCH_KEYWORD_LIST_KEYS:
             self.assertIn(f'data-search-keyword-list="{key}"', panel)

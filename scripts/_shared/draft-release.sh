@@ -25,7 +25,7 @@ elif [[ -f "${SERVER_BIN}/lib/output.sh" ]]; then
   source "${SERVER_BIN}/lib/output.sh"
 fi
 
-REPO="${QUICKJOBS_GITHUB_REPO:-deibhaid/quickjobs}"
+REPO="${QUICKJOBS_GITHUB_REPO:-YOUR_GITHUB_USER/quickjobs}"
 REPO_DIR="${QUICKJOBS_DIR:-${HOME}/ws/github/quickjobs}"
 DRY_RUN=0
 NOTES_FILE=""

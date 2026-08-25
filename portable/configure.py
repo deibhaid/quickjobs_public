@@ -344,7 +344,7 @@ def main() -> int:
     )
     home_zip = _prompt("Home ZIP code")
     if not re.match(r"^\d{5}(-\d{4})?$", home_zip):
-        print("Warning: expected US ZIP like 97035 or 10001-1234")
+        print("Warning: expected US ZIP like 00000 or 10001-1234")
 
     salary_floor = _prompt_int("Desired base salary (USD)", default=150000)
 

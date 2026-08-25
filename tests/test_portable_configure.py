@@ -148,7 +148,7 @@ class ConfigureProfileBuilderTests(unittest.TestCase):
                 exclude = aviation_mod.load_aviation_company_ids(pkg)
                 configure._write_profile(
                     name="Test User",
-                    home_zip="97035",
+                    home_zip="00000",
                     resident_status="citizen",
                     salary_floor=150000,
                     skills=["devops"],
@@ -234,7 +234,7 @@ class NoVisaSponsorCompanyIdsTests(unittest.TestCase):
                 visa_excludes = visa_mod.load_no_visa_sponsor_company_ids(pkg)
                 configure._write_profile(
                     name="Test User",
-                    home_zip="97035",
+                    home_zip="00000",
                     resident_status="h1b",
                     salary_floor=150000,
                     skills=["devops"],
@@ -291,7 +291,7 @@ class NoVisaSponsorCompanyIdsTests(unittest.TestCase):
                 configure.SETUP_PATH = pkg / "config" / "setup.json"
                 configure._write_profile(
                     name="Test User",
-                    home_zip="97035",
+                    home_zip="00000",
                     resident_status="citizen",
                     salary_floor=150000,
                     skills=["devops"],

@@ -160,7 +160,7 @@ def matches_infra(card: dict) -> str:
 CRON_EXAMPLE = (
     "# Weekly Built In remote employer-catalog refresh (Tuesdays 07:25). "
     "Uses ~/.v python; no cd needed.\n"
-    "25 7 * * 2 cron-exec /Users/deibhaid/.v/bin/python "
+    "25 7 * * 2 cron-exec /path/to/venv/bin/python "
     f"{SCRIPT_PATH} --pages 5 --max-fingerprint 40 --fingerprint api\n"
 )
 

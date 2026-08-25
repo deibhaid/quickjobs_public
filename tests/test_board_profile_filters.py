@@ -38,7 +38,7 @@ class BoardProfileFilterTests(unittest.TestCase):
 
     def test_search_params_panel_shows_work_visa_resident_status(self) -> None:
         qj = self.qj
-        cfg = {"profile": {"resident_status": "h1b", "name": "Test", "home_zip": "97035"}}
+        cfg = {"profile": {"resident_status": "h1b", "name": "Test", "home_zip": "00000"}}
         panel = qj.render_search_parameters_panel(cfg)
         self.assertIn("work visa", panel)
         self.assertNotIn("H-1B", panel)

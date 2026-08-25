@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Config file paths shown for linking are Mac edit paths when HTML is built on wulf."""
+"""Config file paths shown for linking are Mac edit paths when HTML is built on remote."""
 
 from __future__ import annotations
 
@@ -32,25 +32,25 @@ class EditConfigPathsTests(unittest.TestCase):
 
     def test_wulf_script_dir_maps_to_mac_edit_root(self) -> None:
         qj = self.qj
-        with mock.patch.object(qj, "SCRIPT_DIR", Path("/home/dawib/ws/github/quickjobs")):
+        with mock.patch.object(qj, "SCRIPT_DIR", Path("/home/user/ws/github/quickjobs")):
             root = qj.edit_config_root_for_board()
-        self.assertEqual(root, Path("/Users/deibhaid/ws/github/quickjobs"))
+        self.assertEqual(root, Path("/path/to/quickjobs"))
 
     def test_display_paths_on_wulf_use_mac(self) -> None:
         qj = self.qj
-        with mock.patch.object(qj, "SCRIPT_DIR", Path("/home/dawib/ws/github/quickjobs")):
+        with mock.patch.object(qj, "SCRIPT_DIR", Path("/home/user/ws/github/quickjobs")):
             paths = dict(qj.resolve_config_display_paths())
         self.assertEqual(
             paths["Base config"],
-            "/Users/deibhaid/ws/github/quickjobs/quickjobs.david.base.json",
+            "/path/to/quickjobs/quickjobs.david.base.json",
         )
         self.assertEqual(
             paths["Companies"],
-            "/Users/deibhaid/ws/github/quickjobs/quickjobs.david.companies.json",
+            "/path/to/quickjobs/quickjobs.david.companies.json",
         )
         self.assertEqual(
             paths["Profile"],
-            "/Users/deibhaid/ws/github/quickjobs/quickjobs.david.profile.json",
+            "/path/to/quickjobs/quickjobs.david.profile.json",
         )
 
     def test_env_override(self) -> None:
@@ -64,15 +64,15 @@ class EditConfigPathsTests(unittest.TestCase):
         qj = self.qj
         cfg = qj.load_config_base()
         cfg.setdefault("profile", {"resident_status": "citizen", "name": "T", "jobs_dir": "~/x"})
-        with mock.patch.object(qj, "SCRIPT_DIR", Path("/home/dawib/ws/github/quickjobs")):
+        with mock.patch.object(qj, "SCRIPT_DIR", Path("/home/user/ws/github/quickjobs")):
             out = qj._board_pipeline_config(
                 cfg,
                 pipeline_server=False,
                 default_runtime_path=Path("/tmp/job-board-runtime.json"),
             )
-        self.assertEqual(out["editConfigRoot"], "/Users/deibhaid/ws/github/quickjobs")
-        self.assertTrue(out["baseConfigPath"].startswith("/Users/deibhaid/"))
-        self.assertTrue(out["profileConfigPath"].startswith("/Users/deibhaid/"))
+        self.assertEqual(out["editConfigRoot"], "/path/to/quickjobs")
+        self.assertTrue(out["baseConfigPath"].startswith("/Users/example/"))
+        self.assertTrue(out["profileConfigPath"].startswith("/Users/example/"))
         self.assertEqual(out["editConfigFilePickerId"], "quickjobs-david-runtime")
         self.assertEqual(out["editConfigFilePickerId"], out["runtimeFilePickerId"])
 

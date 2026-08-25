@@ -1,6 +1,6 @@
-# Quickjobs full-board run timing baselines (wulf cron / quickjobs run).
+# Quickjobs full-board run timing baselines (remote cron / quickjobs run).
 # Derived from successful logs under ~/ws/scriptdir/output/quickjobs-reports/
-# on wulf (dawib@dawib.synology.me). Re-run analysis after major scrape changes.
+# on remote (user@remote.example). Re-run analysis after major scrape changes.
 #
 # Primary anchor: quickjobs-run-2026-06-23T024526Z.log
 #   Jun 22 19:45 PDT start, 393 companies, scrape 10.2 min, wall ~10.7 min, Wrote OK.
@@ -158,27 +158,27 @@ monitoring:
   # If heartbeats stop advancing with no "HTTP orphan" lines, check CLOSE-WAIT / semaphore slots.
   log_progress: QUICKJOBS_LOG_PROGRESS=1 per-company lines in log files; 0 for quiet (pre-2026-06)
   log_glob: ~/ws/scriptdir/output/quickjobs-reports/quickjobs-run-*.log
-  ssh_host: dawib@dawib.synology.me
+  ssh_host: user@remote.example
   ssh_port: 222
   commands:
     latest_log: |
-      ssh -p 222 dawib@dawib.synology.me \
+      ssh -p 222 user@remote.example \
         'ls -t ~/ws/scriptdir/output/quickjobs-reports/quickjobs-run-*.log | head -1'
     check_latest: |
-      ssh -p 222 dawib@dawib.synology.me \
-        '/home/dawib/.v/bin/python /home/dawib/ws/scriptdir/scripts/personal/quickjobs/check_run_timing.py \
-          --baselines /home/dawib/ws/scriptdir/scripts/personal/quickjobs/timing-baselines.yaml \
+      ssh -p 222 user@remote.example \
+        '/home/user/.venv/bin/python /home/user/quickjobs/check_run_timing.py \
+          --baselines /home/user/quickjobs/timing-baselines.yaml \
           $(ls -t ~/ws/scriptdir/output/quickjobs-reports/quickjobs-run-*.log | head -1)'
     check_anchor: |
-      /home/dawib/.v/bin/python \
+      /home/user/.venv/bin/python \
         ~/ws/scriptdir/scripts/personal/quickjobs/check_run_timing.py \
         ~/ws/scriptdir/output/quickjobs-reports/quickjobs-run-2026-06-23T024526Z.log
     check_specific: |
-      /home/dawib/.v/bin/python \
+      /home/user/.venv/bin/python \
         ~/ws/scriptdir/scripts/personal/quickjobs/check_run_timing.py \
         ~/ws/scriptdir/output/quickjobs-reports/quickjobs-run-YYYY-MM-DDTHHMMSSZ.log
     stdin_from_tail: |
-      ssh -p 222 dawib@dawib.synology.me \
+      ssh -p 222 user@remote.example \
         'tail -f ~/ws/scriptdir/output/quickjobs-reports/quickjobs-run-*.log' | \
         ~/.v/bin/python ~/ws/scriptdir/scripts/personal/quickjobs/check_run_timing.py -
   exit_codes:

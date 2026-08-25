@@ -20,9 +20,6 @@ data/
 # Generated portable packages
 *.zip
 
-# Accidental local junk
-]*
-
 # OS / editor
 .DS_Store
 *.swp

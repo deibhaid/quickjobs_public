@@ -1,6 +1,6 @@
 # quickjobs HOWTO
 
-A user guide for running the quickjobs job-board pipeline on your Mac and on the remote scrape host (wulf). This document covers daily use, employer discovery, validation, sync, and troubleshooting. It does not explain scraper internals.
+A user guide for running the quickjobs job-board pipeline on your Mac and on the remote scrape host (remote). This document covers daily use, employer discovery, validation, sync, and troubleshooting. It does not explain scraper internals.
 
 For AI agents and implementers: read [README.md](README.md) first (invariants, david vs portable, visa/DOL, file map). Prefer that document over this HOWTO when changing code.
 
@@ -16,7 +16,7 @@ For AI agents and implementers: read [README.md](README.md) first (invariants, d
 8. [Validation and duplicates](#validation-and-duplicates)
 9. [Partial runs and exclusions](#partial-runs-and-exclusions)
 10. [Backups](#backups)
-11. [Remote host (wulf)](#remote-host-wulf)
+11. [Remote host (remote)](#remote-host-remote)
 12. [Troubleshooting](#troubleshooting)
 13. [What not to do](#what-not-to-do)
 14. [Quick reference](#quick-reference)
@@ -36,8 +36,8 @@ quickjobs scrapes employer ATS boards directly (Greenhouse, Lever, Ashby, Workda
 | Python virtualenv | `~/.v` — always use `~/.v/bin/python` and `~/.v/bin/pip` |
 | quickjobs CLI on PATH | `~/local/bin/quickjobs` (installed from `~/local/bin/quickjobs-server/`) |
 | Repo checkout | `~/ws/github/quickjobs` |
-| Remote scrape host | wulf (`dawib@dawib.synology.me`, SSH port 222 by default) |
-| NFS HTML mount on wulf | `/mnt/Uploads/html` (cron and `quickjobs-run` write here) |
+| Remote scrape host | remote (`user@remote.example`, SSH port 222 by default) |
+| NFS HTML mount on remote | `/mnt/Uploads/html` (cron and `quickjobs-run` write here) |
 
 Confirm the CLI is available:
 
@@ -58,7 +58,7 @@ cd ~/ws/github/quickjobs
 
 Only user-relevant paths are listed here. Developer-only scripts under `scripts/validate/`, `scripts/diagnostics/`, and `scripts/maintenance/` are omitted.
 
-### Static config (repo — edit on Mac, sync to wulf)
+### Static config (repo — edit on Mac, sync to remote)
 
 | File | Purpose |
 |------|---------|
@@ -90,7 +90,7 @@ Only user-relevant paths are listed here. Developer-only scripts under `scripts/
 | `job-search-david.html` | `~/Downloads/jobs/` | Board you open in the browser (view layer) |
 | `job-board-pipeline.json` | `~/Downloads/jobs/` | Optional mirror for browser linking (not source of truth) |
 
-### Discovery outputs (Mac — not synced to wulf)
+### Discovery outputs (Mac — not synced to remote)
 
 | File | Location |
 |------|----------|
@@ -99,7 +99,7 @@ Only user-relevant paths are listed here. Developer-only scripts under `scripts/
 | `builtin-employer-catalog.json` | same |
 | `*-new-candidates-<date>.json` / `.md` | same (per-run reports) |
 
-### Remote (wulf after sync + run)
+### Remote (remote after sync + run)
 
 | Path | Role |
 |------|------|
@@ -115,12 +115,12 @@ Only user-relevant paths are listed here. Developer-only scripts under `scripts/
 
 ### 1. Remote scrape workflow (`quickjobs` bash CLI)
 
-Runs from anywhere on your Mac. Handles portable builds, sync to wulf, scrape, status, and hub tooling.
+Runs from anywhere on your Mac. Handles portable builds, sync to remote, scrape, status, and hub tooling.
 
 ```bash
 quickjobs portable          # build portable zip
-quickjobs sync              # validate + push code, bins, runtime to wulf
-quickjobs run               # sync + full scrape on wulf
+quickjobs sync              # validate + push code, bins, runtime to remote
+quickjobs run               # sync + full scrape on remote
 quickjobs run --only netflix,openai
 quickjobs stop              # stop active scrape
 quickjobs resume            # resume from checkpoint
@@ -142,7 +142,7 @@ quickjobs sync,restart
 
 ### 2. Dev-machine discover / validate (`discover_cli.py`)
 
-Runs from the repo on your Mac only. Does not touch wulf unless you follow with `quickjobs sync`.
+Runs from the repo on your Mac only. Does not touch remote unless you follow with `quickjobs sync`.
 
 ```bash
 cd ~/ws/github/quickjobs
@@ -196,9 +196,9 @@ quickjobs results
 quickjobs status
 ```
 
-2. Open the board. On wulf the published HTML is at `/mnt/Uploads/html/job-search-david.html`. On your Mac the dev copy is at `~/Downloads/jobs/job-search-david.html`.
+2. Open the board. On remote the published HTML is at `/mnt/Uploads/html/job-search-david.html`. On your Mac the dev copy is at `~/Downloads/jobs/job-search-david.html`.
 
-3. If you edited pipeline status (applied/screen/pass) in the browser, sync runtime back to wulf:
+3. If you edited pipeline status (applied/screen/pass) in the browser, sync runtime back to remote:
 
 ```bash
 quickjobs sync
@@ -206,9 +206,9 @@ quickjobs sync
 
 ### Pipeline linking (browser)
 
-The board uses the File System Access API to read/write `~/.job_search/quickjobs/david/job-board-runtime.json`. Link that file once per browser profile (Chrome or Edge). After status changes, run `quickjobs sync` so wulf gets the updated sidecar.
+The board uses the File System Access API to read/write `~/.job_search/quickjobs/david/job-board-runtime.json`. Link that file once per browser profile (Chrome or Edge). After status changes, run `quickjobs sync` so remote gets the updated sidecar.
 
-For local `file://` HTML only, you can use the pipeline autosave server (port 8765 — see [Remote host](#remote-host-wulf)).
+For local `file://` HTML only, you can use the pipeline autosave server (port 8765 — see [Remote host](#remote-host-remote)).
 
 ### Mid-run code fix
 
@@ -238,21 +238,21 @@ When a snapshot exists but you want fresh HTML without re-scraping all companies
 quickjobs portable,sync,rebuild
 ```
 
-Or if code is already on wulf:
+Or if code is already on remote:
 
 ```bash
 quickjobs sync,rebuild
 ```
 
-`rebuild` syncs code/config first (like `run`), then runs `rebuild-snapshot` on wulf. Optional flags pass through: `--recompute-matches`, `--verify-urls`.
+`rebuild` syncs code/config first (like `run`), then runs `rebuild-snapshot` on remote. Optional flags pass through: `--recompute-matches`, `--verify-urls`.
 
-Mac-only (local snapshot in `~/.job_search/quickjobs/david/`; stale job data if wulf scraped more recently):
+Mac-only (local snapshot in `~/.job_search/quickjobs/david/`; stale job data if remote scraped more recently):
 
 ```bash
 quickjobs rebuild --local
 ```
 
-On wulf directly (SSH):
+On remote directly (SSH):
 
 ```bash
 quickjobs-run --rebuild
@@ -264,15 +264,15 @@ Optional: recompute match tiers from snapshot JD text:
 quickjobs rebuild --recompute-matches
 ```
 
-### Pull HTML from wulf to Mac
+### Pull HTML from remote to Mac
 
-Default sync does not push HTML from Mac to wulf or pull it back. After a remote scrape, copy manually or use:
+Default sync does not push HTML from Mac to remote or pull it back. After a remote scrape, copy manually or use:
 
 ```bash
 QUICKJOBS_SYNC_PUSH_DATA=1 quickjobs sync
 ```
 
-to push dev HTML/snapshot/digest/`json_sidecars/` to wulf (unusual; normally wulf is the publisher).
+to push dev HTML/snapshot/digest/`json_sidecars/` to remote (unusual; normally remote is the publisher).
 
 ### Lazy board JSON sidecars and compression
 
@@ -285,7 +285,7 @@ Each board write also creates `json_sidecars/` next to the HTML:
 
 plus `.gz` (and `.br` when the `brotli` package is installed) next to each file.
 
-On Synology HTTPS, enable gzip and/or brotli for `application/json` (and static
+On NAS HTTPS, enable gzip and/or brotli for `application/json` (and static
 `.gz`/`.br` if your nginx uses `gzip_static` / `brotli_static`). The board page
 `fetch`es these files; portable `file://` opens fall back to embedded JSON so
 they keep working without a server.
@@ -384,7 +384,7 @@ Safety on write:
 - Timestamped backup to `~/.numbered_backups/` before modifying `quickjobs.david.base.json`
 - Post-write validation; restore instructions printed if validation fails
 
-After a successful sync, propagate to wulf and scrape:
+After a successful sync, propagate to remote and scrape:
 
 ```bash
 ~/.v/bin/python scripts/discover/discover_cli.py validate
@@ -417,13 +417,13 @@ quickjobs sync,run
 To schedule discovery on your Mac, use `cron-exec` with absolute paths (example only — not installed by quickjobs):
 
 ```cron
-15 7 * * 1 cron-exec /Users/deibhaid/.v/bin/python /Users/deibhaid/ws/github/quickjobs/scripts/dice/discover_dice_employers.py --max-fingerprint 40 --fingerprint api
+15 7 * * 1 cron-exec /path/to/venv/bin/python /path/to/quickjobs/scripts/dice/discover_dice_employers.py --max-fingerprint 40 --fingerprint api
 ```
 
 Or invoke via discover CLI:
 
 ```cron
-15 7 * * 1 cron-exec /Users/deibhaid/.v/bin/python /Users/deibhaid/ws/github/quickjobs/scripts/discover/discover_cli.py discover dice -- --max-fingerprint 40
+15 7 * * 1 cron-exec /path/to/venv/bin/python /path/to/quickjobs/scripts/discover/discover_cli.py discover dice -- --max-fingerprint 40
 ```
 
 ### Discovery vs hub tooling
@@ -511,8 +511,8 @@ quickjobs sync
 Before `discover-sync` writes companies, rolling backups (7-day retention) are saved under:
 
 ```
-~/.numbered_backups/Users/deibhaid/ws/github/quickjobs/quickjobs.david.base.json_<M.D.Y_H:MM:SS>
-~/.numbered_backups/Users/deibhaid/ws/github/quickjobs/quickjobs.david.companies.json_<M.D.Y_H:MM:SS>
+~/.numbered_backups/path/to/quickjobs/quickjobs.david.base.json_<M.D.Y_H:MM:SS>
+~/.numbered_backups/path/to/quickjobs/quickjobs.david.companies.json_<M.D.Y_H:MM:SS>
 ```
 
 Snapshots older than 7 days are pruned automatically on each backup.
@@ -520,7 +520,7 @@ Snapshots older than 7 days are pruned automatically on each backup.
 Restore if a bad merge occurs:
 
 ```bash
-cp ~/.numbered_backups/Users/deibhaid/ws/github/quickjobs/quickjobs.david.base.json_<date>_<time> \
+cp ~/.numbered_backups/path/to/quickjobs/quickjobs.david.base.json_<date>_<time> \
    ~/ws/github/quickjobs/quickjobs.david.base.json
 ~/.v/bin/python scripts/discover/discover_cli.py validate
 quickjobs sync
@@ -530,11 +530,11 @@ See `~/.numbered_backups/INDEX.md` for the full backup index.
 
 ### Sync validation failure
 
-If `discover-sync` fails post-write validation, it prints restore instructions. Do not sync to wulf until validation passes.
+If `discover-sync` fails post-write validation, it prints restore instructions. Do not sync to remote until validation passes.
 
 ---
 
-## Remote host (wulf)
+## Remote host (remote)
 
 ### What sync pushes
 
@@ -543,9 +543,9 @@ If `discover-sync` fails post-write validation, it prints restore instructions. 
 3. Runtime sidecar from `~/.job_search/quickjobs/david/job-board-runtime.json`
 4. HTML / snapshot / digest only when `QUICKJOBS_SYNC_PUSH_DATA=1`
 
-### Environment on wulf (`quickjobs-run`)
+### Environment on remote (`quickjobs-run`)
 
-| Variable | Default on wulf | Meaning |
+| Variable | Default on remote | Meaning |
 |----------|-----------------|---------|
 | `QUICKJOBS_JOBS_DIR` | `/mnt/Uploads/html` | HTML output directory |
 | `JOB_SEARCH_DIR` | same as jobs dir | Runtime sidecar root |
@@ -553,7 +553,7 @@ If `discover-sync` fails post-write validation, it prints restore instructions. 
 | `QUICKJOBS_HTTP_WORKERS` | 16 | Parallel HTTP company pool |
 | `QUICKJOBS_NO_REMOTE_SYNC` | 1 | Cron/run does not rsync back to Mac |
 
-Transient files on wulf (not synced):
+Transient files on remote (not synced):
 
 - `/tmp/quickjobs/david/cache/` — HTTP response cache
 - `/tmp/quickjobs/<namespace>/scrape-checkpoint.jsonl` — resume checkpoint
@@ -569,15 +569,15 @@ Transient files on wulf (not synced):
 
 Port 8765 is reserved for the pipeline autosave workflow, not general preview.
 
-### Rebuild snapshot on wulf
+### Rebuild snapshot on remote
 
 ```bash
 quickjobs-run rebuild-snapshot
 ```
 
-### Cron on wulf
+### Cron on remote
 
-Daily scrape is typically cron-driven on wulf with `QUICKJOBS_VERIFY_ALL=1` and `QUICKJOBS_NO_REMOTE_SYNC=1`. Use `quickjobs deploy` or `quickjobs-server/install-server-cron` for setup. Edit code on Mac and `quickjobs sync` rather than editing files directly on wulf.
+Daily scrape is typically cron-driven on remote with `QUICKJOBS_VERIFY_ALL=1` and `QUICKJOBS_NO_REMOTE_SYNC=1`. Use `quickjobs deploy` or `quickjobs-server/install-server-cron` for setup. Edit code on Mac and `quickjobs sync` rather than editing files directly on remote.
 
 ---
 
@@ -606,9 +606,9 @@ Adding many companies via `discover-sync` increases scrape time linearly. Expect
 
 Some employers return no matching jobs after keyword/salary/location filters. The board can hide zero-yield sidebar entries (`profile.board_ui.hide_zero_yield_sidebar`). Job Sources then lists only employers with primary-board listing cards (not excluded/pass-only rows under Show Hidden). This is display-only; the company remains in base.json unless you remove it or add to `company_ids_exclude`.
 
-### Dev board differs from wulf board
+### Dev board differs from remote board
 
-Expected if wulf scraped more recently than your local HTML. Fix: wait for cron, run `quickjobs sync,run`, or copy published HTML from wulf. Default sync does not pull remote HTML to Mac.
+Expected if remote scraped more recently than your local HTML. Fix: wait for cron, run `quickjobs sync,run`, or copy published HTML from remote. Default sync does not pull remote HTML to Mac.
 
 ### Stale pipeline state
 
@@ -631,7 +631,7 @@ quickjobs resume    # if checkpoint exists
 
 ### SSH / sync retries
 
-Sync retries SSH/rsync up to 3 times with DNS IP fallback. If sync fails persistently, check VPN, `~/.ssh/config`, and that wulf is reachable on port 222.
+Sync retries SSH/rsync up to 3 times with DNS IP fallback. If sync fails persistently, check VPN, `~/.ssh/config`, and that remote is reachable on port 222.
 
 ---
 
@@ -640,7 +640,7 @@ Sync retries SSH/rsync up to 3 times with DNS IP fallback. If sync fails persist
 - Do not full-scan `~/Downloads/jobs/job-search-david.html` (~64 MB) with `grep`, `rg`, or unbounded reads. Spot-check with `rg -m 5 'pattern' path` or search Python source instead.
 - Do not commit secrets (SSH keys, session cookies, `.wellfound-session.json`) to the repo.
 - Do not use port 8765 for casual HTML preview while pipeline autosave may be active.
-- Do not edit `quickjobs.david.base.json` on wulf; edit on Mac, validate, then `quickjobs sync`.
+- Do not edit `quickjobs.david.base.json` on remote; edit on Mac, validate, then `quickjobs sync`.
 - Do not merge pipeline state into `base.json`; runtime lives in the sidecar JSON.
 - Do not run `dedup --apply`; it is not implemented.
 - Do not skip validation before sync after manual JSON edits.
@@ -660,8 +660,8 @@ Sync retries SSH/rsync up to 3 times with DNS IP fallback. If sync fails persist
 | Report ATS duplicates | `~/.v/bin/python scripts/discover/discover_cli.py dedup` |
 | Partial scrape | `quickjobs run --only company-id` |
 | Scrape status | `quickjobs results` or `quickjobs status` |
-| Rebuild HTML (wulf) | `quickjobs sync,rebuild` or `quickjobs-run --rebuild` |
-| Push pipeline to wulf | `quickjobs sync` |
+| Rebuild HTML (remote) | `quickjobs sync,rebuild` or `quickjobs-run --rebuild` |
+| Push pipeline to remote | `quickjobs sync` |
 | Open board | `open ~/Downloads/jobs/job-search-david.html` |
 
 For developer-oriented repo layout, sync internals, and hub tooling tables, see [README.md](README.md).

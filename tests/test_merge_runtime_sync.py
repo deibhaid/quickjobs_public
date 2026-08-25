@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for Mac/wulf runtime merge used by quickjobs sync."""
+"""Tests for Mac/remote runtime merge used by quickjobs sync."""
 
 from __future__ import annotations
 

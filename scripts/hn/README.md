@@ -89,5 +89,5 @@ This script never touches your crontab. Print an example line with `--print-cron
 
 ```cron
 # Monthly HN 'Who is hiring' employer-catalog refresh (7th, 07:20). Uses ~/.v python; no cd needed.
-20 7 7 * * cron-exec /Users/deibhaid/.v/bin/python /Users/deibhaid/ws/github/quickjobs/scripts/hn/discover_hn_employers.py --threads 2 --max-fingerprint 40
+20 7 7 * * cron-exec /path/to/venv/bin/python /path/to/quickjobs/scripts/hn/discover_hn_employers.py --threads 2 --max-fingerprint 40
 ```

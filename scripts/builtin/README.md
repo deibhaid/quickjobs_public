@@ -88,5 +88,5 @@ Notes:
 
 ```cron
 # Weekly Built In remote employer-catalog refresh (Tuesdays 07:25). Uses ~/.v python; no cd needed.
-25 7 * * 2 cron-exec /Users/deibhaid/.v/bin/python /Users/deibhaid/ws/github/quickjobs/scripts/builtin/discover_builtin_employers.py --pages 5 --max-fingerprint 40 --fingerprint api
+25 7 * * 2 cron-exec /path/to/venv/bin/python /path/to/quickjobs/scripts/builtin/discover_builtin_employers.py --pages 5 --max-fingerprint 40 --fingerprint api
 ```

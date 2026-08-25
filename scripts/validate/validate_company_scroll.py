@@ -136,7 +136,7 @@ def _audit_rendered(out_path: Path) -> list[str]:
 
 
 def main() -> int:
-    out = Path("/Users/deibhaid/Downloads/jobs/job-search-david.html")
+    out = Path("/path/to/jobs/job-search-david.html")
     if len(sys.argv) > 1:
         out = Path(sys.argv[1])
     if not out.is_file():

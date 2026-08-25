@@ -10,7 +10,7 @@ LIST_POSITIONS="${SCRIPT_DIR}/list_scrape_positions.py"
 LOG_DIR="${QUICKJOBS_PHASE_LOG_DIR:-${HOME}/ws/scriptdir/output/quickjobs-reports/phase-isolation}"
 PYTHON="${QUICKJOBS_PYTHON:-${HOME}/.v/bin/python}"
 
-SSH_HOST="${QUICKJOBS_SSH_HOST:-dawib@dawib.synology.me}"
+SSH_HOST="${QUICKJOBS_SSH_HOST:-user@remote.example}"
 SSH_PORT="${QUICKJOBS_SSH_PORT:-222}"
 REMOTE=0
 DRY_RUN=0
@@ -51,7 +51,7 @@ Tests:
   check-latest             check_run_timing on latest phase log
 
 Options:
-  --remote    Run quickjobs-run on wulf via ssh (default: local quickjobs-run)
+  --remote    Run quickjobs-run on remote via ssh (default: local quickjobs-run)
   --dry-run   Print commands only
   --list-window  Same as test list-window
 

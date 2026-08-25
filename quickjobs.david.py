@@ -833,9 +833,9 @@ def merge_runtime_documents_for_sync(
     *,
     also_pipeline_docs: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Merge Mac pipeline edits with wulf scrape novelty state.
+    """Merge Mac pipeline edits with remote scrape novelty state.
 
-    Sync used to rsync the whole local runtime onto wulf, which could replace a
+    Sync used to rsync the whole local runtime onto remote, which could replace a
     fresh remote ``state.urls`` / ``run_at`` with a stale Mac copy and mark
     thousands of jobs NEW. Keep the newer scrape state; merge pipeline rows.
 
@@ -5262,7 +5262,7 @@ def salary_floor_label(cfg: dict[str, Any]) -> str:
 
 
 PORTLAND_METRO_COMMUTABLE_MARKERS = (
-    "lake oswego",
+    "example city",
     "portland",
     "beaverton",
     "hillsboro",
@@ -5289,7 +5289,7 @@ PORTLAND_METRO_COMMUTABLE_MARKERS = (
     "vancouver wa",
     "camas",
     "washougal",
-    "97035",
+    "00000",
     "97034",
     "97045",
     "97201",
@@ -5299,7 +5299,7 @@ PORTLAND_METRO_COMMUTABLE_MARKERS = (
     "97230",
 )
 
-NON_COMMUTABLE_FROM_97035_MARKERS = (
+NON_COMMUTABLE_FROM_HOME_ZIP_MARKERS = (
     "california",
     ", ca",
     " ca,",
@@ -5367,7 +5367,7 @@ def portland_metro_marker_in_text(text: str) -> bool:
         if not m:
             continue
         if re.search(r"[,\s]", m):
-            # Multi-token markers ("lake oswego", "vancouver, wa"): flexible separators.
+            # Multi-token markers ("example city", "vancouver, wa"): flexible separators.
             pat = re.escape(m).replace(r"\ ", r"[\s,]+")
             if re.search(pat, lower):
                 return True
@@ -5385,7 +5385,7 @@ def _single_site_within_local_radius(site: str, cfg: dict[str, Any] | None = Non
         return False
     if "vancouver" in lower and ("wa" in lower or "washington" in lower):
         return True
-    if any(marker in lower for marker in NON_COMMUTABLE_FROM_97035_MARKERS):
+    if any(marker in lower for marker in NON_COMMUTABLE_FROM_HOME_ZIP_MARKERS):
         return False
     if portland_metro_marker_in_text(lower):
         return True
@@ -5403,14 +5403,14 @@ def location_within_local_radius(location_name: str, cfg: dict[str, Any] | None 
 
 
 def profile_home_state_name(cfg: dict[str, Any] | None = None) -> str:
-    """Full US state name for profile home (e.g. Oregon for 97035)."""
+    """Full US state name for profile home (e.g. Oregon for 00000)."""
     code = profile_home_us_state(cfg or {})
     return US_STATE_CODE_TO_NAME.get(code, code)
 
 
 def profile_context(cfg: dict[str, Any]) -> dict[str, str]:
     p = cfg.get("profile", {})
-    home_zip = str(p.get("home_zip", "97035"))
+    home_zip = str(p.get("home_zip", "00000"))
     radius = int(p.get("local_radius_miles", 50))
     local_badge = f"≤{radius} mi from {home_zip}"
     home_state = profile_home_us_state(cfg)
@@ -5490,7 +5490,7 @@ def validate_static_config(
     *,
     check_py: bool = True,
 ) -> list[str]:
-    """Validate the static bundle (py + JSON) before rsync to wulf. Empty list = ok."""
+    """Validate the static bundle (py + JSON) before rsync to remote. Empty list = ok."""
     import py_compile
 
     issues: list[str] = []
@@ -9504,12 +9504,12 @@ AFFIRM_OTHER_STATE_MARKERS = (
 
 
 def profile_home_us_state(cfg: dict[str, Any]) -> str:
-    """Two-letter US state for salary geo heuristics (defaults OR for 97035)."""
+    """Two-letter US state for salary geo heuristics (defaults OR for 00000)."""
     profile = cfg.get("profile") or {}
     explicit = str(profile.get("home_state") or "").strip().upper()
     if len(explicit) == 2 and explicit.isalpha():
         return explicit
-    home_zip = str(profile.get("home_zip", "97035")).strip()
+    home_zip = str(profile.get("home_zip", "00000")).strip()
     if home_zip.startswith("97"):
         return "OR"
     return "OR"
@@ -15012,7 +15012,7 @@ def verify_jobs(
         if not force and posting_url_skip_verify(job.url):
             live.append(job)
             continue
-        # Company/job skip_verify is ignored when QUICKJOBS_VERIFY_ALL=1 (wulf cron)
+        # Company/job skip_verify is ignored when QUICKJOBS_VERIFY_ALL=1 (remote cron)
         # or rebuild-snapshot --verify-urls (ignore_skip).
         if (
             not force
@@ -15387,7 +15387,7 @@ def siemens_location_reject(location: str) -> bool:
     lower = str(location or "").lower()
     if not lower:
         return False
-    return any(marker in lower for marker in NON_COMMUTABLE_FROM_97035_MARKERS)
+    return any(marker in lower for marker in NON_COMMUTABLE_FROM_HOME_ZIP_MARKERS)
 
 
 def siemens_parse_search(html_text: str) -> list[str]:
@@ -26968,7 +26968,7 @@ def run_bucketed_http_company_pool(
 
 
 def parallel_playwright_max_workers(company_count: int) -> int:
-    """Independent Chromium per company; keep low on laptops, raise on wulf via env."""
+    """Independent Chromium per company; keep low on laptops, raise on remote via env."""
     configured = _env_worker_count("QUICKJOBS_PLAYWRIGHT_WORKERS", 1, cap=8)
     return max(1, min(configured, company_count))
 
@@ -29295,7 +29295,7 @@ def lazy_board_sidecars_dir(out_path: Path) -> Path:
 def embed_lazy_board_in_html() -> bool:
     """Portable (QUICKJOBS_ROOT) embeds payloads so file:// still works.
 
-    David/Synology HTTP boards omit large inline blobs and load json_sidecars via
+    David/NAS HTTP boards omit large inline blobs and load json_sidecars via
     fetch. Override with QUICKJOBS_EMBED_LAZY_BOARD=0|1.
     """
     raw = str(os.environ.get("QUICKJOBS_EMBED_LAZY_BOARD") or "").strip().lower()
@@ -29353,7 +29353,7 @@ def write_compressed_sidecar_copies(path: Path) -> None:
 
 
 def write_lazy_board_sidecars(out_path: Path, lazy_board: LazyBoardCollector) -> Path:
-    """Write json_sidecars/*.json next to the board HTML (always; portable + Synology)."""
+    """Write json_sidecars/*.json next to the board HTML (always; portable + NAS)."""
     side_dir = lazy_board_sidecars_dir(out_path)
     side_dir.mkdir(parents=True, exist_ok=True)
     payloads = {
@@ -29899,18 +29899,18 @@ def render_primary_section_body(
 
 
 def _script_dir_is_wulf_remote() -> bool:
-    """True when SCRIPT_DIR is the Synology/wulf tree (even after macOS firmlink resolve)."""
+    """True when SCRIPT_DIR is the NAS/remote tree (even after macOS firmlink resolve)."""
     script_s = Path(SCRIPT_DIR).expanduser().as_posix()
     markers = (
-        "/home/dawib/",
-        "/var/services/homes/dawib/",
-        "/System/Volumes/Data/home/dawib/",
+        "/home/user/",
+        "/var/services/homes/user/",
+        "/System/Volumes/Data/home/user/",
     )
     return any(m in script_s for m in markers)
 
 
 def edit_config_root_for_board() -> Path:
-    """Mac folder to link/edit when the board HTML is built on wulf.
+    """Mac folder to link/edit when the board HTML is built on remote.
 
     Browser File System Access cannot open an absolute path, but we show these
     paths and use stable picker ids so Chrome remembers the last folder used.
@@ -29918,10 +29918,10 @@ def edit_config_root_for_board() -> Path:
     env = os.environ.get("QUICKJOBS_EDIT_CONFIG_ROOT", "").strip()
     if env:
         return Path(env).expanduser()
-    # Avoid Path.resolve() for the wulf check: on macOS, /home/dawib/... can
-    # firmlink-resolve to /System/Volumes/Data/home/dawib/...
+    # Avoid Path.resolve() for the remote check: on macOS, /home/user/... can
+    # firmlink-resolve to /System/Volumes/Data/home/user/...
     if _script_dir_is_wulf_remote():
-        return Path("/Users/deibhaid/ws/github/quickjobs")
+        return Path("/path/to/quickjobs")
     return Path(SCRIPT_DIR).expanduser().resolve()
 
 
@@ -30032,7 +30032,7 @@ def remove_stale_edit_config_picker_symlinks(
 
 
 def resolve_config_display_paths() -> list[tuple[str, str]]:
-    """Human-readable config paths for the board footer (Mac edit paths when on wulf)."""
+    """Human-readable config paths for the board footer (Mac edit paths when on remote)."""
     edit_paths = edit_config_paths_for_board()
     edit_root = edit_config_root_for_board()
     if _script_dir_is_wulf_remote() or edit_root.resolve() != Path(
@@ -30406,7 +30406,7 @@ def build_html(
     out_path: Path | None = None,
 ) -> str:
     profile = cfg.get("profile", {})
-    name = profile.get("name", "David W. Bryson")
+    name = profile.get("name", "User")
     pctx = profile_context(cfg)
     home_zip = pctx["home_zip"]
     local_badge = pctx["local_badge"]
@@ -30595,7 +30595,7 @@ def build_html(
     deferred_json_raw = lazy_board.to_deferred_payload_json()
     if out_path is not None:
         write_lazy_board_sidecars(out_path, lazy_board)
-    # Portable embeds full payloads (file:// fallback). Synology/david HTTP boards
+    # Portable embeds full payloads (file:// fallback). NAS/david HTTP boards
     # omit large inline blobs; the browser loads json_sidecars/ via fetch first.
     if embed_lazy_board_in_html():
         lazy_board_index_json = index_json_raw.replace("</", r"<\/")
@@ -32801,7 +32801,7 @@ def build_html(
         );
       }} else {{
         setPipelineSaveStatus(
-          `Link runtime file once (${{defaultRuntimePathLabel()}}), then quickjobs sync pushes to wulf.`
+          `Link runtime file once (${{defaultRuntimePathLabel()}}), then quickjobs sync pushes to remote.`
         );
       }}
     }}
@@ -37032,7 +37032,7 @@ def _lazy_board_embed_script_body(html_text: str, script_id: str) -> str | None:
 
 
 def html_uses_lazy_board_stubs(html_text: str) -> bool:
-    """True when Synology-style stub embeds are present (data lives in json_sidecars/)."""
+    """True when NAS-style stub embeds are present (data lives in json_sidecars/)."""
     index_raw = _lazy_board_embed_script_body(html_text, "lazy-board-index")
     payload_raw = _lazy_board_embed_script_body(html_text, "lazy-board-payload")
     if index_raw is None and payload_raw is None:

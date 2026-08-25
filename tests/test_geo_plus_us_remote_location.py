@@ -81,12 +81,12 @@ class GeoPlusUsRemoteLocationTests(unittest.TestCase):
 
     def test_hillsborough_nh_is_not_portland_hillsboro(self) -> None:
         """Substring 'hillsboro' must not match Hillsborough County, NH."""
-        cfg = {"profile": {"home_zip": "97035", "local_radius_miles": 50}}
+        cfg = {"profile": {"home_zip": "00000", "local_radius_miles": 50}}
         self.assertFalse(mod.location_within_local_radius("Hillsborough County, NH", cfg))
         self.assertFalse(mod.portland_metro_marker_in_text("Hillsborough County, NH"))
         self.assertTrue(mod.location_within_local_radius("Hillsboro, OR", cfg))
         self.assertTrue(mod.portland_metro_marker_in_text("Hillsboro, OR"))
-        self.assertTrue(mod.location_within_local_radius("Lake Oswego, OR", cfg))
+        self.assertTrue(mod.location_within_local_radius("Example City, OR", cfg))
 
 
 if __name__ == "__main__":

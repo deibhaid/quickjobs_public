@@ -492,7 +492,7 @@ def run_block_tier_checks(mod, cfg: dict) -> list[str]:
     ]
     if bands != expected_bands:
         failures.append(f"block_tier/bands: expected {expected_bands!r}, got {bands!r}")
-    cfg_or = {"profile": {"salary_floor": 200_000, "home_zip": "97035", "home_state": "OR"}}
+    cfg_or = {"profile": {"salary_floor": 200_000, "home_zip": "00000", "home_state": "OR"}}
     for name, (location_name, exp_low, exp_high) in BLOCK_TIER_EXPECTATIONS.items():
         use_cfg = cfg if name != "block_unknown_remote" else {
             "profile": {"salary_floor": 200_000, "home_zip": "73301", "home_state": "TX"},
@@ -536,7 +536,7 @@ def run_checks(module_path: Path, label: str) -> list[str]:
             continue
         if result != expected:
             failures.append(f"{label}/{name}: expected {expected!r}, got {result!r}")
-    cfg = {"profile": {"salary_floor": 200_000, "home_zip": "97035", "home_state": "OR"}}
+    cfg = {"profile": {"salary_floor": 200_000, "home_zip": "00000", "home_state": "OR"}}
     failures.extend(run_playwright_icims_salary_checks(mod, cfg))
     failures.extend(run_affirm_tier_checks(mod, cfg))
     failures.extend(run_blackrock_location_checks(mod, cfg))

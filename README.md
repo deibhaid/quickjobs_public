@@ -18,7 +18,7 @@ sync, or board HTML/JS. Operator day-to-day steps (Mac ↔ remote host) live in
 
 | Product | Audience | Entry point |
 |---------|----------|-------------|
-| David / primary fork | David's Mac + remote scrape host (wulf) | `quickjobs.david.py` |
+| David / primary fork | David's Mac + remote scrape host (remote) | `quickjobs.david.py` |
 | Portable zip | Any user (e.g. Naiyyar Farooqui test install) | Built `quickjobs.py` via `run.py` |
 
 Development happens in `quickjobs.david.*` sources. The portable package is a
@@ -76,7 +76,7 @@ not copy `quickjobs.david.py` into a portable tree.
    `lazy_board_descriptions.json`, `lazy_board_deferred.json`) next to the HTML.
    The browser `fetch`es those first. Portable builds also embed the same JSON in
    `<script id="lazy-board-*">` tags so `file://` still works if fetch fails.
-   David/Synology HTTP boards omit the large inline blobs (stubs only). Do not
+   David/NAS HTTP boards omit the large inline blobs (stubs only). Do not
    re-merge into a single giant `lazy-board-data` inline JSON. Prefer gzip/brotli
    on the sidecar JSON at the HTTP server (precompressed `.gz`/`.br` are written
    next to each sidecar when libraries allow).
@@ -86,7 +86,7 @@ not copy `quickjobs.david.py` into a portable tree.
     Stamp uses slashes. `run_log.py` must not double-prefix that line (see
     `line_is_progress_status`). Do not reintroduce mashed dual timestamps.
 
-11. **Python env:** agent shells and pip use `~/.v` (`/Users/deibhaid/.v/bin/python`).
+11. **Python env:** agent shells and pip use `~/.v` (`/path/to/venv/bin/python`).
     Script shebangs stay `#!/usr/bin/env python3`.
 
 12. **Do not modify** user crontab, `~/local/bin/cron-exec`, or install-cron
@@ -207,7 +207,7 @@ from `sector=aviation` in base), `config/no-visa-sponsor-company-ids.json`.
 | `$JOB_SEARCH_DIR` | Runtime sidecar (david default under `~/.job_search/quickjobs/…`) |
 | `profile.jobs_dir` | HTML output (david: often `~/Downloads/jobs`) |
 | `~/ws/scriptdir/output/quickjobs-portable.zip` | Portable zip output |
-| Remote host (wulf) | Cron / `quickjobs-run` scrape + published HTML |
+| Remote host (remote) | Cron / `quickjobs-run` scrape + published HTML |
 
 ---
 
@@ -500,7 +500,7 @@ Greenhouse: `type: greenhouse` + `board` slug; API
 `boards-api.greenhouse.io/v1/boards/{board}/jobs`.
 
 Open-file limit on Linux hosts: `quickjobs-raise-nofile` /
-`scripts/maintenance/install-ulimits-wulf.sh`.
+`scripts/maintenance/install-ulimits-remote.sh`.
 
 ---
 
@@ -527,7 +527,7 @@ Open-file limit on Linux hosts: `quickjobs-raise-nofile` /
 
 ## Releases
 
-Repo: `deibhaid/quickjobs`. Draft releases preferred; tag `vX.Y.Z`, title `X.Y.Z`;
+Repo: `YOUR_GITHUB_USER/quickjobs`. Draft releases preferred; tag `vX.Y.Z`, title `X.Y.Z`;
 tenths versioning (`0.0.9` → `0.1.0`).
 
 On your Mac (personal `gh` auth):
@@ -573,7 +573,7 @@ Bumps from the highest existing release (published or draft). Agents must not ru
 
 | Doc | Use when |
 |-----|----------|
-| [HOWTO.md](HOWTO.md) | Daily Mac/wulf operator workflow |
+| [HOWTO.md](HOWTO.md) | Daily Mac/remote operator workflow |
 | [portable/ARCHITECTURE.txt](portable/ARCHITECTURE.txt) | Portable paths + visa layers |
 | [portable/README.md](portable/README.md) | Unzip → configure → run |
 | `scripts/*/README.md` | Discover / Dice / HN / hubs |

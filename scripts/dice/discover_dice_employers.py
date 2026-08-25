@@ -1031,7 +1031,7 @@ def write_reports(
 CRON_EXAMPLE = (
     "# Weekly Dice employer-catalog refresh (Mondays 07:15). Uses ~/.v python; "
     "no cd needed.\n"
-    "15 7 * * 1 cron-exec /Users/deibhaid/.v/bin/python "
+    "15 7 * * 1 cron-exec /path/to/venv/bin/python "
     f"{SCRIPT_PATH} --max-fingerprint 40\n"
 )
 

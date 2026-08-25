@@ -436,7 +436,7 @@ class LinkedInJobsTests(unittest.TestCase):
 
     def test_remote_us_pass_forces_remote_loc(self) -> None:
         qj = self.qj
-        cfg = {"profile": {"salary_floor": 200_000, "home_zip": "97035", "local_radius_miles": 50}}
+        cfg = {"profile": {"salary_floor": 200_000, "home_zip": "00000", "local_radius_miles": 50}}
         raw = qj.linkedin_listing_to_raw(
             {
                 "job_id": "2",
@@ -456,7 +456,7 @@ class LinkedInJobsTests(unittest.TestCase):
 
     def test_remote_us_city_hq_with_li_remote_still_forces(self) -> None:
         qj = self.qj
-        cfg = {"profile": {"salary_floor": 200_000, "home_zip": "97035", "local_radius_miles": 50}}
+        cfg = {"profile": {"salary_floor": 200_000, "home_zip": "00000", "local_radius_miles": 50}}
         raw = qj.linkedin_listing_to_raw(
             {
                 "job_id": "2b",
@@ -476,7 +476,7 @@ class LinkedInJobsTests(unittest.TestCase):
     def test_remote_us_dallas_hybrid_dropped(self) -> None:
         """Hybrid / bare city from remote pass must not become Remote US (guest f_WT is ignored)."""
         qj = self.qj
-        cfg = {"profile": {"salary_floor": 200_000, "home_zip": "97035", "local_radius_miles": 50}}
+        cfg = {"profile": {"salary_floor": 200_000, "home_zip": "00000", "local_radius_miles": 50}}
         raw = qj.linkedin_listing_to_raw(
             {
                 "job_id": "4456187750",
@@ -513,7 +513,7 @@ class LinkedInJobsTests(unittest.TestCase):
     def test_remote_us_city_onsite_noise_dropped(self) -> None:
         """City HQ / onsite titles from remote pass are dropped."""
         qj = self.qj
-        cfg = {"profile": {"salary_floor": 200_000, "home_zip": "97035", "local_radius_miles": 50}}
+        cfg = {"profile": {"salary_floor": 200_000, "home_zip": "00000", "local_radius_miles": 50}}
         for listing in (
             {
                 "job_id": "4455799302",
@@ -570,7 +570,7 @@ class LinkedInJobsTests(unittest.TestCase):
 
     def test_remote_us_pass_keeps_portland_local(self) -> None:
         qj = self.qj
-        cfg = {"profile": {"salary_floor": 200_000, "home_zip": "97035", "local_radius_miles": 50}}
+        cfg = {"profile": {"salary_floor": 200_000, "home_zip": "00000", "local_radius_miles": 50}}
         raw = qj.linkedin_listing_to_raw(
             {
                 "job_id": "3",
@@ -590,7 +590,7 @@ class LinkedInJobsTests(unittest.TestCase):
     def test_remote_us_hillsborough_nh_not_treated_as_local(self) -> None:
         """Hillsborough, NH must not match Hillsboro metro; bare city remote-pass is dropped."""
         qj = self.qj
-        cfg = {"profile": {"salary_floor": 200_000, "home_zip": "97035", "local_radius_miles": 50}}
+        cfg = {"profile": {"salary_floor": 200_000, "home_zip": "00000", "local_radius_miles": 50}}
         raw = qj.linkedin_listing_to_raw(
             {
                 "job_id": "4406977268",
@@ -655,7 +655,7 @@ class LinkedInJobsTests(unittest.TestCase):
 
     def test_dedupe_marks_non_local_remote_pass(self) -> None:
         qj = self.qj
-        cfg = {"profile": {"salary_floor": 200_000, "home_zip": "97035", "local_radius_miles": 50}}
+        cfg = {"profile": {"salary_floor": 200_000, "home_zip": "00000", "local_radius_miles": 50}}
         company = {
             "id": "linkedin-dedupe-test",
             "name": "LinkedIn",

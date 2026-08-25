@@ -25,7 +25,7 @@ BASE_JSON = hub_tools.BASE_JSON
 
 DEFAULT_SP500_MD = (
     Path.home()
-    / ".cursor/projects/Users-deibhaid-ws-github/uploads/List_of_S_P_500_companies-1.md"
+    / ".cursor/projects/Users-example-ws-github/uploads/List_of_S_P_500_companies-1.md"
 )
 DEFAULT_NASDAQ_MD = hub_tools.REPO_ROOT / "data" / "nasdaq100-slickcharts.md"
 NASDAQ_URL = "https://www.slickcharts.com/nasdaq100"

@@ -37,7 +37,7 @@ if [[ ! -d "${PRIVATE_DIR}" ]]; then
   exit 1
 fi
 if [[ ! -d "${PUBLIC_DIR}" ]]; then
-  echo "Public dir missing: ${PUBLIC_DIR} (clone deibhaid/quickjobs_public first)" >&2
+  echo "Public dir missing: ${PUBLIC_DIR} (clone YOUR_GITHUB_USER/quickjobs_public first)" >&2
   exit 1
 fi
 
@@ -98,11 +98,15 @@ for f in \
  do
   copy_file "${f}"
 done
+# sanitize_public_tree.py stays private-only (its pattern table contains personal needles)
 
-# Trees
+# Trees (omit personal remote-host setup helpers)
 for d in config portable scripts tests; do
   copy_tree "${d}"
 done
+# Personal / private-only tooling — never publish
+rm -f "${PUBLIC_DIR}/scripts/maintenance/install-ulimits-remote.sh"
+rm -f "${PUBLIC_DIR}/scripts/_shared/sanitize_public_tree.py"
 
 # Public .gitignore: track placeholder profile (do not ignore *.profile.json).
 cat >"${PUBLIC_DIR}/.gitignore" <<'EOF'
@@ -128,9 +132,6 @@ data/
 # Generated portable packages
 *.zip
 
-# Accidental local junk
-]*
-
 # OS / editor
 .DS_Store
 *.swp
@@ -144,7 +145,8 @@ EOF
 cp -f "${EXAMPLE_PROFILE}" "${PUBLIC_DIR}/quickjobs.david.profile.json"
 
 "${PY}" "${PRIVATE_DIR}/scripts/_shared/apply_public_stubs.py" --public-dir "${PUBLIC_DIR}"
+"${PY}" "${PRIVATE_DIR}/scripts/_shared/sanitize_public_tree.py" --public-dir "${PUBLIC_DIR}"
 
 echo "Synced private → public: ${PUBLIC_DIR}"
-echo "Placeholder profile installed; LinkedIn/Glassdoor stubs applied."
+echo "Placeholder profile installed; stubs + personal scrub applied."
 echo "Review, commit, and push from ${PUBLIC_DIR} with your own gh auth."

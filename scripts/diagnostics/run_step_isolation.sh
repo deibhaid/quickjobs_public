@@ -11,8 +11,8 @@ CHECK_TIMING="${SCRIPT_DIR}/check_run_timing.py"
 SYNC_REMOTE="${HOME}/local/bin/quickjobs-server/sync-remote"
 QUICKJOBS_DIR="${REPO_ROOT}"
 SSH_PORT="${QUICKJOBS_SSH_PORT:-222}"
-REMOTE_USER="${QUICKJOBS_REMOTE_USER:-dawib}"
-REMOTE_HOST="${QUICKJOBS_REMOTE_HOST:-dawib.synology.me}"
+REMOTE_USER="${QUICKJOBS_REMOTE_USER:-user}"
+REMOTE_HOST="${QUICKJOBS_REMOTE_HOST:-remote.example}"
 REMOTE="${REMOTE_USER}@${REMOTE_HOST}"
 SSH_OPTS="-p ${SSH_PORT} -o ConnectTimeout=15"
 
@@ -52,7 +52,7 @@ scrape_guard() {
     return 0
   fi
   if wulf_scrape_running; then
-    log "FAIL: wulf quickjobs.david.py already running (see quickjobs results)"
+    log "FAIL: remote quickjobs.david.py already running (see quickjobs results)"
     log "Stop the stuck run or set QUICKJOBS_ISOLATION_FORCE=1 to override."
     return 1
   fi
@@ -120,7 +120,7 @@ run_timing_check() {
   log "timing: ${log_path}"
   local out rc
   set +e
-  out="$(remote_ssh "/home/dawib/.v/bin/python ${CHECK_TIMING} --baselines ${BASELINES} ${log_path}" 2>&1)"
+  out="$(remote_ssh "/home/user/.venv/bin/python ${CHECK_TIMING} --baselines ${BASELINES} ${log_path}" 2>&1)"
   rc=$?
   set -e
   printf '%s\n' "${out}" >>"${STEP_LOG}"
@@ -397,7 +397,7 @@ step_check_stalled_log() {
   local stalled="${REPORTS_DIR}/quickjobs-run-2026-06-23T180936Z.log"
   init_step_log "check-stalled-log"
   if [[ ! -f "${stalled}" ]]; then
-  # try fetch from wulf
+  # try fetch from remote
     set +e
     scp ${SSH_OPTS} "${REMOTE}:~/ws/scriptdir/output/quickjobs-reports/quickjobs-run-2026-06-23T180936Z.log" \
       "${stalled}" 2>&1 | tee -a "${STEP_LOG}"
@@ -433,16 +433,16 @@ print_list() {
 Steps (run: ./run_step_isolation.sh <name>):
 
   portable              Build portable zip (Mac)
-  ssh-ping              SSH connectivity to wulf
+  ssh-ping              SSH connectivity to remote
   sync-validate         Static config validate only
-  sync-code             Rsync code/config to wulf
-  sync-bins             Rsync quickjobs-run wrappers to wulf
+  sync-code             Rsync code/config to remote
+  sync-bins             Rsync quickjobs-run wrappers to remote
   sync-pipeline         Push job-board-runtime.json
   sync-glassdoor        Push glassdoor cache
   sync-data             Sync with QUICKJOBS_SYNC_PUSH_DATA=1
   sync-full             Full quickjobs sync (default skip HTML)
   run-no-sync           Full board, QUICKJOBS_SYNC_BEFORE_RUN=0
-  only-<id>             Single company --only on wulf (e.g. only-bae-systems)
+  only-<id>             Single company --only on remote (e.g. only-bae-systems)
   stall-batch           Stall zone 5-company batch
   http-w1-batch         3-co batch, QUICKJOBS_HTTP_WORKERS=1
   http-w16-batch        3-co batch, QUICKJOBS_HTTP_WORKERS=16
@@ -451,7 +451,7 @@ Steps (run: ./run_step_isolation.sh <name>):
   playwright-sample     nike, microsoft, google
   playwright-all        All 25 Playwright companies
   verify-small          QUICKJOBS_VERIFY_ALL=1 on 3 HTTP companies
-  post-scrape-rebuild   rebuild-snapshot on wulf (no scrape)
+  post-scrape-rebuild   rebuild-snapshot on remote (no scrape)
   check-stalled-log     Timing check on 180936Z stalled run
   list                  This help
 

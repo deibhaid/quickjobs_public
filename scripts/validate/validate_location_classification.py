@@ -26,7 +26,7 @@ def _load_cfg() -> dict:
     for path in candidates:
         if path.is_file():
             return json.loads(path.read_text(encoding="utf-8"))
-    return {"profile": {"home_zip": "97035", "local_radius_miles": 50}}
+    return {"profile": {"home_zip": "00000", "local_radius_miles": 50}}
 
 
 def _run_cases(mod, cfg: dict, label: str, cases: list[tuple[str, str, str]]) -> list[str]:
@@ -1406,7 +1406,7 @@ def main() -> int:
                     f"{mod.profile_context(cfg).get('remote_from_home_label')!r}, expected Remote from Oregon"
                 )
             else:
-                print("  [ok] remote_from_home_label is Remote from Oregon for 97035 profile")
+                print("  [ok] remote_from_home_label is Remote from Oregon for 00000 profile")
             failures.extend(_run_nationwide_us_remote_matrix(mod, path.name, cfg))
             failures.extend(_run_nus_implies_remote_from_home(mod, path.name, cfg))
             print(f"=== {path.name} (location audit normalization) ===")

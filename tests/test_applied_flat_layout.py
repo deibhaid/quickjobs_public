@@ -28,7 +28,7 @@ class TestAppliedFlatLayout(unittest.TestCase):
 
     def test_render_pipeline_section_is_flat_date_sorted(self) -> None:
         mod = self.qj
-        cfg = {"companies": [], "profile": {"home_zip": "97035"}}
+        cfg = {"companies": [], "profile": {"home_zip": "00000"}}
         jobs = [
             mod.Job(
                 title="Older Role",
@@ -52,7 +52,7 @@ class TestAppliedFlatLayout(unittest.TestCase):
             mod.CompanyResult(id="beta", name="Beta", label="Beta", section="matching", jobs=[]),
         ]
         html = "\n".join(
-            mod.render_pipeline_section(jobs, results, "≤50 mi from 97035", cfg, lazy=None)
+            mod.render_pipeline_section(jobs, results, "≤50 mi from 00000", cfg, lazy=None)
         )
         self.assertNotIn("<h3>", html)
         self.assertNotIn("company-group", html)
@@ -105,8 +105,8 @@ class TestAppliedFlatLayout(unittest.TestCase):
         )
         html = mod.render_job(
             job,
-            "≤50 mi from 97035",
-            {"companies": [], "profile": {"home_zip": "97035"}},
+            "≤50 mi from 00000",
+            {"companies": [], "profile": {"home_zip": "00000"}},
             lazy=None,
             pool="applied",
             company=mod.CompanyResult(

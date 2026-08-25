@@ -273,7 +273,7 @@ def parse_comment(child: dict) -> dict | None:
 CRON_EXAMPLE = (
     "# Monthly HN 'Who is hiring' employer-catalog refresh (7th, 07:20). "
     "Uses ~/.v python; no cd needed.\n"
-    "20 7 7 * * cron-exec /Users/deibhaid/.v/bin/python "
+    "20 7 7 * * cron-exec /path/to/venv/bin/python "
     f"{SCRIPT_PATH} --threads 2 --max-fingerprint 40\n"
 )
 
