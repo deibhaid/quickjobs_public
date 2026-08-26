@@ -88,8 +88,18 @@ class TestAppliedFlatLayout(unittest.TestCase):
             "Displaying first 10 entries.",
             "applied-section-expand-link",
             "hidden-applied-limit",
+            "panel.insertAdjacentElement('afterend', note)",
         ):
             self.assertIn(needle, src)
+        # Static markup: panel before limit note (message under the preview rows).
+        static_panel = 'data-lazy-section="applied"'
+        static_note = (
+            'id="applied-section-limit-note" class="applied-section-limit-note meta" hidden>'
+        )
+        panel_i = src.find(static_panel)
+        note_i = src.find(static_note)
+        self.assertGreater(panel_i, 0)
+        self.assertGreater(note_i, panel_i)
 
     def test_applied_cards_omit_location_badge(self) -> None:
         mod = self.qj

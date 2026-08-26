@@ -335,6 +335,15 @@ def format_generated_stamp(when: datetime | None = None) -> str:
     return f"{local.strftime('%m/%d/%y %H:%M:%S')} {tz}"
 
 
+def format_board_page_title(when: datetime | None = None) -> str:
+    """Browser/tab title: Quickjobs - Month D, YYYY - HH:MM:SS (US Pacific)."""
+    local = pacific_local(when or utc_now())
+    return (
+        f"Quickjobs - {local.strftime('%B')} {local.day}, "
+        f"{local.strftime('%Y')} - {local.strftime('%H:%M:%S')}"
+    )
+
+
 def format_digest_stamp(run_time: datetime) -> str:
     """Digest header time in US Pacific with zone abbreviation."""
     local = pacific_local(run_time)
@@ -30128,11 +30137,20 @@ def board_profile_fields(cfg: dict[str, Any]) -> dict[str, Any]:
     exclude = [
         str(x).strip() for x in (cfg.get("company_ids_exclude") or []) if str(x).strip()
     ]
+    raw_notes = cfg.get("company_ids_exclude_notes") or {}
+    exclude_notes: dict[str, str] = {}
+    if isinstance(raw_notes, dict):
+        for cid, note in raw_notes.items():
+            key = str(cid or "").strip()
+            text = str(note or "").strip()
+            if key and text:
+                exclude_notes[key] = text
     return {
         "skills": skills,
         "salary_floor": salary_floor_value(cfg),
         "resident_status": normalize_profile_resident_status(profile.get("resident_status")),
         "company_ids_exclude": exclude,
+        "company_ids_exclude_notes": exclude_notes,
     }
 
 
@@ -30255,7 +30273,8 @@ def render_search_parameters_panel(cfg: dict[str, Any]) -> str:
         _profile_chip_editor_shell(
             "company_ids_exclude",
             "Excluded company ids",
-            "Employers skipped during scrape (sector/policy excludes). Use company id slugs.",
+            "Employers skipped during scrape (sector/policy/pay-band excludes). "
+            "Company id slugs; pay notes show top known IC high when set.",
         )
     )
     lines.extend(
@@ -30420,7 +30439,7 @@ def build_html(
     floor_label = pctx["salary_floor_label"]
     verified = run_time.strftime("%b %d, %Y")
     generated_stamp = format_generated_stamp(utc_now())
-    month_year = run_time.strftime("%B %Y")
+    board_page_title = format_board_page_title(run_time)
     pipeline_port = pipeline_autosave_port()
     default_runtime_path = (
         Path(os.environ.get("JOB_SEARCH_DIR", str(DEFAULT_JOB_SEARCH_DIR))).expanduser()
@@ -30552,14 +30571,14 @@ def build_html(
             "</button>"
         )
         main.append(
+            '      <div id="applied-section-panel" class="section-collapse-panel" '
+            'data-lazy-section="applied" data-section-loaded="0"></div>'
+        )
+        main.append(
             '      <p id="applied-section-limit-note" class="applied-section-limit-note meta" hidden>'
             'Displaying first 10 entries. '
             '<button type="button" class="applied-section-expand-link">Expand</button> '
             "to show all.</p>"
-        )
-        main.append(
-            '      <div id="applied-section-panel" class="section-collapse-panel" '
-            'data-lazy-section="applied" data-section-loaded="0"></div>'
         )
         main.append("    </section>")
         main.append("")
@@ -30661,7 +30680,7 @@ def build_html(
       }} catch (_) {{}}
     }})();
   </script>
-  <title>Job Search — {esc(name)} — {esc(month_year)}</title>
+  <title>{esc(board_page_title)}</title>
 {favicon_head_tags()}  <style>
     :root {{
       --bg: #0f1419; --card: #1a2332; --border: #2d3a4f; --text: #e7ecf3; --muted: #9aa8bc;
@@ -31315,7 +31334,7 @@ def build_html(
     #applied-section-panel .job {{ background: var(--applied-job-bg); border-color: var(--applied-job-border); }}
     #sec-applied > .section-heading-toggle {{ color: var(--muted); }}
     .applied-section-limit-note {{
-      margin: 0.35rem 0 0.65rem;
+      margin: 0.65rem 0 0.35rem;
       padding: 0 0.15rem;
       font-size: 0.82rem;
     }}
@@ -31947,6 +31966,7 @@ def build_html(
     const PROFILE_CHIP_LIST_KEYS = ['skills', 'company_ids_exclude'];
     const PROFILE_RESIDENT_CHOICES = new Set(['citizen', 'green_card', 'h1b']);
     let profileChipLists = {{ skills: [], company_ids_exclude: [] }};
+    let profileExcludeNotes = {{}};
     let profileSalaryFloor = 0;
     let profileResidentStatus = 'citizen';
     let profilePersistTimer = null;
@@ -32117,6 +32137,14 @@ def build_html(
       profileSalaryFloor = Number.isFinite(floor) && floor >= 0 ? floor : 0;
       const resident = String(raw.resident_status || 'citizen').trim().toLowerCase();
       profileResidentStatus = PROFILE_RESIDENT_CHOICES.has(resident) ? resident : 'citizen';
+      const notesRaw = (raw.company_ids_exclude_notes && typeof raw.company_ids_exclude_notes === 'object')
+        ? raw.company_ids_exclude_notes : {{}};
+      profileExcludeNotes = {{}};
+      Object.keys(notesRaw).forEach(cid => {{
+        const key = String(cid || '').trim();
+        const note = String(notesRaw[cid] || '').trim();
+        if (key && note) profileExcludeNotes[key] = note;
+      }});
       return out;
     }}
 
@@ -32168,7 +32196,11 @@ def build_html(
           removeBtn.textContent = '×';
           removeBtn.addEventListener('click', () => removeProfileChip(key, idx));
           const label = document.createElement('span');
-          label.textContent = text;
+          const note = (key === 'company_ids_exclude')
+            ? String(profileExcludeNotes[text] || '').trim()
+            : '';
+          label.textContent = note ? `${{text}} — ${{note}}` : text;
+          if (note) chip.title = note;
           chip.append(removeBtn, label);
           chips.appendChild(chip);
         }});
@@ -32215,7 +32247,11 @@ def build_html(
     function removeProfileChip(key, index) {{
       if (!Array.isArray(profileChipLists[key])) return;
       if (index < 0 || index >= profileChipLists[key].length) return;
+      const removed = profileChipLists[key][index];
       profileChipLists[key].splice(index, 1);
+      if (key === 'company_ids_exclude' && removed && profileExcludeNotes[removed]) {{
+        delete profileExcludeNotes[removed];
+      }}
       renderProfileChipList(key);
       scheduleProfilePersist();
     }}
@@ -32287,6 +32323,12 @@ def build_html(
         doc.profile.salary_floor = profileSalaryFloor;
         doc.profile.resident_status = profileResidentStatus;
         doc.company_ids_exclude = [...(profileChipLists.company_ids_exclude || [])];
+        const keepNotes = {{}};
+        (doc.company_ids_exclude || []).forEach(cid => {{
+          const note = String(profileExcludeNotes[cid] || '').trim();
+          if (note) keepNotes[cid] = note;
+        }});
+        doc.company_ids_exclude_notes = keepNotes;
         await writeProfileConfigDocument(doc);
         setConfigFileSaveStatus('Saved to profile config file');
         return true;
@@ -33991,15 +34033,17 @@ def build_html(
       const section = document.getElementById('sec-applied');
       if (!section) return null;
       let note = document.getElementById('applied-section-limit-note');
+      const panel = document.getElementById('applied-section-panel');
       if (!note) {{
         note = document.createElement('p');
         note.id = 'applied-section-limit-note';
         note.className = 'applied-section-limit-note meta';
         note.hidden = true;
-        const toggle = document.getElementById('toggle-applied-section');
-        const panel = document.getElementById('applied-section-panel');
-        if (toggle && panel) toggle.insertAdjacentElement('afterend', note);
+        if (panel) panel.insertAdjacentElement('afterend', note);
         else section.appendChild(note);
+      }} else if (panel && note.previousElementSibling !== panel) {{
+        // Move note below the preview rows (older boards put it above the panel).
+        panel.insertAdjacentElement('afterend', note);
       }}
       if (!note.querySelector('.applied-section-expand-link')) {{
         note.replaceChildren();
@@ -34185,8 +34229,8 @@ def build_html(
       panel.id = 'applied-section-panel';
       panel.className = 'section-collapse-panel';
       section.appendChild(heading);
-      section.appendChild(limitNote);
       section.appendChild(panel);
+      section.appendChild(limitNote);
       main.appendChild(section);
       initSectionCollapse(heading, panel, 'applied');
       wireAppliedSectionLimit();
@@ -35273,6 +35317,7 @@ def build_html(
         profileFields: {{
           skills: [...(profileChipLists.skills || [])],
           company_ids_exclude: [...(profileChipLists.company_ids_exclude || [])],
+          company_ids_exclude_notes: {{ ...profileExcludeNotes }},
           salary_floor: profileSalaryFloor,
           resident_status: profileResidentStatus,
         }},
@@ -35379,6 +35424,15 @@ def build_html(
           const list = ui.profileFields[key];
           if (!Array.isArray(list)) return;
           profileChipLists[key] = list.map(item => String(item || '').trim()).filter(Boolean);
+        }});
+        const notesRaw = (ui.profileFields.company_ids_exclude_notes
+          && typeof ui.profileFields.company_ids_exclude_notes === 'object')
+          ? ui.profileFields.company_ids_exclude_notes : {{}};
+        profileExcludeNotes = {{}};
+        Object.keys(notesRaw).forEach(cid => {{
+          const key = String(cid || '').trim();
+          const note = String(notesRaw[cid] || '').trim();
+          if (key && note) profileExcludeNotes[key] = note;
         }});
         const floor = Number.parseInt(String(ui.profileFields.salary_floor ?? ''), 10);
         if (Number.isFinite(floor) && floor >= 0) profileSalaryFloor = floor;
@@ -37495,6 +37549,29 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
         for row in snapshot.get("companies") or []
         if isinstance(row, dict)
     ]
+    exclude_ids = {
+        str(cid) for cid in (cfg.get("company_ids_exclude") or []) if str(cid).strip()
+    }
+    if _h1b_employer is not None:
+        exclude_ids |= {
+            str(cid)
+            for cid in _h1b_employer.profile_default_company_ids_exclude(
+                cfg,
+                cfg.get("companies") or [],
+                h1b_cache_root(),
+            )
+            if str(cid).strip()
+        }
+    exclude_dropped = 0
+    if exclude_ids:
+        before = len(results)
+        results = [co for co in results if co.id not in exclude_ids]
+        exclude_dropped = before - len(results)
+        if exclude_dropped:
+            print(
+                f"Excluded {exclude_dropped} employer(s) from rebuild "
+                f"({len(exclude_ids)} id(s) in exclude list)"
+            )
     removed: list[str] = []
     if verify_urls:
         before = sum(len(co.jobs) for co in results)
@@ -37535,7 +37612,7 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
     consolidate_nike_family_jobs(results, company_list)
     consolidate_cisco_family_jobs(results, company_list)
     run_time = datetime.now(timezone.utc)
-    if recompute_matches or verify_urls:
+    if recompute_matches or verify_urls or exclude_dropped:
         run_at_raw = snapshot.get("run_at")
         if run_at_raw:
             try:
@@ -37553,8 +37630,10 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
             print(f"Recomputed matches + verified URLs; saved {run_snapshot_path(out_path)}")
         elif recompute_matches:
             print(f"Recomputed match tiers; saved {run_snapshot_path(out_path)}")
-        else:
+        elif verify_urls:
             print(f"Verified URLs; saved {run_snapshot_path(out_path)}")
+        elif exclude_dropped:
+            print(f"Dropped excluded employers; saved {run_snapshot_path(out_path)}")
     pipeline = load_pipeline_store(out_path)
     prev_state = load_run_state(out_path)
     digest_html, _digest_plain = board_digest_html(
@@ -38291,7 +38370,7 @@ def _run_board_scrape_phase4_body(
         for company in company_list:
             company_id = str(company.get("id") or "")
             if company_id in skip_company_ids:
-                print(f"  {company_id}: skipped — excluded (using snapshot if available)")
+                print(f"  {company_id}: skipped — excluded (not scraped)")
 
     for company in selected:
         co = results_by_id.get(str(company.get("id") or ""))
@@ -38329,14 +38408,21 @@ def _run_board_scrape_phase4_body(
                 preserve_prior_jobs_if_empty_scrape(co, prior_by_id.get(co.id))
                 for co in results
             ]
-            if skip_company_ids:
-                have_ids = {co.id for co in results}
-                for row in prev_snapshot.get("companies") or []:
-                    if not isinstance(row, dict) or not row.get("id"):
-                        continue
-                    cid = str(row["id"])
-                    if cid in skip_company_ids and cid not in have_ids:
-                        results.append(company_result_from_dict(row))
+            # Do not re-inject profile/CLI-excluded companies from the prior
+            # snapshot — that left excluded employers (e.g. tria-federal) on the
+            # Matching board after a successful skip.
+
+    # Drop excluded employers from board results + next snapshot (scrape already skipped).
+    if skip_company_ids:
+        before = len(results)
+        results = [co for co in results if co.id not in skip_company_ids]
+        dropped = before - len(results)
+        if dropped and not args.quiet:
+            print(
+                f"Excluded {dropped} employer(s) from board results "
+                f"({len(skip_company_ids)} id(s) in exclude list)",
+                flush=True,
+            )
 
     if prior_for_list_only:
         merged_jds = merge_prior_job_descriptions(results, prior_for_list_only)

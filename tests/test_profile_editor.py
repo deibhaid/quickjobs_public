@@ -35,6 +35,11 @@ class ProfileEditorTests(unittest.TestCase):
         self.assertGreaterEqual(fields["salary_floor"], 100000)
         self.assertIn(fields["resident_status"], self.qj.PROFILE_RESIDENT_CHOICES)
         self.assertIn("american-airlines", fields["company_ids_exclude"])
+        self.assertIn("ppg-industries", fields["company_ids_exclude"])
+        notes = fields.get("company_ids_exclude_notes") or {}
+        self.assertIn("ppg-industries", notes)
+        self.assertIn("IC high", notes["ppg-industries"])
+        self.assertIn("below $190k", notes["ppg-industries"])
 
     def test_pipeline_config_embeds_profile_fields(self) -> None:
         out = self.qj._board_pipeline_config(
