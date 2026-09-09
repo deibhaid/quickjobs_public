@@ -58,6 +58,9 @@ For a self-contained install directory with its own venv, see
 
 ## Notes
 
+- quickjobs is under the [Quickjobs License 1.0](LICENSE). Personal use is
+  permitted; commercial use requires a separate license. See
+  [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for dependency attribution.
 - Do not commit a real personal profile to a public fork; keep secrets local.
 - Prefer this file for first run. Advanced catalog tooling lives under
   `scripts/discover`, `scripts/hubs`, `scripts/dice`, `scripts/hn`, and

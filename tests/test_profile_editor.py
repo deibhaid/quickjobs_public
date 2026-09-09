@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import importlib.util
-import json
 import sys
 import unittest
 from pathlib import Path
@@ -36,12 +35,16 @@ class ProfileEditorTests(unittest.TestCase):
         self.assertIn(fields["resident_status"], self.qj.PROFILE_RESIDENT_CHOICES)
         self.assertIn("american-airlines", fields["company_ids_exclude"])
         self.assertIn("ppg-industries", fields["company_ids_exclude"])
-        notes = fields.get("company_ids_exclude_notes") or {}
+        # Pay-band notes stay in profile JSON only — not embedded for board HTML.
+        self.assertNotIn("company_ids_exclude_notes", fields)
+
+    def test_exclude_notes_remain_in_profile_json(self) -> None:
+        notes = self.cfg.get("company_ids_exclude_notes") or {}
         self.assertIn("ppg-industries", notes)
         self.assertIn("IC high", notes["ppg-industries"])
         self.assertIn("below $190k", notes["ppg-industries"])
 
-    def test_pipeline_config_embeds_profile_fields(self) -> None:
+    def test_pipeline_config_embeds_profile_fields_without_notes(self) -> None:
         out = self.qj._board_pipeline_config(
             self.cfg,
             pipeline_server=False,
@@ -51,6 +54,10 @@ class ProfileEditorTests(unittest.TestCase):
         self.assertIn("profileConfigFilePickerId", out)
         self.assertIn("profileConfigPath", out)
         self.assertIn("skills", out["profileFields"])
+        self.assertNotIn("company_ids_exclude_notes", out["profileFields"])
+        panel = self.qj.render_search_parameters_panel(self.cfg)
+        self.assertNotIn("IC high $", panel)
+        self.assertNotIn("below $190k floor", panel)
 
     def test_search_params_panel_profile_editors(self) -> None:
         panel = self.qj.render_search_parameters_panel(self.cfg)
@@ -60,6 +67,7 @@ class ProfileEditorTests(unittest.TestCase):
         self.assertIn('data-profile-list="company_ids_exclude"', panel)
         self.assertIn("link-profile-config-file", panel)
         self.assertIn("initProfileEditors", self.src)
+        self.assertIn("Preserve pay-band notes already on disk", self.src)
 
 
 if __name__ == "__main__":

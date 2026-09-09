@@ -1,0 +1,135 @@
+Quickjobs License 1.0
+
+Copyright (c) 2025-2026 David W. Bryson
+
+This license governs the quickjobs software, documentation, and configuration
+templates in this repository (collectively, the "Software").
+
+By using, copying, or distributing the Software, you agree to this license. If
+you do not agree, do not use the Software.
+
+---------------------------------------------------------------------------
+1. Definitions
+---------------------------------------------------------------------------
+
+"You" means the individual or legal entity exercising permissions under this
+license.
+
+"Personal Use" means use of the Software by You, on equipment You control, for
+Your own job search, personal evaluation, learning, or other non-commercial
+purpose. Personal Use includes modifying the Software for Yourself and running
+it to produce job boards or reports solely for Your own use.
+
+"Commercial Use" means any use that is not Personal Use, including without
+limitation: selling, renting, or licensing the Software or access to it;
+offering the Software or its output as a hosted or managed service; using the
+Software in the course of providing paid services to third parties; or using the
+Software primarily for revenue generation, lead generation, or staffing business
+operations.
+
+"Third-Party Services" means websites, APIs, data feeds, and other services
+that the Software may access, including employer career sites and applicant
+tracking systems.
+
+---------------------------------------------------------------------------
+2. Grant for Personal Use
+---------------------------------------------------------------------------
+
+Subject to the terms of this license, David W. Bryson ("Licensor") grants You a
+worldwide, non-exclusive, no-charge, revocable license to:
+
+  (a) use and run the Software for Personal Use;
+  (b) copy the Software as needed for Personal Use and backup;
+  (c) modify the Software for Personal Use; and
+  (d) distribute unmodified or modified source copies only as described in
+      Section 3.
+
+---------------------------------------------------------------------------
+3. Redistribution
+---------------------------------------------------------------------------
+
+If You distribute source copies of the Software (modified or unmodified), You
+must:
+
+  (a) include a copy of this license;
+  (b) include THIRD_PARTY_NOTICES.md and preserve third-party license notices;
+  (c) clearly state any changes You made; and
+  (d) not represent that Licensor endorses Your distribution.
+
+Redistribution does not grant recipients Commercial Use rights. Recipients
+receive only the rights granted here.
+
+---------------------------------------------------------------------------
+4. Commercial Use
+---------------------------------------------------------------------------
+
+Commercial Use requires a separate written commercial license from Licensor.
+Personal Use rights under this license do not include Commercial Use.
+
+For commercial licensing inquiries:
+
+  davidwbryson@gmail.com
+
+---------------------------------------------------------------------------
+5. Third-Party Software
+---------------------------------------------------------------------------
+
+The Software depends on and may invoke separately licensed third-party
+software. Those components are not licensed under this document. See
+THIRD_PARTY_NOTICES.md and the licenses/ directory for required notices and
+license texts.
+
+You are responsible for complying with third-party license terms when You
+install, copy, or distribute those components.
+
+---------------------------------------------------------------------------
+6. Third-Party Sites and Data
+---------------------------------------------------------------------------
+
+The Software can automate access to Third-Party Services and process job
+postings and related metadata. Licensor does not grant You any rights in
+third-party content, trademarks, or data. You are solely responsible for
+ensuring that Your use of the Software complies with applicable law and with
+the terms, robots rules, and policies of each Third-Party Service You access.
+
+Licensor provides the Software as a tool. Licensor does not authorize or
+encourage unlawful scraping, circumvention of access controls, or breach of
+third-party terms.
+
+---------------------------------------------------------------------------
+7. Disclaimer of Warranty
+---------------------------------------------------------------------------
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+
+---------------------------------------------------------------------------
+8. Limitation of Liability
+---------------------------------------------------------------------------
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL LICENSOR
+BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE
+DAMAGES, OR ANY LOSS OF PROFITS, DATA, GOODWILL, OR OTHER INTANGIBLE LOSSES,
+ARISING OUT OF OR RELATED TO THE SOFTWARE OR THIS LICENSE, EVEN IF LICENSOR HAS
+BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+---------------------------------------------------------------------------
+9. Termination
+---------------------------------------------------------------------------
+
+This license terminates automatically if You breach Section 4 or Section 3.
+Upon termination, You must stop using and destroy copies of the Software in Your
+possession. Sections 5 through 8 survive termination.
+
+---------------------------------------------------------------------------
+10. General
+---------------------------------------------------------------------------
+
+This license constitutes the entire agreement regarding use of the Software
+outside of a separate commercial license. If any provision is held
+unenforceable, the remaining provisions remain in effect.
+
+Licensor may publish revised versions of this license for future releases of
+the Software. Your use of a given release remains under the license version
+that accompanied that release unless You agree to a later version.

@@ -305,6 +305,44 @@ class LinkedInJobsTests(unittest.TestCase):
         self.assertEqual(display, "Alteryx")
         self.assertEqual(hint, "Alteryx")
 
+    def test_linkedin_job_company_filter_key_uses_employer_not_aggregator(self) -> None:
+        qj = self.qj
+        cfg = {
+            "companies": [
+                {"id": "affirm", "name": "Affirm", "source_group": "company"},
+                {
+                    "id": "linkedin",
+                    "name": "LinkedIn",
+                    "type": "linkedin",
+                    "source_group": "job_sites",
+                },
+            ]
+        }
+        job = qj.Job(
+            title="Senior Software Engineer, Backend (Reliability Platform)",
+            company_id="linkedin",
+            url="https://www.linkedin.com/jobs/view/senior-software-engineer-backend-reliability-platform-at-affirm-4448546922",
+            loc="local",
+            match="good",
+            salary="maybe",
+            company_name="Affirm",
+        )
+        co = qj.CompanyResult(
+            id="linkedin",
+            name="LinkedIn",
+            label="LinkedIn (aggregated)",
+            section="aggregated",
+            source_group="job_sites",
+        )
+        self.assertEqual(
+            qj.job_company_filter_key(job, co, cfg=cfg),
+            qj.company_filter_key("Affirm"),
+        )
+        self.assertNotEqual(
+            qj.job_company_filter_key(job, co, cfg=cfg),
+            qj.company_filter_key("LinkedIn"),
+        )
+
     def test_apply_company_fields_preserves_aggregator_employer(self) -> None:
         qj = self.qj
         job = qj.Job(

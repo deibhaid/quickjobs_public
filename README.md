@@ -563,8 +563,23 @@ Bumps from the highest existing release (published or draft). Agents must not ru
 | [GETTING_STARTED.md](GETTING_STARTED.md) | Daily Mac/remote operator workflow |
 | [portable/ARCHITECTURE.txt](portable/ARCHITECTURE.txt) | Portable paths + visa layers |
 | [portable/README.md](portable/README.md) | Unzip → configure → run |
+| [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) | Dependency licenses and attribution |
 | `scripts/*/README.md` | Discover / Dice / HN / hubs |
 | `scripts/hubs/HUB_ATS_RESEARCH.md` | ATS probe patterns |
+
+## License
+
+quickjobs is licensed under the [Quickjobs License 1.0](LICENSE). Personal and
+non-commercial use is permitted as described there. Commercial use requires a
+separate license from the copyright holder.
+
+Third-party Python packages and Playwright browser binaries are governed by
+their own licenses. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and
+the `licenses/` directory. Regenerate notices after dependency changes:
+
+```bash
+~/.v/bin/python scripts/_shared/generate_third_party_notices.py
+```
 
 When documentation and code disagree, **code + tests win**; update this README in
 the same change set so the next agent does not relearn from chat history alone.

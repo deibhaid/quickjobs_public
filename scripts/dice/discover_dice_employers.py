@@ -27,8 +27,9 @@ Dice MCP limits (verified 2026-07):
     -> for "devops" that is ~9,674 results vs ~2,272 for SEVEN. So this miner
     defaults to NO posted_date to reach the oldest postings Dice still indexes.
   * jobs_per_page max is 100 (values >100 return 0 rows).
-  * page_number is 1-based; you can paginate up to meta.pageCount
-    (= ceil(totalResults / pageSize)). Pages beyond pageCount return 0 rows.
+  * page_number is 1-based; paginate up to metadata.totalPages (legacy:
+    meta.pageCount). total job count is metadata.total (legacy:
+    meta.totalResults). Pages beyond the ceiling return 0 rows.
   * There is no date-sort param; default sortBy is 'relevance'.
 
 Reads (never writes):
@@ -71,6 +72,10 @@ HUBS_DIR = REPO_ROOT / "scripts" / "hubs"
 DEFAULT_BASE = REPO_ROOT / "quickjobs.base.json"
 OUTPUT_DIR = Path.home() / "ws" / "scriptdir" / "output"
 DEFAULT_CATALOG = OUTPUT_DIR / "dice-employer-catalog.json"
+
+if str(SHARED_DIR) not in sys.path:
+    sys.path.insert(0, str(SHARED_DIR))
+import config_bundle  # noqa: E402
 
 ENDPOINT = "https://mcp.dice.com/mcp"
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) quickjobs-discovery"
@@ -339,7 +344,10 @@ def mcp_call(arguments: dict[str, Any], timeout: int) -> dict | None:
 
 
 def extract_payload(data: Any) -> dict:
-    """Pull the structured {data, meta} payload out of an MCP response."""
+    """Pull the structured {data, meta|metadata} payload out of an MCP response."""
+
+    def _has_page_meta(obj: dict) -> bool:
+        return "meta" in obj or "metadata" in obj
 
     def walk(obj: Any) -> dict | None:
         if isinstance(obj, list):
@@ -348,8 +356,14 @@ def extract_payload(data: Any) -> dict:
                 if res:
                     return res
         if isinstance(obj, dict):
-            if isinstance(obj.get("data"), list) and "meta" in obj:
+            if isinstance(obj.get("data"), list) and _has_page_meta(obj):
                 return obj
+            # Prefer structuredContent (has metadata.totalPages) over nested text JSON.
+            for key in ("structuredContent", "result"):
+                if key in obj:
+                    res = walk(obj[key])
+                    if res:
+                        return res
             content = obj.get("content")
             if isinstance(content, list):
                 for block in content:
@@ -360,15 +374,41 @@ def extract_payload(data: Any) -> dict:
                             continue
                         res = walk(parsed) if isinstance(parsed, (list, dict)) else None
                         return res or (parsed if isinstance(parsed, dict) else None)
-            for key in ("structuredContent", "result"):
-                if key in obj:
-                    res = walk(obj[key])
-                    if res:
-                        return res
         return None
 
     payload = walk(data)
     return payload if isinstance(payload, dict) else {}
+
+
+def dice_payload_page_meta(payload: dict[str, Any]) -> tuple[int, Any]:
+    """Return (page_count, total_results) from current or legacy Dice MCP meta.
+
+    Current MCP: ``metadata.totalPages`` / ``metadata.total``.
+    Legacy (2026-07 docs): ``meta.pageCount`` / ``meta.totalResults``.
+    """
+    meta = payload.get("meta")
+    if not isinstance(meta, dict):
+        meta = {}
+    metadata = payload.get("metadata")
+    if not isinstance(metadata, dict):
+        metadata = {}
+    page_count_raw = (
+        metadata.get("totalPages")
+        if metadata.get("totalPages") is not None
+        else meta.get("pageCount")
+    )
+    try:
+        page_count = int(page_count_raw or 1)
+    except (TypeError, ValueError):
+        page_count = 1
+    if page_count < 1:
+        page_count = 1
+    total_results = (
+        metadata.get("total")
+        if metadata.get("total") is not None
+        else meta.get("totalResults")
+    )
+    return page_count, total_results
 
 
 def search_keyword(
@@ -406,10 +446,9 @@ def search_keyword(
             break
         payload = extract_payload(data)
         page_rows = payload.get("data") or []
-        meta = payload.get("meta") or {}
-        page_count = int(meta.get("pageCount") or 1)
+        page_count, page_total = dice_payload_page_meta(payload)
         if total_results is None:
-            total_results = meta.get("totalResults")
+            total_results = page_total
         if not isinstance(page_rows, list) or not page_rows:
             break
         rows.extend(r for r in page_rows if isinstance(r, dict))

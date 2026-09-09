@@ -167,6 +167,112 @@ class TestExpiredJobUrls(unittest.TestCase):
         self.assertIn("ignore_skip=True", src)
         self.assertIn("expired-job-urls.json", src)
 
+    def test_greenhouse_dead_board_note_not_suspicious_zero(self) -> None:
+        mod = self.qj
+        co = mod.CompanyResult(
+            id="temporal",
+            name="Temporal",
+            label="Temporal",
+            section="matching",
+            jobs=[],
+            search_note="Greenhouse API returned HTTP 404",
+        )
+        self.assertFalse(mod.company_result_suspicious_zero_yield(co))
+        prior = mod.CompanyResult(
+            id="temporal",
+            name="Temporal",
+            label="Temporal",
+            section="matching",
+            jobs=[
+                mod.Job(
+                    title="Staff Software Engineer, Compute (Temporal Cloud)",
+                    company_id="temporal",
+                    url="https://job-boards.greenhouse.io/temporaltechnologies/jobs/5068388007",
+                )
+            ],
+        )
+        kept = mod.preserve_prior_jobs_if_empty_scrape(co, prior)
+        self.assertEqual(kept.jobs, [])
+
+    def test_verify_urls_drops_dead_greenhouse_job(self) -> None:
+        """Deactivated boards (404) still drop; blanket 406 outage does not."""
+        mod = self.qj
+        url = "https://job-boards.greenhouse.io/temporaltechnologies/jobs/5068388007"
+        self.assertTrue(mod.greenhouse_direct_job_posting_url(url))
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "job-search-quickjobs.html"
+            out.write_text("<html></html>", encoding="utf-8")
+            removed: list[str] = []
+            jobs = [
+                mod.Job(
+                    title="Staff Software Engineer, Compute (Temporal Cloud)",
+                    company_id="temporal",
+                    url=url,
+                    skip_verify=True,
+                )
+            ]
+            orig = mod.http_verify_get
+
+            def fake_get(u: str, timeout=None, max_bytes=None):
+                if u == url:
+                    return (
+                        404,
+                        "https://job-boards.greenhouse.io/temporaltechnologies?error=true",
+                        "<html>Page not found. The job board you were viewing is no longer active.</html>",
+                    )
+                return orig(u, timeout=timeout, max_bytes=max_bytes)
+
+            mod.http_verify_get = fake_get  # type: ignore[method-assign]
+            try:
+                live = mod.verify_jobs(jobs, removed, ignore_skip=True, out_path=out)
+                self.assertEqual(live, [])
+                self.assertEqual(len(removed), 1)
+                self.assertIn(url, removed[0])
+            finally:
+                mod.http_verify_get = orig  # type: ignore[method-assign]
+
+    def test_greenhouse_406_outage_not_dead(self) -> None:
+        mod = self.qj
+        url = "https://job-boards.greenhouse.io/gitlab/jobs/8503792002"
+        self.assertTrue(
+            mod.greenhouse_url_verify_status_unreliable(
+                406, "https://job-boards.greenhouse.io/gitlab?error=true"
+            )
+        )
+        code, final, _body = mod.http_verify_get(url)
+        if code == 406:
+            self.assertTrue(mod.url_is_live(url, force=True))
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "job-search-quickjobs.html"
+            out.write_text("<html></html>", encoding="utf-8")
+            removed: list[str] = []
+            jobs = [
+                mod.Job(
+                    title="Platform Engineer",
+                    company_id="gitlab",
+                    url=url,
+                    skip_verify=True,
+                )
+            ]
+            orig = mod.http_verify_get
+
+            def fake_get(u: str, timeout=None, max_bytes=None):
+                if u == url:
+                    return (
+                        406,
+                        "https://job-boards.greenhouse.io/gitlab?error=true",
+                        "<html>406 Not Acceptable</html>",
+                    )
+                return orig(u, timeout=timeout, max_bytes=max_bytes)
+
+            mod.http_verify_get = fake_get  # type: ignore[method-assign]
+            try:
+                live = mod.verify_jobs(jobs, removed, ignore_skip=True, out_path=out)
+                self.assertEqual(len(live), 1)
+                self.assertEqual(removed, [])
+            finally:
+                mod.http_verify_get = orig  # type: ignore[method-assign]
+
 
 if __name__ == "__main__":
     unittest.main()

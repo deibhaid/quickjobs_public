@@ -457,6 +457,14 @@ def write_package() -> Path:
             raise RuntimeError(f"Missing portable template: {src}")
         shutil.copy2(src, OUTPUT_ROOT / name)
 
+    for legal_name in ("LICENSE", "THIRD_PARTY_NOTICES.md"):
+        src = SCRIPT_DIR / legal_name
+        if src.is_file():
+            shutil.copy2(src, OUTPUT_ROOT / legal_name)
+    licenses_src = SCRIPT_DIR / "licenses"
+    if licenses_src.is_dir():
+        shutil.copytree(licenses_src, OUTPUT_ROOT / "licenses")
+
     david_meta = SCRIPT_DIR / "quickjobs.manual-career-meta.json"
     portable_meta = OUTPUT_ROOT / "quickjobs.manual-career-meta.json"
     if david_meta.is_file():

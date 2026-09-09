@@ -336,10 +336,14 @@ def format_generated_stamp(when: datetime | None = None) -> str:
 
 
 def format_board_page_title(when: datetime | None = None) -> str:
-    """Browser/tab title: Quickjobs - Month D, YYYY - HH:MM:SS (US Pacific)."""
+    """Browser/tab title: Month D, YYYY - HH:MM:SS (US Pacific).
+
+    Brand is omitted so NAS/Web Station (which prefixes ``QuickJobs - ``)
+    does not double the name. Local file:// tabs still get a clear run stamp.
+    """
     local = pacific_local(when or utc_now())
     return (
-        f"Quickjobs - {local.strftime('%B')} {local.day}, "
+        f"{local.strftime('%B')} {local.day}, "
         f"{local.strftime('%Y')} - {local.strftime('%H:%M:%S')}"
     )
 
@@ -4640,6 +4644,8 @@ def company_result_suspicious_zero_yield(co: CompanyResult) -> bool:
     if co.jobs:
         return False
     note = (co.search_note or "").lower()
+    if _ats_api_dead_board_note(co.search_note):
+        return False
     if "greenhouse api returned http" in note or "lever api returned http" in note:
         return True
     if "stall abort" in note:
@@ -6824,6 +6830,27 @@ def http_verify_get(
         return 599, url, ""
 
 
+def greenhouse_direct_job_posting_url(url: str) -> bool:
+    """True for first-party Greenhouse job URLs (not company-site ?gh_jid= embeds)."""
+    lower = str(url or "").lower()
+    if re.search(r"[?&]gh_jid=\d+", lower):
+        return False
+    return bool(
+        re.search(
+            r"https?://(?:boards|job-boards)\.greenhouse\.io/[^/?#]+/jobs/\d+",
+            lower,
+        )
+    )
+
+
+def _ats_api_dead_board_note(note: str) -> bool:
+    """True when a structured ATS board is gone (HTTP 404/410), not a transient failure."""
+    lower = str(note or "").lower()
+    return bool(
+        re.search(r"(?:greenhouse|lever) api returned http (404|410)\b", lower)
+    )
+
+
 def posting_url_skip_verify(url: str) -> bool:
     """ATS URLs already validated during structured fetch; skip redundant verify GETs."""
     lower = str(url or "").lower()
@@ -7047,6 +7074,8 @@ def url_page_indicates_dead_job(code: int, final_url: str, body: str) -> bool:
     final_l = (final_url or "").lower()
     if "/errors/404" in final_l or "/error/404" in final_l:
         return True
+    if "greenhouse.io" in final_l and "error=true" in final_l:
+        return True
     if "viewrequisition" in final_l and "rid=" not in final_l:
         return True
     snippet = (body or "")[:12000].lower()
@@ -7054,7 +7083,10 @@ def url_page_indicates_dead_job(code: int, final_url: str, body: str) -> bool:
         "return to home" in snippet
         or "no longer exists" in snippet
         or "was moved" in snippet
+        or "no longer active" in snippet
     ):
+        return True
+    if "job board you were viewing is no longer active" in snippet:
         return True
     # Ashby SPA returns HTTP 200 with a ~7KB shell when jobs.ashbyhq.com/{board}/{id} is dead
     # (e.g. Cursor uses cursor.com/careers/{slug}). Live boards serve full HTML (100KB+).
@@ -7135,6 +7167,37 @@ def purge_linkedin_expired_job_urls(out_path: Path | None = None) -> int:
     return removed
 
 
+def purge_greenhouse_expired_job_urls(out_path: Path | None = None) -> int:
+    """Drop Greenhouse board URLs from the expired denylist (406/nginx false positives)."""
+    path = expired_job_urls_path(out_path)
+    existing = load_expired_job_urls(out_path)
+    if not existing:
+        return 0
+    kept = {
+        u
+        for u in existing
+        if "greenhouse.io" not in str(u).lower()
+    }
+    removed = len(existing) - len(kept)
+    if removed <= 0:
+        return 0
+    payload = {
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "urls": sorted(kept),
+    }
+    atomic_write_text(path, json.dumps(payload, indent=2) + "\n")
+    return removed
+
+
+def greenhouse_url_verify_status_unreliable(code: int, final_url: str) -> bool:
+    """True when a Greenhouse HTML GET status cannot prove the posting is dead."""
+    if "greenhouse.io" not in str(final_url or "").lower():
+        return False
+    # job-boards.greenhouse.io has returned blanket 406 from nginx/CloudFront while
+    # boards-api.greenhouse.io stays up — do not denylist or drop snapshot rows.
+    return code in {406, 403}
+
+
 def url_is_live(url: str, *, force: bool = False) -> bool:
     """Return True when a posting URL looks alive.
 
@@ -7148,6 +7211,8 @@ def url_is_live(url: str, *, force: bool = False) -> bool:
         if workday is not None:
             return workday
     code, final_url, body = http_verify_get(url)
+    if greenhouse_url_verify_status_unreliable(code, final_url):
+        return True
     if url_page_indicates_dead_job(code, final_url, body):
         return False
     return 200 <= code < 400
@@ -7523,13 +7588,24 @@ def is_region_locked_non_us(lower: str) -> bool:
 
 
 def remote_scope_is_broad_us(lower: str) -> bool:
-    """True only when text explicitly pairs remote with US country tokens."""
+    """True only when text explicitly pairs remote with US country tokens.
+
+    ``Pennsylvania-Remote, United States`` is state-locked: the ``-Remote`` suffix
+    must not count as nationwide ``remote … United States``.
+    """
     lower = " ".join(str(lower or "").replace("·", ",").split())
+    if parse_state_dash_remote_us_segment(lower):
+        return False
+    for segment in re.split(r"[\n|;]+", lower):
+        segment = segment.strip()
+        if segment and parse_state_dash_remote_us_segment(segment):
+            return False
     patterns = (
-        r"\bremote\b\s*[-,:]?\s*(?:usa|us|u\.s\.|united states)\b",
+        # Do not treat ``State-Remote, United States`` as US-wide (hyphen before remote).
+        r"(?<![-\w])\bremote\b\s*[-,:]?\s*(?:usa|us|u\.s\.|united states)\b",
         r"\b(?:usa|us|u\.s\.|united states)\s*[-–—]\s*remote(?:\s+opportunity)?\b",
-        r"\bremote\b\s*[-,:]?\s*north america\b",
-        r"\bremote\b\s*[-,:]?\s*americas\b",
+        r"(?<![-\w])\bremote\b\s*[-,:]?\s*north america\b",
+        r"(?<![-\w])\bremote\b\s*[-,:]?\s*americas\b",
         r"\bhome[- ]based\b\s*-\s*americas\b",
     )
     return any(re.search(pattern, lower) for pattern in patterns)
@@ -7836,10 +7912,13 @@ def extract_state_limited_remote_allowed_states(*parts: str) -> frozenset[str] |
 
 
 def location_text_is_state_locked_us_remote(text: str) -> bool:
-    """True for Remote - CA / Remote, Oregon (not Remote - US/USA/United States)."""
+    """True for Remote - CA / Remote, Oregon / Pennsylvania-Remote, United States
+    (not Remote - US/USA/United States)."""
     raw = str(text or "").strip()
     if not raw:
         return False
+    if parse_state_dash_remote_us_segment(raw):
+        return True
     lower = " ".join(raw.lower().replace("·", ",").split())
     match = _STATE_REMOTE_SUFFIX_RE.match(lower)
     if match:
@@ -8035,7 +8114,8 @@ def location_has_us_country_remote_segment(location_name: str) -> bool:
 
 
 def extract_workday_state_locked_remote_states(location_name: str) -> frozenset[str]:
-    """US state codes from Workday ``US, ST, Remote`` and GH ``State, USA, Remote`` segments."""
+    """US state codes from Workday ``US, ST, Remote``, GH ``State, USA, Remote``,
+    and ``State-Remote, United States`` (Netflix/Anaplan) segments."""
     codes: set[str] = set()
     for segment in location_work_segments(location_name):
         parsed = parse_us_country_state_segment(segment)
@@ -8045,6 +8125,15 @@ def extract_workday_state_locked_remote_states(location_name: str) -> frozenset[
         state = parse_state_usa_remote_segment(segment)
         if state:
             codes.add(state)
+            continue
+        state_dash = parse_state_dash_remote_us_segment(segment)
+        if state_dash:
+            codes.add(state_dash)
+    # Whole-string Netflix/Anaplan form when not split into segments.
+    text = str(location_name or "").strip()
+    state_dash = parse_state_dash_remote_us_segment(text)
+    if state_dash:
+        codes.add(state_dash)
     return frozenset(codes)
 
 def location_has_us_nationwide_remote_segment(location_name: str) -> bool:
@@ -9181,6 +9270,9 @@ def classify_location_with_fallback(
     elif original and location_text_looks_like_jd_prose(original):
         geo = extract_geographic_location_fragment(original)
         location_name = geo if geo else ""
+    # Netflix/Anaplan ``State-Remote, United States`` → ``State, USA, Remote``.
+    if location_name:
+        location_name = netflix_normalize_location(location_name)
     state_excluded, state_label = location_or_title_is_state_limited_remote(
         location_name,
         title=title,
@@ -11476,7 +11568,10 @@ def _polish_location_display_segment(text: str) -> str:
 
 
 def netflix_normalize_location(location_name: str) -> str:
-    """Normalize Netflix ``State - Remote,United States`` strings for classification."""
+    """Normalize ``State-Remote, United States`` (Netflix/Anaplan) for classification.
+
+    Maps to Greenhouse-style ``State, USA, Remote`` so state-locked remote rules apply.
+    """
     text = str(location_name or "").strip()
     if not text:
         return text
@@ -11484,6 +11579,38 @@ def netflix_normalize_location(location_name: str) -> str:
     if match:
         return f"{match.group('state').strip()}, USA, Remote"
     return text
+
+
+def parse_state_dash_remote_us_segment(segment: str) -> str | None:
+    """Return state code from ``Pennsylvania-Remote, United States`` (optional spaces)."""
+    text = str(segment or "").strip()
+    if not text:
+        return None
+    match = _NETFLIX_STATE_REMOTE_RE.match(text)
+    if match:
+        return _parse_us_state_token(match.group("state"))
+    # Multiline blobs (loc_label + title) — check first line / segments.
+    for part in re.split(r"[\n|;]+", text):
+        part = part.strip()
+        if not part or part == text:
+            continue
+        match = _NETFLIX_STATE_REMOTE_RE.match(part)
+        if match:
+            return _parse_us_state_token(match.group("state"))
+    return None
+
+
+def location_text_has_state_dash_remote_us(text: str) -> bool:
+    """True when any segment is ``State-Remote, United States`` (Anaplan/Netflix)."""
+    raw = str(text or "").strip()
+    if not raw:
+        return False
+    if parse_state_dash_remote_us_segment(raw):
+        return True
+    for segment in location_work_segments(raw):
+        if parse_state_dash_remote_us_segment(segment):
+            return True
+    return False
 
 
 
@@ -14980,6 +15107,14 @@ def _job_skip_verify(job: Job) -> bool:
 _LINKEDIN_EXPIRED_PURGED_PATHS: set[str] = set()
 
 
+def _job_url_verify_force(job: Job, *, ignore_skip: bool) -> bool:
+    if getattr(job, "force_url_verify", False):
+        return True
+    if ignore_skip and greenhouse_direct_job_posting_url(job.url or ""):
+        return True
+    return False
+
+
 def verify_jobs(
     jobs: list[Job],
     removed: list[str],
@@ -14998,9 +15133,10 @@ def verify_jobs(
     denylist_key = str(expired_job_urls_path(out_path))
     if denylist_key not in _LINKEDIN_EXPIRED_PURGED_PATHS:
         purge_linkedin_expired_job_urls(out_path)
+        purge_greenhouse_expired_job_urls(out_path)
         _LINKEDIN_EXPIRED_PURGED_PATHS.add(denylist_key)
     expired = load_expired_job_urls(out_path)
-    need_check: list[Job] = []
+    need_check: list[tuple[Job, bool]] = []
     live: list[Job] = []
     newly_expired: list[str] = []
     for job in jobs:
@@ -15015,7 +15151,7 @@ def verify_jobs(
         if norm in expired:
             removed.append(f"{job.title} ({job.url})")
             continue
-        force = bool(getattr(job, "force_url_verify", False))
+        force = _job_url_verify_force(job, ignore_skip=ignore_skip)
         # ATS host skip always applies for first-party scrapes (structured fetch
         # already validated). Aggregator-copied ATS URLs set force_url_verify.
         if not force and posting_url_skip_verify(job.url):
@@ -15031,32 +15167,23 @@ def verify_jobs(
         ):
             live.append(job)
             continue
-        need_check.append(job)
+        need_check.append((job, force))
     if not need_check:
         return live
 
     verify_workers = _verify_worker_count()
 
-    def _check(job: Job) -> tuple[Job, bool]:
+    def _check(item: tuple[Job, bool]) -> tuple[Job, bool]:
+        job, force = item
         try:
-            return job, url_is_live(
-                job.url or "",
-                force=bool(getattr(job, "force_url_verify", False)),
-            )
+            return job, url_is_live(job.url or "", force=force)
         except Exception:
             return job, True
 
     checked: list[tuple[Job, bool]] = []
     if verify_workers == 1 or len(need_check) == 1:
-        for job in need_check:
-            try:
-                ok = url_is_live(
-                    job.url or "",
-                    force=bool(getattr(job, "force_url_verify", False)),
-                )
-            except Exception:
-                ok = True
-            checked.append((job, ok))
+        for item in need_check:
+            checked.append(_check(item))
     else:
         with ThreadPoolExecutor(max_workers=verify_workers) as pool:
             checked = list(pool.map(_check, need_check))
@@ -27335,6 +27462,28 @@ def _job_meta_location_parts(job: Job) -> list[str]:
     return parts
 
 
+def _job_primary_location_text(job: Job) -> str:
+    """Best location string for reclassify/badges: loc_label, else first meta place."""
+    label = str(job.loc_label or "").strip()
+    if label:
+        return label
+    for part in _job_meta_location_parts(job):
+        if _meta_part_is_location_candidate(part):
+            return part
+    return ""
+
+
+def _location_text_is_state_locked_remote_signal(text: str) -> bool:
+    raw = str(text or "").strip()
+    if not raw:
+        return False
+    return bool(
+        location_text_has_state_dash_remote_us(raw)
+        or workday_has_state_locked_remote_only(raw)
+        or location_text_is_state_locked_us_remote(raw)
+    )
+
+
 def _label_is_us_plus_allied_country_remote_eligible(label: str, job_loc: str) -> bool:
     """Deprecated: US + allied-country lists are not nationwide US-only remote."""
     return False
@@ -27411,6 +27560,10 @@ def job_is_nationwide_us_remote_unrestricted(
             continue
         if location_text_is_non_us_country_remote(part):
             continue
+        # Anaplan-style ``Pennsylvania-Remote, United States`` in meta only (empty
+        # loc_label) must not promote to nationwide via the explicit-remote path.
+        if _location_text_is_state_locked_remote_signal(part):
+            continue
         if location_text_is_remote_us_nationwide(part):
             return True
         if location_text_has_explicit_remote_signal(part):
@@ -27430,6 +27583,9 @@ def job_is_nationwide_us_remote(job: Job, cfg: dict[str, Any] | None = None) -> 
 def location_text_is_remote_us_nationwide(text: str) -> bool:
     raw = str(text or "").strip()
     if not raw:
+        return False
+    # ``Pennsylvania-Remote, United States`` is state-locked, not US-wide.
+    if location_text_has_state_dash_remote_us(raw):
         return False
     if location_lists_us_with_other_countries(raw):
         return False
@@ -27451,6 +27607,8 @@ def location_text_is_remote_us_nationwide(text: str) -> bool:
         return False
     lower = " ".join(raw.lower().replace("·", ",").split())
     if location_text_is_state_locked_us_remote(raw):
+        return False
+    if workday_has_state_locked_remote_only(raw):
         return False
     state_remote = re.match(r"^remote\s*[-–—:,]\s*(?P<place>[a-z][a-z .'-]{0,40})\s*$", lower)
     if state_remote:
@@ -27585,20 +27743,27 @@ def job_is_remote_workable_from_home(job: Job, cfg: dict[str, Any] | None = None
         return False
     if loc == "local":
         return False
+    loc_label = str(job.loc_label or "")
+    loc_src = _job_primary_location_text(job) or loc_label
+    title = str(job.title or "")
+    desc = str(job.description_text or "")[:2500]
+    # State-dash remote (Anaplan): only if the locked state is in the profile OK set.
+    dash_state = parse_state_dash_remote_us_segment(loc_src)
+    if dash_state:
+        return dash_state in profile_remote_ok_states(cfg)
+    if workday_has_state_locked_remote_only(loc_src):
+        return workday_remote_matches_profile(loc_src, cfg)
     # Nationwide US remote is always workable from the profile home state (OR).
     if job_is_nationwide_us_remote_unrestricted(job, cfg):
         return True
-    loc_label = str(job.loc_label or "")
-    title = str(job.title or "")
-    desc = str(job.description_text or "")[:2500]
 
     def us_remote_eligible() -> bool:
         if job_is_nationwide_us_remote(job):
             return True
-        if location_is_multi_country_us_eligible(loc_label):
+        if location_is_multi_country_us_eligible(loc_src):
             return True
         return _remote_label_workable_from_home_states(
-            loc_label,
+            loc_src,
             title,
             desc,
             cfg=cfg,
@@ -27608,15 +27773,15 @@ def job_is_remote_workable_from_home(job: Job, cfg: dict[str, Any] | None = None
         return us_remote_eligible()
 
     if loc == "excluded":
-        allowed = extract_state_limited_remote_allowed_states(loc_label, title, desc)
+        allowed = extract_state_limited_remote_allowed_states(loc_src, title, desc)
         if allowed is not None:
             return bool(allowed & profile_remote_ok_states(cfg))
-        return workday_remote_matches_profile(loc_label, cfg)
+        return workday_remote_matches_profile(loc_src, cfg)
 
     if loc != "remote":
         return False
 
-    allowed = extract_state_limited_remote_allowed_states(loc_label, title, desc)
+    allowed = extract_state_limited_remote_allowed_states(loc_src, title, desc)
     if allowed is not None:
         return bool(allowed & profile_remote_ok_states(cfg))
     return us_remote_eligible()
@@ -28145,6 +28310,14 @@ def badge_loc(job: Job, local_badge: str) -> str:
 
 
 def badge_work_model(job: Job, cfg: dict[str, Any] | None = None) -> str:
+    loc_label = str(job.loc_label or "")
+    loc_src = _job_primary_location_text(job) or loc_label
+    # State-locked remote (PA-only, etc.) is never "Remote US".
+    if _location_text_is_state_locked_remote_signal(loc_src):
+        if not workday_remote_matches_profile(loc_src, cfg):
+            return ""
+        # Home-state locked remote: loc badge already carries geography; omit work-model.
+        return ""
     if job_is_nationwide_us_remote(job, cfg):
         return (
             f'<span class="badge badge-work-model badge-work-model-remote">'
@@ -28953,6 +29126,37 @@ def company_filter_key(name: str) -> str:
     return cleaned or "unknown"
 
 
+def resolve_employer_company_filter_key(
+    employer_name: str,
+    cfg: dict[str, Any] | None = None,
+) -> str:
+    """Map aggregator posting employer to the same sidebar key as first-party scrapes."""
+    employer_name = str(employer_name or "").strip()
+    if not employer_name:
+        return "unknown"
+    direct = company_filter_key(employer_name)
+    if not cfg:
+        return direct
+    employer_norm = linkedin_employer_dedupe_key(employer_name)
+    for company in cfg.get("companies") or []:
+        if not isinstance(company, dict):
+            continue
+        if str(company.get("source_group") or "").strip().lower() in {
+            "job_sites",
+            "recruiters",
+        }:
+            continue
+        config_name = str(company.get("name") or "").strip()
+        if not config_name:
+            continue
+        config_key = company_filter_key(config_name)
+        if config_key == direct:
+            return config_key
+        if linkedin_employer_dedupe_key(config_name) == employer_norm:
+            return config_key
+    return direct
+
+
 def job_company_filter_key(
     job: Job,
     company: CompanyResult | None = None,
@@ -28960,10 +29164,21 @@ def job_company_filter_key(
     cfg: dict[str, Any] | None = None,
 ) -> str:
     """Canonical sidebar / lazy-index key for a job — must match checklist checkboxes."""
+    if company is not None and company_result_preserves_posting_employer(company):
+        employer = str(job.company_name or "").strip()
+        if employer:
+            return resolve_employer_company_filter_key(employer, cfg)
+        name = str(company.name or company.label or company.id or "").strip()
+        if name:
+            return company_filter_key(name)
     if company is not None:
         name = str(company.name or company.label or company.id or "").strip()
         if name:
             return company_filter_key(name)
+    if job_is_linkedin_listing(job):
+        employer = str(job.company_name or "").strip()
+        if employer:
+            return resolve_employer_company_filter_key(employer, cfg)
     if cfg:
         cid = str(job.company_id or "").strip()
         if cid:
@@ -29188,7 +29403,7 @@ class LazyBoardCollector:
         pool: str,
     ) -> str:
         apply_key = job_apply_key(job)
-        company_key = job_company_filter_key(job, co)
+        company_key = job_company_filter_key(job, co, cfg=self.cfg)
         sal_low, sal_high = job_salary_amounts(job)
         remote_from_home = job_is_remote_workable_from_home(job, self.cfg)
         nationwide_us_remote = job_is_nationwide_us_remote(job, self.cfg)
@@ -29525,6 +29740,19 @@ def render_job(
         </div>"""
     return article_html
 
+
+def _lazy_append_company_job_html(
+    lazy: LazyBoardCollector,
+    bucket_key: str,
+    chunks: list[str],
+) -> None:
+    text = "\n".join(chunks).strip()
+    if not text:
+        return
+    existing = str(lazy.companies.get(bucket_key) or "").strip()
+    lazy.companies[bucket_key] = f"{existing}\n\n{text}".strip() if existing else text
+
+
 def _render_company_jobs_by_match(
     co: CompanyResult,
     jobs: list[Job],
@@ -29535,16 +29763,24 @@ def _render_company_jobs_by_match(
     pool: str = "listings",
 ) -> list[str]:
     lines: list[str] = []
+    aggregator = lazy is not None and company_result_preserves_posting_employer(co)
+    by_bucket: dict[str, list[str]] = {}
     for level in MATCH_ORDER:
         group = [job for job in jobs if job.match == level]
         if not group:
             continue
         for job in group:
             apply_company_result_job_fields(co, job)
-            lines.append(
-                render_job(job, local_badge, cfg, lazy, pool=pool, company=co)
-            )
-            lines.append("")
+            rendered = render_job(job, local_badge, cfg, lazy, pool=pool, company=co)
+            if aggregator:
+                bucket = job_company_filter_key(job, co, cfg=cfg)
+                by_bucket.setdefault(bucket, []).extend([rendered, ""])
+            else:
+                lines.extend([rendered, ""])
+    if aggregator:
+        for bucket, chunks in by_bucket.items():
+            _lazy_append_company_job_html(lazy, bucket, chunks)
+        return []
     return lines
 
 
@@ -29605,6 +29841,21 @@ def render_company_block(
     sort_attr = company_group_sort_attrs(co, cfg)
     title = format_company_header_title_html(co, cfg)
     if lazy is not None:
+        if company_result_preserves_posting_employer(co):
+            # Job cards + lazy payload live under employer keys (Affirm, etc.), not
+            # the aggregator bucket (LinkedIn). Skip an empty linkedin lazy bucket.
+            if inner:
+                footer = "\n".join(inner).strip()
+                if footer:
+                    _lazy_append_company_job_html(lazy, filter_key, inner)
+            return [
+                f'      <div class="company-group company-group-lazy company-group-aggregator" '
+                f'data-company="{esc(co.id)}" data-lazy-loaded="0"{filter_attr}{sort_attr}'
+                f'{layoff_attr}>',
+                f"        <h3>{title}</h3>",
+                "",
+                "      </div>",
+            ]
         lazy.companies[filter_key] = "\n".join(inner)
         return [
             f'      <div class="company-group company-group-lazy" data-company="{esc(co.id)}"'
@@ -30137,20 +30388,12 @@ def board_profile_fields(cfg: dict[str, Any]) -> dict[str, Any]:
     exclude = [
         str(x).strip() for x in (cfg.get("company_ids_exclude") or []) if str(x).strip()
     ]
-    raw_notes = cfg.get("company_ids_exclude_notes") or {}
-    exclude_notes: dict[str, str] = {}
-    if isinstance(raw_notes, dict):
-        for cid, note in raw_notes.items():
-            key = str(cid or "").strip()
-            text = str(note or "").strip()
-            if key and text:
-                exclude_notes[key] = text
+    # company_ids_exclude_notes stay in profile JSON only — do not embed in board HTML.
     return {
         "skills": skills,
         "salary_floor": salary_floor_value(cfg),
         "resident_status": normalize_profile_resident_status(profile.get("resident_status")),
         "company_ids_exclude": exclude,
-        "company_ids_exclude_notes": exclude_notes,
     }
 
 
@@ -30274,7 +30517,8 @@ def render_search_parameters_panel(cfg: dict[str, Any]) -> str:
             "company_ids_exclude",
             "Excluded company ids",
             "Employers skipped during scrape (sector/policy/pay-band excludes). "
-            "Company id slugs; pay notes show top known IC high when set.",
+            "Company id slugs only; pay-band notes stay in profile JSON "
+            "(company_ids_exclude_notes), not on these chips.",
         )
     )
     lines.extend(
@@ -30438,8 +30682,10 @@ def build_html(
     local_radius = pctx["local_radius_miles"]
     floor_label = pctx["salary_floor_label"]
     verified = run_time.strftime("%b %d, %Y")
-    generated_stamp = format_generated_stamp(utc_now())
-    board_page_title = format_board_page_title(run_time)
+    # Page title + Updated stamp must match HTML write/completion time, not scrape start.
+    completed_at = utc_now()
+    generated_stamp = format_generated_stamp(completed_at)
+    board_page_title = format_board_page_title(completed_at)
     pipeline_port = pipeline_autosave_port()
     default_runtime_path = (
         Path(os.environ.get("JOB_SEARCH_DIR", str(DEFAULT_JOB_SEARCH_DIR))).expanduser()
@@ -30743,10 +30989,28 @@ def build_html(
       color: var(--link-visited);
     }}
     header {{ padding: 1.5rem 2rem 1rem; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, var(--header-grad-top) 0%, var(--bg) 100%); box-sizing: border-box; width: 100%; }}
-    .board-header-top {{ display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }}
-    .board-header-top h1 {{ margin: 0 0 0.25rem; font-size: 1.5rem; font-weight: 600; flex: 1; min-width: 0; }}
+    .board-header-top {{ position: relative; display: flex; align-items: center; justify-content: center; gap: 1rem; min-height: 2.05rem; }}
+    .board-header-top h1 {{
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 600;
+      text-align: center;
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 0 5rem;
+      line-height: 1.3;
+    }}
+    .board-header-subtitle {{
+      margin: 0.35rem 0 0;
+      text-align: center;
+      font-size: 0.92rem;
+      color: var(--muted);
+      font-weight: 500;
+    }}
     .theme-toggle {{
-      position: relative;
+      position: absolute;
+      right: 0;
+      top: 0;
       display: grid;
       grid-template-columns: 1fr 1fr;
       width: 4.6rem;
@@ -31834,7 +32098,7 @@ def build_html(
 <body>
   <header>
     <div class="board-header-top">
-      <h1>Target roles — {esc(name)}</h1>
+      <h1>{esc(board_page_title)}</h1>
       <div class="theme-toggle" id="theme-toggle" role="radiogroup" aria-label="Color theme" data-active="dark">
         <span class="theme-toggle-slider" aria-hidden="true"></span>
         <button type="button" class="theme-toggle-btn is-active" id="theme-dark" role="radio" aria-checked="true" data-theme-value="dark" title="Dark mode">
@@ -31845,6 +32109,7 @@ def build_html(
         </button>
       </div>
     </div>
+    <p class="board-header-subtitle">Target roles — {esc(name)}</p>
     <div class="filter-row job-sources-filter-row">
       <div class="company-filters" id="company-filter">
       {checklist}
@@ -32137,14 +32402,8 @@ def build_html(
       profileSalaryFloor = Number.isFinite(floor) && floor >= 0 ? floor : 0;
       const resident = String(raw.resident_status || 'citizen').trim().toLowerCase();
       profileResidentStatus = PROFILE_RESIDENT_CHOICES.has(resident) ? resident : 'citizen';
-      const notesRaw = (raw.company_ids_exclude_notes && typeof raw.company_ids_exclude_notes === 'object')
-        ? raw.company_ids_exclude_notes : {{}};
+      // Exclude notes live only in profile JSON — never embedded in board HTML.
       profileExcludeNotes = {{}};
-      Object.keys(notesRaw).forEach(cid => {{
-        const key = String(cid || '').trim();
-        const note = String(notesRaw[cid] || '').trim();
-        if (key && note) profileExcludeNotes[key] = note;
-      }});
       return out;
     }}
 
@@ -32196,11 +32455,7 @@ def build_html(
           removeBtn.textContent = '×';
           removeBtn.addEventListener('click', () => removeProfileChip(key, idx));
           const label = document.createElement('span');
-          const note = (key === 'company_ids_exclude')
-            ? String(profileExcludeNotes[text] || '').trim()
-            : '';
-          label.textContent = note ? `${{text}} — ${{note}}` : text;
-          if (note) chip.title = note;
+          label.textContent = text;
           chip.append(removeBtn, label);
           chips.appendChild(chip);
         }});
@@ -32323,9 +32578,13 @@ def build_html(
         doc.profile.salary_floor = profileSalaryFloor;
         doc.profile.resident_status = profileResidentStatus;
         doc.company_ids_exclude = [...(profileChipLists.company_ids_exclude || [])];
+        // Preserve pay-band notes already on disk; board HTML does not carry them.
+        const existingNotes = (doc.company_ids_exclude_notes
+          && typeof doc.company_ids_exclude_notes === 'object')
+          ? doc.company_ids_exclude_notes : {{}};
         const keepNotes = {{}};
         (doc.company_ids_exclude || []).forEach(cid => {{
-          const note = String(profileExcludeNotes[cid] || '').trim();
+          const note = String(existingNotes[cid] || profileExcludeNotes[cid] || '').trim();
           if (note) keepNotes[cid] = note;
         }});
         doc.company_ids_exclude_notes = keepNotes;
@@ -35317,7 +35576,6 @@ def build_html(
         profileFields: {{
           skills: [...(profileChipLists.skills || [])],
           company_ids_exclude: [...(profileChipLists.company_ids_exclude || [])],
-          company_ids_exclude_notes: {{ ...profileExcludeNotes }},
           salary_floor: profileSalaryFloor,
           resident_status: profileResidentStatus,
         }},
@@ -35425,15 +35683,8 @@ def build_html(
           if (!Array.isArray(list)) return;
           profileChipLists[key] = list.map(item => String(item || '').trim()).filter(Boolean);
         }});
-        const notesRaw = (ui.profileFields.company_ids_exclude_notes
-          && typeof ui.profileFields.company_ids_exclude_notes === 'object')
-          ? ui.profileFields.company_ids_exclude_notes : {{}};
+        // Notes are not stored in board UI / HTML; keep in-memory map empty.
         profileExcludeNotes = {{}};
-        Object.keys(notesRaw).forEach(cid => {{
-          const key = String(cid || '').trim();
-          const note = String(notesRaw[cid] || '').trim();
-          if (key && note) profileExcludeNotes[key] = note;
-        }});
         const floor = Number.parseInt(String(ui.profileFields.salary_floor ?? ''), 10);
         if (Number.isFinite(floor) && floor >= 0) profileSalaryFloor = floor;
         const resident = String(ui.profileFields.resident_status || '').trim().toLowerCase();
@@ -37421,6 +37672,58 @@ def ensure_pipeline_autosave_server(out_path: Path, quiet: bool) -> None:
         print("Warning: pipeline autosave server did not confirm startup")
 
 
+def reclassify_results_locations(
+    results: list[CompanyResult], cfg: dict[str, Any]
+) -> int:
+    """Re-run location classification from stored loc_label/meta (rebuild / HTML refresh).
+
+    Fixes snapshot rows scraped before state-locked remote rules (e.g. Anaplan
+    ``Pennsylvania-Remote, United States`` wrongly stored as loc=remote). Greenhouse
+    scrapes often leave loc_label empty and keep the place only in ``meta``.
+    """
+    company_by_id = {
+        str(c.get("id") or ""): c
+        for c in (cfg.get("companies") or [])
+        if isinstance(c, dict) and c.get("id")
+    }
+    updated = 0
+    for co in results:
+        company = company_by_id.get(co.id) or {}
+        employer_region = company_employer_region(company) if company else "us"
+        default_loc = str(company.get("default_loc") or "")
+        for job in co.jobs:
+            src = _job_primary_location_text(job)
+            if not src:
+                continue
+            # Prefer original ATS location text when label was rewritten to exclusion prose.
+            if src.lower().startswith("remote in ") and src.lower().endswith(" only"):
+                continue
+            job_loc, new_label = classify_location_with_fallback(
+                src,
+                employer_region,
+                default_loc,
+                cfg,
+                title=str(job.title or ""),
+                description_text=str(job.description_text or "")[:2500],
+            )
+            if not job_loc:
+                continue
+            label_out = new_label if new_label is not None else job.loc_label
+            # Keep geographic loc_label for badges when we only change loc bucket.
+            if (
+                job_loc == "excluded"
+                and label_out
+                and str(label_out).lower().startswith("remote in ")
+            ):
+                label_out = src
+            if job.loc == job_loc and (job.loc_label or "") == (label_out or ""):
+                continue
+            job.loc = job_loc
+            job.loc_label = label_out
+            updated += 1
+    return updated
+
+
 def recompute_results_matches(
     results: list[CompanyResult], cfg: dict[str, Any]
 ) -> list[CompanyResult]:
@@ -37526,7 +37829,7 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
             print(
                 "Usage: rebuild-snapshot [--recompute-matches] [--verify-urls]\n"
                 "  --recompute-matches  Re-infer match tiers from snapshot JDs, save snapshot, rebuild HTML\n"
-                "  --verify-urls        GET-check non-ATS posting URLs; drop expired; remember denylist"
+                "  --verify-urls        GET-check posting URLs (incl. Greenhouse); drop expired; remember denylist"
             )
             return 0
         if arg == "--recompute-matches":
@@ -37607,12 +37910,15 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
             print(f"Refreshed {salary_n} salary badge(s) from stored JDs")
     results = reconcile_cfg_hub_results(results, cfg.get("companies") or [])
     results = reconcile_cfg_company_display(results, cfg.get("companies") or [])
+    loc_n = reclassify_results_locations(results, cfg)
+    if loc_n:
+        print(f"Reclassified {loc_n} job location(s) from stored labels")
     company_list = cfg.get("companies") or []
     dedupe_jobs_across_companies(results, company_list)
     consolidate_nike_family_jobs(results, company_list)
     consolidate_cisco_family_jobs(results, company_list)
     run_time = datetime.now(timezone.utc)
-    if recompute_matches or verify_urls or exclude_dropped:
+    if recompute_matches or verify_urls or exclude_dropped or loc_n:
         run_at_raw = snapshot.get("run_at")
         if run_at_raw:
             try:
@@ -37632,6 +37938,8 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
             print(f"Recomputed match tiers; saved {run_snapshot_path(out_path)}")
         elif verify_urls:
             print(f"Verified URLs; saved {run_snapshot_path(out_path)}")
+        elif loc_n:
+            print(f"Reclassified locations; saved {run_snapshot_path(out_path)}")
         elif exclude_dropped:
             print(f"Dropped excluded employers; saved {run_snapshot_path(out_path)}")
     pipeline = load_pipeline_store(out_path)
