@@ -103,7 +103,8 @@ class CapitalOneTitleFilterTests(unittest.TestCase):
             match="stretch",
         )
         self.assertTrue(self.qj.job_is_nationwide_us_remote(job, self.cfg))
-        self.assertTrue(self.qj.job_is_remote_workable_from_home(job, self.cfg))
+        # US Remote is Remote US (nus), not Remote-from-Oregon (rfh).
+        self.assertFalse(self.qj.job_is_remote_workable_from_home(job, self.cfg))
 
     def test_base_json_parses(self) -> None:
         base_path = REPO_ROOT / "quickjobs.base.json"

@@ -6843,6 +6843,47 @@ def greenhouse_direct_job_posting_url(url: str) -> bool:
     )
 
 
+_GH_JID_RE = re.compile(r"[?&]gh_jid=(\d+)", re.I)
+_GH_BOARD_JOBS_RE = re.compile(
+    r"https?://(?:boards|job-boards)\.greenhouse\.io/(?P<board>[^/?#]+)/jobs/(?P<jid>\d+)",
+    re.I,
+)
+_GH_CAREERS_INDEX_PATH_RE = re.compile(
+    r"^/(?:open-positions|careers|career|jobs|job-search|search)/?$",
+    re.I,
+)
+
+
+def greenhouse_job_id_from_url(url: str) -> str:
+    raw = str(url or "").strip()
+    match = _GH_JID_RE.search(raw)
+    if match:
+        return match.group(1)
+    match = _GH_BOARD_JOBS_RE.search(raw)
+    return match.group("jid") if match else ""
+
+
+def greenhouse_canonical_job_url(url: str, board: str = "") -> str:
+    """Point ?gh_jid= career-index embeds at job-boards.greenhouse.io/{board}/jobs/{id}.
+
+    Motional ``motional.com/open-positions?gh_jid=…`` is a hash SPA that ignores
+    the query and shows the careers index. Leave working ``/jobs/{id}`` pages alone.
+    """
+    raw = str(url or "").strip()
+    slug = str(board or "").strip().strip("/")
+    if not raw or not slug:
+        return raw
+    if greenhouse_direct_job_posting_url(raw):
+        return raw
+    parsed = urllib.parse.urlsplit(raw)
+    if not _GH_CAREERS_INDEX_PATH_RE.search(parsed.path or ""):
+        return raw
+    jid = greenhouse_job_id_from_url(raw)
+    if not jid:
+        return raw
+    return f"https://job-boards.greenhouse.io/{slug}/jobs/{jid}"
+
+
 def _ats_api_dead_board_note(note: str) -> bool:
     """True when a structured ATS board is gone (HTTP 404/410), not a transient failure."""
     lower = str(note or "").lower()
@@ -7496,6 +7537,7 @@ def location_name_is_remoteish(name: str) -> bool:
             "work from home",
             "distributed",
             "telecommute",
+            "virtual",
         )
     )
 
@@ -7607,6 +7649,8 @@ def remote_scope_is_broad_us(lower: str) -> bool:
         r"(?<![-\w])\bremote\b\s*[-,:]?\s*north america\b",
         r"(?<![-\w])\bremote\b\s*[-,:]?\s*americas\b",
         r"\bhome[- ]based\b\s*-\s*americas\b",
+        r"(?<![-\w])\bvirtual\b\s*[-,:/]?\s*(?:usa|us|u\.s\.|united states)\b",
+        r"\b(?:usa|us|u\.s\.|united states)\s*[-–—,:/]\s*virtual\b",
     )
     return any(re.search(pattern, lower) for pattern in patterns)
 
@@ -7875,6 +7919,8 @@ def extract_state_limited_remote_allowed_states(*parts: str) -> frozenset[str] |
     """Return allowed US state codes when remote is limited to specific state(s).
 
     None means nationwide / multi-country US-eligible remote, or no state-only pattern.
+    Inclusive Remote-from-home: ``Remote - Oregon, Washington`` yields OR+WA (not
+    Oregon-only exclusive).
     """
     blob = " ".join(str(part).strip() for part in parts if str(part).strip())
     if not blob:
@@ -7905,6 +7951,34 @@ def extract_state_limited_remote_allowed_states(*parts: str) -> frozenset[str] |
         if state in US_STATE_CODES:
             matched = True
             found_codes.add(state)
+
+    # ``Remote - Oregon`` / ``Remote, OR, WA`` (suffix form used by many ATS badges).
+    # Match each caller part on its own so a title/JD glue string does not break ^...$.
+    suffix_sources: list[str] = []
+    for part in parts:
+        raw_part = str(part or "").strip()
+        if raw_part:
+            suffix_sources.append(raw_part)
+    suffix_sources.append(blob)
+    for source in suffix_sources:
+        for part in re.split(r"[\n;|/]+", source):
+            lower = " ".join(part.lower().replace("·", ",").split())
+            match = _STATE_REMOTE_SUFFIX_RE.match(lower)
+            if not match:
+                continue
+            place = match.group("place").strip().strip(".")
+            place = re.sub(r"\s+only$", "", place, flags=re.I).strip()
+            # Nationwide place tokens are not state locks; keep scanning other parts.
+            if place in _NATIONWIDE_US_REMOTE_COUNTRY_TOKENS:
+                continue
+            if re.match(r"^united states(?:\s+of\s+america)?$", place):
+                continue
+            if _state_blob_is_broad_us_remote(place):
+                continue
+            codes = parse_us_state_codes_from_blob(place)
+            if codes:
+                matched = True
+                found_codes.update(codes)
 
     if not matched or not found_codes:
         return None
@@ -7976,8 +8050,8 @@ _HYBRID_ANY_OFFICE_PREFIX_RE = re.compile(
     re.I,
 )
 _NETFLIX_STATE_REMOTE_RE = re.compile(
-    r"^(?P<state>[A-Za-z][A-Za-z .'\-]+?)\s*-\s*Remote\s*,\s*"
-    r"(?:United States(?:\s+of\s+America)?|USA|US)\s*$",
+    r"^(?P<state>[A-Za-z][A-Za-z .']+?)\s*-\s*Remote"
+    r"(?:\s*,\s*(?:United States(?:\s+of\s+America)?|USA|US))?\s*$",
     re.I,
 )
 _US_COUNTRY_LOC_SEGMENT_RE = re.compile(
@@ -8080,7 +8154,7 @@ def segment_is_us_country_remote(segment: str) -> bool:
         "u.s.a. - remote",
     }:
         return True
-    return lower in {
+    if lower in {
         "remote, us",
         "remote, usa",
         "remote, u.s.",
@@ -8095,7 +8169,42 @@ def segment_is_us_country_remote(segment: str) -> bool:
         "remote - u.s",
         "remote - u.s.a.",
         "remote - u.s.a",
-    }
+        "remote u.s.",
+        "remote u.s",
+        "work from home - united states",
+        "work from home - us",
+        "work from home - usa",
+        "work from home, united states",
+        "wfh - united states",
+        "wfh - us",
+        "united states (remote)",
+        "usa (remote)",
+        "us (remote)",
+        "u.s. (remote)",
+        "amer-us-remote",
+        "amer us remote",
+        "americas-us-remote",
+        "us-remote",
+        "usa-remote",
+    }:
+        return True
+    return bool(
+        re.match(
+            r"^(?:work from home|work-from-home|wfh)\s*[-–—,:/]\s*"
+            r"(?:us|usa|u\.s\.|united states(?: of america)?)\s*$",
+            lower,
+        )
+        or re.match(
+            r"^(?:us|usa|u\.s\.|united states(?: of america)?)\s*[-–—,:/]\s*"
+            r"(?:work from home|work-from-home|wfh|remote)\s*$",
+            lower,
+        )
+        or re.match(
+            r"^(?:amer(?:icas)?|us|usa|u\.s\.)\s*[-–—/]\s*"
+            r"(?:us|usa)?\s*[-–—/]?\s*remote\s*$",
+            lower,
+        )
+    )
 
 
 def us_country_segment_to_city_state(segment: str) -> str | None:
@@ -8140,6 +8249,8 @@ def location_has_us_nationwide_remote_segment(location_name: str) -> bool:
     """True for ``US, Remote`` with no state (remote anywhere in the US)."""
     for segment in location_work_segments(location_name):
         if segment_is_us_country_remote(segment):
+            return True
+        if location_text_is_bare_us_country(segment) or location_text_is_virtual_us(segment):
             return True
     text = str(location_name or "").strip()
     return segment_is_us_country_remote(text)
@@ -8236,9 +8347,18 @@ _BARE_REMOTE_SEGMENTS = frozenset(
 _UNQUALIFIED_BARE_REMOTE_SEGMENTS = _BARE_REMOTE_SEGMENTS | frozenset({"remote opportunity"})
 
 def location_work_segments(location_name: str) -> list[str]:
-    """Split pipe/semicolon-separated work locations (e.g. Waymo careers pages)."""
-    text, _ = location_strip_paren_suffix(location_name)
-    text = normalize_workday_location_text(str(text or "").strip())
+    """Split pipe/semicolon-separated work locations (e.g. Waymo careers pages).
+
+    Do not strip a trailing ``(Remote)`` from the whole blob first. That turned
+    ``…; United States (Remote)`` into a bare ``United States`` office token.
+    Single-site ``City, ST (Hybrid)`` still drops the paren suffix.
+    """
+    raw = str(location_name or "").strip()
+    if not raw:
+        return []
+    if not re.search(r"[;|]", raw):
+        raw, _ = location_strip_paren_suffix(raw)
+    text = normalize_workday_location_text(raw)
     if not text:
         return []
     parts = [p.strip() for p in re.split(r"[;|]", text) if p.strip()]
@@ -8308,6 +8428,75 @@ def _segment_is_bare_remote(segment: str) -> bool:
     )
 
 
+# Geo regions used as Greenhouse remote "countries" (GitLab APAC/EMEA/US lists).
+_REMOTE_GEO_REGION_ABBREVS = {
+    "apac": "APAC",
+    "emea": "EMEA",
+    "latam": "LATAM",
+    "americas": "AMERICAS",
+    "na": "NA",
+    "eu": "EU",
+}
+
+
+def _remote_country_abbrev_from_segment(segment: str) -> str | None:
+    """Map ``Remote, Canada`` / ``Remote, US`` / ``Remote, APAC`` to badge tokens.
+
+    Used so badge sanitization does not drop the US half of GitLab-style
+    ``Remote, Canada; Remote, US`` or ``Remote, APAC; Remote, EMEA; Remote, US``
+    labels (which then reclassify as non-US-only excluded).
+    """
+    seg = str(segment or "").strip()
+    if not seg:
+        return None
+    lower = " ".join(seg.lower().split())
+    match = re.match(
+        r"^remote\s*[,:\-–—]\s*(?P<country>.+?)\s*$",
+        lower,
+    )
+    if not match:
+        match = re.match(
+            r"^(?P<country>.+?)\s*[,:\-–—]\s*remote\s*$",
+            lower,
+        )
+    if not match:
+        match = re.match(
+            r"^remote\s*\(\s*(?P<country>[^)]+?)\s*\)\s*$",
+            lower,
+        )
+    if not match:
+        return None
+    country = match.group("country").strip()
+    if not country or country in {"hybrid", "onsite", "on-site", "on site"}:
+        return None
+    if country_part_is_us(country) or normalize_country_token(country) in _US_COUNTRY_NAMES:
+        return "US"
+    region = _REMOTE_GEO_REGION_ABBREVS.get(country.lower())
+    if region:
+        return region
+    if country.upper() in _REMOTE_GEO_REGION_ABBREVS.values():
+        return country.upper()
+    abbrev = _abbreviate_country_token(country, whole_segment=True)
+    if abbrev:
+        return abbrev
+    if country_part_is_non_us(country) or _part_is_country_name(country):
+        # Prefer short tokens when already abbreviated (UK, EU, …).
+        token = country.upper() if len(country) <= 3 else country.title()
+        return token
+    return None
+
+
+def location_is_multi_remote_locale_with_us(location_name: str) -> bool:
+    """True for multi-locale remote lists that include US (e.g. APAC + EMEA + US)."""
+    segments = location_work_segments(str(location_name or "").strip())
+    if len(segments) < 2:
+        return False
+    abbrevs = [_remote_country_abbrev_from_segment(seg) for seg in segments]
+    if not all(abbrevs):
+        return False
+    return "US" in abbrevs and any(a != "US" for a in abbrevs)
+
+
 _GEO_OR_REMOTE_US_TAIL_RE = re.compile(
     r"\s+or\s+remote(?:\s*\(\s*(?:u\.s\.|us|usa|united\s+states)\s*\))?\s*$",
     re.I,
@@ -8358,7 +8547,12 @@ def location_is_geo_or_remote_us_hybrid(text: str) -> bool:
 
 
 def strip_geo_or_remote_hybrid_location(text: str) -> str:
-    """Drop trailing 'or Remote (U.S.)' tails; keep multi-site separators."""
+    """Drop trailing 'or Remote (U.S.)' tails; keep multi-site separators.
+
+    Multi-country remote lists (``Remote, Canada; Remote, US``) keep every country
+    remote segment — dropping ``Remote, US`` as nationwide noise caused rebuild to
+    reclassify GitLab AMER roles as Canada-only excluded.
+    """
     raw = str(text or "").strip()
     if not raw or location_text_is_remote_us_nationwide(raw):
         return raw
@@ -8368,18 +8562,35 @@ def strip_geo_or_remote_hybrid_location(text: str) -> str:
     if len(segments) <= 1:
         geo = extract_geo_from_geo_or_remote_segment(raw)
         return geo if geo else raw
+    # Prefer country abbrevs when every segment is Remote+country (Canada + US, …).
+    remote_country_abbrevs = [_remote_country_abbrev_from_segment(seg) for seg in segments]
+    if len(segments) >= 2 and all(remote_country_abbrevs):
+        ordered: list[str] = []
+        for abbrev in remote_country_abbrevs:
+            assert abbrev is not None
+            if abbrev not in ordered:
+                ordered.append(abbrev)
+        if len(ordered) >= 2:
+            return "; ".join(ordered)
     cleaned: list[str] = []
     for seg in segments:
         geo = extract_geo_from_geo_or_remote_segment(seg)
         if geo:
             if geo not in cleaned:
                 cleaned.append(geo)
-        elif _segment_is_bare_remote(seg) or location_text_is_remote_us_nationwide(seg):
             continue
-        else:
-            piece = abbreviate_geo_region_label(seg)
+        country_abbrev = _remote_country_abbrev_from_segment(seg)
+        if country_abbrev:
+            # Keep Remote, US alongside Remote, Canada (do not drop as bare nationwide).
+            piece = seg.strip()
             if piece and piece not in cleaned:
                 cleaned.append(piece)
+            continue
+        if _segment_is_bare_remote(seg) or location_text_is_remote_us_nationwide(seg):
+            continue
+        piece = abbreviate_geo_region_label(seg)
+        if piece and piece not in cleaned:
+            cleaned.append(piece)
     if not cleaned:
         return raw
     separator = " | " if "|" in raw else "; "
@@ -8794,6 +9005,8 @@ def remote_scope_is_geo_restricted(lower: str) -> bool:
 
 def remote_location_us_workable(name: str, employer_region: str = "us") -> bool:
     """True when a remote posting plausibly allows working from the US."""
+    if location_text_is_us_country_wide(name):
+        return True
     if location_is_multi_country_us_eligible(name):
         return True
     if location_is_geo_plus_us_nationwide_remote(name):
@@ -9096,18 +9309,40 @@ def _part_is_country_name(part: str) -> bool:
 
 
 def _location_country_name_parts(location_name: str) -> list[str]:
-    """Country-name tokens from comma/semicolon location lists (drops Remote/Hybrid)."""
+    """Country-name tokens from comma/semicolon/newline location lists (drops Remote/Hybrid)."""
     core, _ = location_strip_paren_suffix(location_name)
     text = core.strip()
     if not text:
         return []
-    parts = [p.strip() for p in re.split(r"[,;]\s*", text) if p.strip()]
+    parts = [
+        p.strip()
+        for p in re.split(r"[,;\n]|\s+and\s+|\s*&\s+", text, flags=re.I)
+        if p.strip()
+    ]
     countries: list[str] = []
     for part in parts:
         if _segment_is_bare_remote(part):
             continue
         lower = normalize_country_token(part)
         if lower in {"hybrid", "onsite", "on-site", "on site"}:
+            continue
+        # Badges abbreviate Canada as CAN (legacy CA) next to US (newline or comma).
+        # Do not treat "San Francisco, CA, US" (city + state) as Canada + US.
+        if lower in {"ca", "can"} and any(country_part_is_us(p) for p in parts):
+            leftovers = [
+                p
+                for p in parts
+                if normalize_country_token(p) not in {"ca", "can"}
+                and not country_part_is_us(p)
+                and not _segment_is_bare_remote(p)
+                and normalize_country_token(p)
+                not in {"hybrid", "onsite", "on-site", "on site"}
+            ]
+            if leftovers and not all(
+                _part_is_country_name(p) or country_part_is_non_us(p) for p in leftovers
+            ):
+                continue
+            countries.append("Canada")
             continue
         if _part_is_country_name(part) or country_part_is_us(part) or country_part_is_non_us(part):
             countries.append(part)
@@ -9121,44 +9356,68 @@ def location_is_country_only_multi_country(location_name: str) -> bool:
         return False
     core, _ = location_strip_paren_suffix(location_name)
     text = core.strip()
-    if not re.search(r"[,;]", text):
+    if not re.search(r"[,;\n]", text):
         return False
     return True
 
 
 def location_is_multi_country_us_eligible(location_name: str) -> bool:
-    """Comma/semicolon-separated country list that includes United States (either/or hire)."""
+    """Country list that includes United States (either/or hire, e.g. Canada + US).
+
+    Two ``United States`` tokens from city,state,country sites (Roblox Ashburn/DC)
+    are not a multi-country remote list.
+    """
     countries = _location_country_name_parts(location_name)
-    if len(countries) < 2:
-        return False
-    return any(country_part_is_us(p) for p in countries)
+    has_us = any(country_part_is_us(p) for p in countries)
+    has_other = any(country_part_is_non_us(p) for p in countries)
+    if has_us and has_other:
+        return True
+    # Region remotes (APAC/EMEA) are not country-name parts after comma splits.
+    return location_is_multi_remote_locale_with_us(location_name)
 
 
 def location_lists_us_with_other_countries(location_name: str) -> bool:
     """True when US is listed alongside at least one other country (not US-only remote)."""
     countries = _location_country_name_parts(location_name)
-    if len(countries) < 2:
-        return False
-    has_us = any(country_part_is_us(p) for p in countries)
-    has_other = any(country_part_is_non_us(p) for p in countries)
-    return has_us and has_other
+    if len(countries) >= 2:
+        has_us = any(country_part_is_us(p) for p in countries)
+        has_other = any(country_part_is_non_us(p) for p in countries)
+        if has_us and has_other:
+            return True
+    return location_is_multi_remote_locale_with_us(location_name)
 
 
 def location_names_city_state_site(location_name: str) -> bool:
-    """True for city, ST or city, ST, country site-bound locations (not country-only lists)."""
-    return any(
-        segment_names_city_state_site(segment)
-        for segment in location_work_segments(location_name)
-    )
+    """True for city, ST or city, ST, country site-bound locations (not country-only lists).
+
+    Inclusive of slash/pipe multi-sites (``Portland, OR / Seattle, WA``) where the
+    whole string is one work segment but contains city, ST tokens.
+    """
+    for segment in location_work_segments(location_name):
+        if segment_names_city_state_site(segment):
+            return True
+        if LOCATION_SITE_RE.search(segment):
+            return True
+    return False
 
 
 def classify_city_state_site(
     location_name: str, cfg: dict[str, Any] | None = None
 ) -> tuple[str, str] | None:
-    """Return local or excluded when location names a US city/state work site."""
-    if not location_names_city_state_site(location_name):
-        return None
+    """Return local or excluded when location names a US city/state work site.
+
+    Inclusive local: Portland-metro prose (e.g. LinkedIn ``Portland, Oregon
+    Metropolitan Area``) counts when within ``local_radius_miles``, even without
+    a ``City, ST`` token. Multi-site lists that include any in-radius site are local.
+    """
     label = str(location_name or "").strip()
+    if not location_names_city_state_site(location_name):
+        # Metro-area / plain city prose without a parseable City, ST fragment.
+        if location_within_local_radius(location_name, cfg) and portland_metro_marker_in_text(
+            str(location_name or "").lower()
+        ):
+            return "local", label
+        return None
     fragments: list[str] = []
     for segment in location_work_segments(location_name):
         if _segment_is_bare_remote(segment):
@@ -9254,6 +9513,65 @@ def excluded_location_label(location_name: str) -> str:
     return fragment or str(location_name or "").strip()
 
 
+_TITLE_PAREN_REMOTE_LOCALES_RE = re.compile(
+    r"\((?P<body>[^)]*\b(?:APAC|EMEA|LATAM|AMERICAS|Canada|United\s+States|USA|U\.S\.A?\.?|US)\b[^)]*)\)\s*$",
+    re.I,
+)
+
+
+def _remote_locale_abbrevs_from_title_paren(title: str) -> list[str] | None:
+    """Parse ``(APAC, EMEA, or US)`` title tails into remote locale abbrevs."""
+    match = _TITLE_PAREN_REMOTE_LOCALES_RE.search(str(title or "").strip())
+    if not match:
+        return None
+    body = match.group("body")
+    tokens = re.split(r"\s*(?:,|/|\bor\b|\band\b)\s*", body, flags=re.I)
+    ordered: list[str] = []
+    for token in tokens:
+        token = token.strip(" .")
+        if not token:
+            continue
+        abbrev = _remote_country_abbrev_from_segment(f"Remote, {token}")
+        if not abbrev and token.upper() in _REMOTE_GEO_REGION_ABBREVS.values():
+            abbrev = token.upper()
+        if abbrev and abbrev not in ordered:
+            ordered.append(abbrev)
+    if len(ordered) >= 2 and "US" in ordered:
+        return ordered
+    return None
+
+
+def _recover_truncated_multi_remote_location(
+    location_name: str,
+    *,
+    title: str = "",
+    description_text: str = "",
+) -> str | None:
+    """Rebuild multi-locale remote labels only when the title lists those locales.
+
+    Do not infer United States from JD prose (``United States and Canada``) or
+    ``AMER`` in the title — Canada-only ATS locations such as Babylist stay Canada.
+    """
+    loc = str(location_name or "").strip()
+    if not loc:
+        return None
+    if location_is_multi_country_us_eligible(loc) or location_is_multi_remote_locale_with_us(loc):
+        return None
+    title_locales = _remote_locale_abbrevs_from_title_paren(title)
+    if not title_locales:
+        return None
+    single = _remote_country_abbrev_from_segment(loc)
+    looks_remote = bool(
+        single
+        or location_text_is_non_us_country_remote(loc)
+        or re.search(r"\bremote\b", loc, re.I)
+    )
+    # Truncated first-locale-only labels (Remote, APAC) while title still lists US.
+    if looks_remote and (single is None or single != "US"):
+        return "; ".join(f"Remote, {abbrev}" for abbrev in title_locales)
+    return None
+
+
 def classify_location_with_fallback(
     location_name: str,
     employer_region: str,
@@ -9273,6 +9591,18 @@ def classify_location_with_fallback(
     # Netflix/Anaplan ``State-Remote, United States`` → ``State, USA, Remote``.
     if location_name:
         location_name = netflix_normalize_location(location_name)
+    # Recover truncated multi-locale remote badges (Canada+US / APAC+EMEA+US).
+    recovered = _recover_truncated_multi_remote_location(
+        location_name, title=title, description_text=description_text
+    )
+    if recovered:
+        location_name = recovered
+    # Country-wide US slots (Greenhouse/Lever/Ashby/Workday) often omit "Remote".
+    if location_text_is_us_country_wide(location_name):
+        return (
+            "remote-intl" if employer_region == "international" else "remote",
+            location_name,
+        )
     state_excluded, state_label = location_or_title_is_state_limited_remote(
         location_name,
         title=title,
@@ -9281,6 +9611,20 @@ def classify_location_with_fallback(
     )
     if state_excluded:
         return "excluded", state_label
+
+    # Inclusive Remote-from-home: state-limited remote that includes the profile
+    # home (or OK) state is remote-workable, not a hard exclusion.
+    state_allowed = extract_state_limited_remote_allowed_states(
+        location_name,
+        title,
+        description_text,
+    )
+    if state_allowed is not None and state_allowed & profile_remote_ok_states(cfg):
+        label = str(location_name or "").strip() or "Remote"
+        return (
+            "remote-intl" if employer_region == "international" else "remote",
+            label,
+        )
 
     for source in (location_name, title):
         lock = location_country_paren_remote_lock(source) or greenhouse_title_country_lock(source)
@@ -9569,8 +9913,15 @@ def greenhouse_fetch_job_content(board: str, job_id: int, force_refresh: bool = 
     return content
 
 
-def greenhouse_extract_comp_range(detail_text: str) -> tuple[str, int, int] | None:
-    return extract_comp_range_from_text(detail_text)
+def greenhouse_extract_comp_range(
+    detail_text: str,
+    *,
+    location_name: str = "",
+    cfg: dict[str, Any] | None = None,
+) -> tuple[str, int, int] | None:
+    return extract_comp_range_from_text(
+        detail_text, location_name=location_name, cfg=cfg
+    )
 
 
 AFFIRM_HIGH_COST_STATE_MARKERS = (
@@ -9673,6 +10024,122 @@ def pick_usa_base_pay_geo_band(
     if loc_pref:
         return high or other
     return other or high
+
+
+def extract_usa_named_geo_salary_bands(detail_text: str) -> list[tuple[str, int, int]]:
+    """Cohere-style ``USA - California, New York and Washington`` / ``USA - All Other States`` bands."""
+    text = _normalize_comp_detail_text(detail_text)
+    if not text or not re.search(r"\bUSA\s*[-–—]", text, re.I):
+        return []
+    money = _money_capture_pattern()
+    dash = r"(?:-|–|—|to)"
+    pattern = (
+        rf"USA\s*[-–—]\s*(?P<head>[A-Za-z][A-Za-z ,&']+?)\s*"
+        rf"(?::\s*)?(?:Base Salary\s*)?{money}\s*{dash}\s*{money}"
+    )
+    bands: list[tuple[str, int, int]] = []
+    for match in re.finditer(pattern, text, re.I):
+        snippet = match.group(0)
+        if re.search(r"CA\$|\bCAD\b", snippet, re.I):
+            continue
+        head = " ".join(match.group("head").split())
+        low = parse_money_amount(match.group(2))
+        high = parse_money_amount(match.group(3))
+        low, high = apply_shared_k_salary_suffix(low, high, snippet)
+        if low > 0 and high > 0:
+            if low > high:
+                low, high = high, low
+            if _comp_range_pair_plausible(low, high):
+                bands.append((head, low, high))
+    return bands
+
+
+def _usa_named_geo_heading_states(head: str) -> frozenset[str]:
+    raw = str(head or "").strip()
+    if not raw or re.search(r"all other states", raw, re.I):
+        return frozenset()
+    codes: set[str] = set()
+    for part in re.split(r"\s*(?:,|&| and )\s*", raw):
+        token = part.strip()
+        if not token:
+            continue
+        code = _parse_us_state_token(token)
+        if code:
+            codes.add(code)
+    return frozenset(codes)
+
+
+def pick_usa_named_geo_salary_band(
+    bands: list[tuple[str, int, int]],
+    *,
+    location_name: str = "",
+    cfg: dict[str, Any] | None = None,
+) -> tuple[int, int] | None:
+    """Pick the US geo band for the profile home zip/state (not Canada / not high-cost by default)."""
+    if not bands:
+        return None
+    home = profile_home_us_state(cfg or {})
+    named = [
+        (head, low, high)
+        for head, low, high in bands
+        if home in _usa_named_geo_heading_states(head)
+    ]
+    if named:
+        _head, low, high = named[0]
+        return low, high
+    other = [
+        (head, low, high)
+        for head, low, high in bands
+        if re.search(r"all other states", head, re.I)
+    ]
+    if other:
+        _head, low, high = other[0]
+        return low, high
+    loc = str(location_name or "").lower()
+    loc_named = [
+        (head, low, high)
+        for head, low, high in bands
+        if _usa_named_geo_heading_states(head)
+        and any(
+            marker in loc
+            for marker in (
+                "california",
+                "new york",
+                "washington",
+                ", ca",
+                ", ny",
+                ", wa",
+            )
+        )
+        and bool(_usa_named_geo_heading_states(head) & {"CA", "NY", "WA"})
+    ]
+    if loc_named and home in {"CA", "NY", "WA"}:
+        _head, low, high = loc_named[0]
+        return low, high
+    if len(bands) == 1:
+        _head, low, high = bands[0]
+        return low, high
+    return None
+
+
+def extract_posted_point_salary(detail_text: str) -> int | None:
+    """Single posted amount such as Dragos ``Salary: $225,000`` (not a min-max range)."""
+    text = _normalize_comp_detail_text(detail_text)
+    if not text:
+        return None
+    money = _money_capture_pattern()
+    pattern = (
+        rf"(?:base\s+)?salary\s*:\s*(?:us\$|usd\s*)?{money}"
+        rf"(?!\s*(?:-|–|—|to)\s*\$?\s*\d)"
+    )
+    for match in re.finditer(pattern, text, re.I):
+        prefix = text[max(0, match.start() - 4) : match.start()].lower()
+        if "ca$" in prefix or prefix.endswith("ca"):
+            continue
+        amount = parse_money_amount(match.group(1))
+        if amount >= 10_000 and salary_range_plausible("base", amount, amount):
+            return amount
+    return None
 
 
 def affirm_location_prefers_high_cost_band(location_name: str) -> bool | None:
@@ -10112,6 +10579,141 @@ def launchdarkly_salary_from_detail(
     return salary_range_status("base", low, high, cfg)
 
 
+# Mozilla US geographic hiring tiers (careers “Hiring Ranges” / tier chart).
+# Tier 1 = NYC, SF, San Jose. Tier 2 = Portland/Seattle/Austin/… + other CA.
+# Tier 3 = all other US. Profile home (Portland metro / OR) → Tier 2.
+MOZILLA_US_TIER1_MARKERS = (
+    "new york city",
+    "nyc",
+    "manhattan",
+    "brooklyn",
+    "san francisco",
+    "san jose",
+    "sf bay",
+    "bay area",
+)
+MOZILLA_US_TIER2_CITY_MARKERS = (
+    "seattle",
+    "austin",
+    "boston",
+    "chicago",
+    "denver",
+    "miami",
+    "philadelphia",
+    "portland",
+    "beaverton",
+    "hillsboro",
+    "example city",
+    "washington d.c",
+    "washington dc",
+    "washington, dc",
+    "district of columbia",
+)
+# States whose primary Mozilla tech hubs are Tier 2 (not Tier 1).
+MOZILLA_US_TIER2_HOME_STATES = frozenset(
+    {"OR", "WA", "TX", "MA", "IL", "CO", "FL", "PA", "DC", "MD"}
+)
+
+
+def extract_mozilla_us_tier_bands(detail_text: str) -> dict[int, tuple[int, int]]:
+    """Parse ``US Tier N Locations $low — $high USD`` hiring ranges."""
+    if not detail_text:
+        return {}
+    if not re.search(r"\bus\s+tier\s+[123]\s+locations?\b", detail_text, re.I):
+        return {}
+    money = _money_capture_pattern()
+    pattern = (
+        rf"US\s+Tier\s+(?P<tier>[123])\s+Locations?\s*{money}\s*(?:-|–|—|to)\s*{money}"
+        rf"(?:\s*USD)?"
+    )
+    bands: dict[int, tuple[int, int]] = {}
+    for match in re.finditer(pattern, detail_text, re.I):
+        tier = int(match.group("tier"))
+        low = parse_money_amount(match.group(2))
+        high = parse_money_amount(match.group(3))
+        if low > 0 and high > 0:
+            if low > high:
+                low, high = high, low
+            bands[tier] = (low, high)
+    return bands
+
+
+def mozilla_us_geo_tier_for_profile(
+    location_name: str = "",
+    cfg: dict[str, Any] | None = None,
+) -> int:
+    """Map listing location + profile home to Mozilla US Tier 1/2/3."""
+    loc = str(location_name or "").lower()
+    if any(marker in loc for marker in MOZILLA_US_TIER1_MARKERS):
+        return 1
+    if any(marker in loc for marker in MOZILLA_US_TIER2_CITY_MARKERS):
+        return 2
+    # Other California cities (outside SF/San Jose metros) are Tier 2.
+    if re.search(r"\b(?:ca|california)\b", loc) or any(
+        city in loc
+        for city in (
+            "los angeles",
+            "san diego",
+            "sacramento",
+            "irvine",
+            "oakland",
+            "santa monica",
+        )
+    ):
+        return 2
+
+    cfg = cfg or {}
+    profile = cfg.get("profile") if isinstance(cfg.get("profile"), dict) else {}
+    home_zip = str(profile.get("home_zip") or "00000").strip()
+    # Portland metro zips → Tier 2 even when listing is Remote US.
+    if home_zip.startswith(("970", "971", "972")):
+        return 2
+    home = profile_home_us_state(cfg)
+    if home in MOZILLA_US_TIER2_HOME_STATES:
+        return 2
+    if home == "NY":
+        return 1
+    if home == "CA":
+        # Ambiguous without city; prefer Tier 2 (non-SF/SJ California).
+        return 2
+    return 3
+
+
+def mozilla_pick_us_tier_band(
+    bands: dict[int, tuple[int, int]],
+    location_name: str,
+    cfg: dict[str, Any],
+) -> tuple[int, int] | None:
+    if not bands:
+        return None
+    tier = mozilla_us_geo_tier_for_profile(location_name, cfg)
+    if tier in bands:
+        return bands[tier]
+    for fallback in (2, 3, 1):
+        if fallback in bands:
+            return bands[fallback]
+    return next(iter(bands.values()))
+
+
+def mozilla_salary_from_detail(
+    detail_text: str,
+    cfg: dict[str, Any],
+    *,
+    location_name: str = "",
+) -> tuple[str, str | None]:
+    bands = extract_mozilla_us_tier_bands(detail_text)
+    if bands:
+        picked = mozilla_pick_us_tier_band(bands, location_name, cfg)
+        if picked:
+            low, high = picked
+            return salary_range_status("base", low, high, cfg)
+    comp_range = extract_comp_range_from_text(detail_text, location_name=location_name)
+    if not comp_range:
+        return "maybe", None
+    kind, low, high = comp_range
+    return salary_range_status(kind, low, high, cfg)
+
+
 # Omada Health geographic salary zones (careers zone chart; OR is Zone 2).
 _OMADA_ZONE_1_STATES = frozenset({"CA", "WA", "NY"})
 _OMADA_ZONE_2_STATES = frozenset(
@@ -10404,11 +11006,15 @@ def greenhouse_salary_from_detail(
         return launchdarkly_salary_from_detail(detail_text, cfg, location_name=location_name)
     if heuristic == "omada" or company_id in {"omada-health", "omada"}:
         return omada_salary_from_detail(detail_text, cfg, location_name=location_name)
+    if heuristic == "mozilla" or company_id == "mozilla":
+        return mozilla_salary_from_detail(detail_text, cfg, location_name=location_name)
     if heuristic == "instacart" or company_id == "instacart":
         return instacart_salary_from_detail(detail_text, cfg, location_name=location_name)
     if heuristic == "block" or company_id == "block":
         return block_salary_from_detail(detail_text, cfg, location_name=location_name)
-    comp_range = greenhouse_extract_comp_range(detail_text)
+    comp_range = greenhouse_extract_comp_range(
+        detail_text, location_name=location_name, cfg=cfg
+    )
     if not comp_range:
         if company.get("salary_heuristic") == "canonical":
             return canonical_greenhouse_salary_guess(title, cfg)
@@ -10762,7 +11368,20 @@ def _normalize_comp_detail_text(detail_text: str) -> str:
         if merged == cleaned:
             break
         cleaned = merged
-    return re.sub(r"\s+", " ", cleaned).strip()
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    # Docker-style typo: "$171,500 - $245,00" (missing trailing 0) → "$245,000".
+    # Only repair when the peer amount already uses US thousands (",xxx").
+    cleaned = re.sub(
+        r"(\$\s*\d{1,3},\d{3})\s*(-)\s*(\$\s*)(\d{2,3}),00(?!\d)",
+        r"\1 \2 \3\4,000",
+        cleaned,
+    )
+    cleaned = re.sub(
+        r"(\$\s*)(\d{2,3}),00(?!\d)\s*(-)\s*(\$\s*\d{1,3},\d{3})",
+        r"\1\2,000 \3 \4",
+        cleaned,
+    )
+    return cleaned
 
 
 def _comp_range_pair_plausible(low: int, high: int) -> bool:
@@ -11085,7 +11704,10 @@ def salary_range_status(
         return "maybe", None
     floor = salary_floor_value(cfg)
     if kind == "base":
-        label = f"Base {compact_money_label(low)}-{compact_money_label(high)}"
+        if low == high:
+            label = f"Base {compact_money_label(low)}"
+        else:
+            label = f"Base {compact_money_label(low)}-{compact_money_label(high)}"
     else:
         label = f"{compact_money_label(low)}-{compact_money_label(high)} total"
         return "low", label
@@ -11304,6 +11926,7 @@ def _segment_is_recognized_ats_location(segment: str) -> bool:
         or segment_is_us_country_remote(seg)
         or us_country_segment_to_city_state(seg)
         or extract_geo_from_geo_or_remote_segment(seg)
+        or _remote_country_abbrev_from_segment(seg)
     ):
         return True
     if _segment_is_bare_remote(seg) and not location_text_is_remote_us_nationwide(seg):
@@ -11406,7 +12029,55 @@ def location_text_is_bare_us_country(text: str) -> bool:
         "u.s.a.",
         "north america",
         "americas",
+        "continental united states",
+        "conus",
+        "us - various",
+        "usa - various",
+        "united states - various",
+        "us various",
+        "various us",
+        "various - us",
+        "various, us",
     }
+
+
+def location_text_is_virtual_us(text: str) -> bool:
+    """Workday-style ``Virtual US`` / ``Virtual, United States`` nationwide remote."""
+    lower = " ".join(str(text or "").lower().replace("·", ",").split())
+    if not lower:
+        return False
+    return bool(
+        re.match(
+            r"^(?:virtual|remote virtual)\s*[-–—,:/]?\s*"
+            r"(?:us|usa|u\.s\.|united states(?: of america)?)\s*$",
+            lower,
+        )
+        or re.match(
+            r"^(?:us|usa|u\.s\.|united states(?: of america)?)\s*[-–—,:/]\s*virtual\s*$",
+            lower,
+        )
+    )
+
+
+def location_text_is_us_country_wide(text: str) -> bool:
+    """US-wide hire location from any ATS, with no city/state lock.
+
+    Covers country-only slots (``United States`` / ``USA``), Workday ``Virtual US``,
+    CONUS / US-various, and US+Canada lists that use ``and`` instead of a comma.
+    """
+    raw = str(text or "").strip()
+    if not raw:
+        return False
+    if location_text_is_state_locked_us_remote(raw) or workday_has_state_locked_remote_only(raw):
+        return False
+    if location_text_is_bare_us_country(raw) or location_text_is_virtual_us(raw):
+        return True
+    # City/state offices (``Ashburn, Virginia, United States``) are not nationwide.
+    if location_names_city_state_site(raw):
+        return False
+    if location_is_multi_country_us_eligible(raw):
+        return True
+    return False
 
 
 
@@ -11522,6 +12193,16 @@ def greenhouse_multi_segment_display_lines(text: str) -> list[str]:
     segments = location_work_segments(str(text or "").strip())
     if len(segments) < 2:
         return []
+    # Multi-country remote: CAN + US (etc.) — never drop the US half.
+    remote_abbrevs = [_remote_country_abbrev_from_segment(seg) for seg in segments]
+    if all(remote_abbrevs):
+        ordered: list[str] = []
+        for abbrev in remote_abbrevs:
+            assert abbrev is not None
+            if abbrev not in ordered:
+                ordered.append(abbrev)
+        if len(ordered) >= 2:
+            return _rewrite_ca_country_to_can_in_lines(ordered)
     lines: list[str] = []
     for segment in segments:
         state = parse_state_usa_remote_segment(segment)
@@ -11536,12 +12217,16 @@ def greenhouse_multi_segment_display_lines(text: str) -> list[str]:
         if frag:
             lines.append(_abbreviate_location_segment(frag))
             continue
+        country_abbrev = _remote_country_abbrev_from_segment(segment)
+        if country_abbrev:
+            lines.append(country_abbrev)
+            continue
         if _segment_is_bare_remote(segment) or location_text_is_remote_us_nationwide(segment):
             continue
         abbrev = _abbreviate_location_segment(segment)
         if abbrev:
             lines.append(abbrev)
-    return lines
+    return _rewrite_ca_country_to_can_in_lines(lines)
 
 
 
@@ -11577,7 +12262,9 @@ def netflix_normalize_location(location_name: str) -> str:
         return text
     match = _NETFLIX_STATE_REMOTE_RE.match(text)
     if match:
-        return f"{match.group('state').strip()}, USA, Remote"
+        state = match.group("state").strip()
+        if _parse_us_state_token(state):
+            return f"{state}, USA, Remote"
     return text
 
 
@@ -12559,16 +13246,16 @@ def title_case_location_label(text: str) -> str:
         return raw
     if "\n" in raw:
         return "\n".join(title_case_location_label(ln) for ln in raw.splitlines() if ln.strip())
-    for sep in (" | ", " / "):
+    for sep in (" | ", " / ", "; "):
         if sep in raw:
             return sep.join(title_case_location_label(p.strip()) for p in raw.split(sep) if p.strip())
     upper_seg = raw.upper()
-    if upper_seg in {"EMEA", "APAC", "LATAM", "NA", "EU"} and "," not in raw:
+    if upper_seg in {"EMEA", "APAC", "LATAM", "NA", "EU", "AMERICAS"} and "," not in raw:
         return upper_seg
     if raw in {"Bay Area"}:
         return raw
     if "," not in raw:
-        if upper_seg in {"US", "UK", "HK", "AU", "BR"}:
+        if upper_seg in {"US", "UK", "HK", "AU", "BR", "CAN", "NZ", "IE", "DE", "FR"}:
             return upper_seg
         key = " ".join(raw.lower().split())
         if key in _COUNTRY_LABEL_TO_ABBREV or _part_is_country_name(raw):
@@ -12655,6 +13342,39 @@ def sanitize_loc_label_for_badge(
         return hybrid_label
     raw = dedupe_duplicate_city_in_location(raw, description_text)
     raw = strip_geo_or_remote_hybrid_location(raw)
+    # Multi-country remote abbrevs from strip (``CAN; US`` / ``APAC; EMEA; US``) → stacked badge lines.
+    if raw and "; " in raw:
+        parts = [p.strip() for p in raw.split(";") if p.strip()]
+        _STACKED_REMOTE_LOCALE_TOKENS = {
+            "US",
+            "USA",
+            "CAN",
+            "UK",
+            "EU",
+            "NZ",
+            "IE",
+            "DE",
+            "FR",
+            "AU",
+            "BR",
+            "HK",
+            "APAC",
+            "EMEA",
+            "LATAM",
+            "AMERICAS",
+            "NA",
+        }
+        if len(parts) >= 2 and all(
+            _token_is_country_abbrev(p)
+            or p.upper() in _STACKED_REMOTE_LOCALE_TOKENS
+            or _remote_country_abbrev_from_segment(p)
+            for p in parts
+        ):
+            stacked = [
+                (_remote_country_abbrev_from_segment(p) or p.upper() if len(p) <= 8 else p)
+                for p in parts
+            ]
+            return "\n".join(_rewrite_ca_country_to_can_in_lines(stacked))
     raw = re.sub(r"^(Hybrid|On-site)\s*·\s*", "", raw, flags=re.I).strip()
     chained = split_chained_city_state_locations(raw)
     if chained:
@@ -12815,7 +13535,12 @@ def infer_work_model(
 
 
 def job_work_model_key(job: Job) -> str:
-    """Normalized work model for filters: in-office, hybrid, remote, or empty."""
+    """Normalized work model for filters: in-office, hybrid, remote, or empty.
+
+    Location classification wins over a stale ATS work_model: a job already
+    classified as remote / remote-intl must not stay ``in-office`` (that blocked
+    Remote US legend filters when ``nus`` was true, e.g. Oscar Health).
+    """
     mode = str(job.work_model or "").strip().lower()
     if not mode:
         mode = (
@@ -12828,7 +13553,16 @@ def job_work_model_key(job: Job) -> str:
         )
         mode = str(mode).strip().lower()
     if mode in {"onsite", "on-site", "on site"}:
-        return "in-office"
+        mode = "in-office"
+    loc = str(job.loc or "").strip()
+    if loc in {"remote", "remote-intl"} and mode in {
+        "in-office",
+        "onsite",
+        "on-site",
+        "on site",
+        "",
+    }:
+        return "remote"
     return mode
 
 
@@ -13478,6 +14212,13 @@ def extract_comp_range_from_text(
     detail_text = _normalize_comp_detail_text(detail_text)
     loc_lower = str(location_name or "").lower()
     text_lower = detail_text.lower()
+    named_geo = extract_usa_named_geo_salary_bands(detail_text)
+    named_picked = pick_usa_named_geo_salary_band(
+        named_geo, location_name=location_name, cfg=cfg
+    )
+    if named_picked:
+        low, high = named_picked
+        return "base", low, high
     if location_country_paren_remote_lock(location_name) or greenhouse_title_country_lock(location_name):
         return None
     if any(token in loc_lower for token in (", can", " canada", "ontario-can", "british columbia", " bc")):
@@ -13491,6 +14232,17 @@ def extract_comp_range_from_text(
     if location_name and location_text_indicates_non_us_worksite(location_name):
         return None
     money = _money_capture_pattern()
+    # Ashby/Docker-style country bands: prefer US over Canada CA$ lines.
+    us_country_ranges = _collect_comp_ranges_from_patterns(
+        detail_text,
+        (
+            rf"(?:United States|U\.S\.A\.?|USA)\s*:\s*{money}\s*(?:-|–|—|to)\s*{money}",
+            rf"(?:US|U\.S\.)\s*:\s*{money}\s*(?:-|–|—|to)\s*{money}",
+        ),
+    )
+    if us_country_ranges:
+        low, high = max(us_country_ranges, key=lambda pair: pair[1])
+        return "base", low, high
     explicit_usd_range = bool(
         re.search(
             rf"(?:salary range|pay range|base pay|base salary)[^.\n]{{0,160}}"
@@ -13584,7 +14336,8 @@ def extract_comp_range_from_text(
         rf"base pay range for this role is between\s*{money}\s+and\s*{money}",
         rf"base salary range\s+between\s*{money}\s*(?:to|and|-|–|—)\s*{money}",
         rf"salary range\s+between\s*{money}\s*(?:to|and|-|–|—)\s*{money}",
-        rf"salary range for this role is\s*{money}\s*(?:to|-|–|—)\s*{money}",
+        rf"salary range for this role is\s*{money}\s*(?:to|-|–|—|and)\s*{money}",
+        rf"(?:the\s+)?salary range for this role is\s*{money}\s+and\s+{money}",
         rf"expected base pay rates for the role will be between\s*{money}\s*(?:and|to|-|–|—)\s*{money}",
         rf"united states base range for this position is\s*{money}\s*(?:-|–|—|to)\s*{money}",
         rf"base pay range for this role is\s*{money}\s*(?:-|–|—|to)\s*{money}",
@@ -13645,7 +14398,12 @@ def extract_comp_range_from_text(
                 low, high = high, low
             if not _comp_range_match_plausible(match, detail_text, low, high):
                 continue
+            if not _comp_range_pair_plausible(low, high):
+                continue
             return "base", low, high
+    point = extract_posted_point_salary(detail_text)
+    if point:
+        return "base", point, point
     return None
 
 
@@ -13659,19 +14417,35 @@ def salary_from_detail_text(
 ) -> tuple[str, str | None]:
     # Posted JD pay: badge for display/filter even when loc is excluded (onsite US, etc.).
     # Levels.fyi reference fallback stays gated in apply_company_salary_reference.
-    comp_range = extract_comp_range_from_text(detail_text, location_name=location_name)
+    comp_range = extract_comp_range_from_text(
+        detail_text, location_name=location_name, cfg=cfg
+    )
     if not comp_range:
         return "maybe", None
     kind, low, high = comp_range
     return salary_range_status(kind, low, high, cfg, title=title)
 
 
-def workday_extract_comp_range(detail_text: str) -> tuple[str, int, int] | None:
-    return extract_comp_range_from_text(detail_text)
+def workday_extract_comp_range(
+    detail_text: str,
+    *,
+    location_name: str = "",
+    cfg: dict[str, Any] | None = None,
+) -> tuple[str, int, int] | None:
+    return extract_comp_range_from_text(
+        detail_text, location_name=location_name, cfg=cfg
+    )
 
 
-def workday_salary_from_detail(detail_text: str, cfg: dict[str, Any]) -> tuple[str, str | None]:
-    comp_range = workday_extract_comp_range(detail_text)
+def workday_salary_from_detail(
+    detail_text: str,
+    cfg: dict[str, Any],
+    *,
+    location_name: str = "",
+) -> tuple[str, str | None]:
+    comp_range = workday_extract_comp_range(
+        detail_text, location_name=location_name, cfg=cfg
+    )
     if not comp_range:
         return "maybe", None
     kind, low, high = comp_range
@@ -19159,7 +19933,7 @@ def fetch_greenhouse(company: dict[str, Any], cfg: dict[str, Any]) -> tuple[list
         raw.append(
             RawPosting(
                 title=title,
-                url=j["absolute_url"],
+                url=greenhouse_canonical_job_url(str(j.get("absolute_url") or ""), board),
                 description_text=desc_text,
                 location_name=loc_name,
                 posted_ts=ts,
@@ -19711,8 +20485,7 @@ def ashby_fetch_posting_html(posting_url: str, cache_ttl_hours: float = 24.0) ->
     return cached_html_fetch(posting_url, "ashby-detail", cache_ttl_hours=cache_ttl_hours)
 
 
-def ashby_comp_range_from_app_data(body: str) -> tuple[str, int, int] | None:
-    """Ashby SPA embeds compensation in window.__appData.posting (not the listing API)."""
+def _ashby_posting_from_app_data(body: str) -> dict[str, Any] | None:
     match = ASHBY_APP_DATA_RE.search(body or "")
     if not match:
         return None
@@ -19721,7 +20494,94 @@ def ashby_comp_range_from_app_data(body: str) -> tuple[str, int, int] | None:
     except json.JSONDecodeError:
         return None
     posting = payload.get("posting")
-    if not isinstance(posting, dict):
+    return posting if isinstance(posting, dict) else None
+
+
+def ashby_compensation_plain_from_app_data(body: str) -> str:
+    """Join Ashby compensationTiers titles + summaries for stored JD / rebuild."""
+    posting = _ashby_posting_from_app_data(body)
+    if not posting:
+        return ""
+    lines: list[str] = []
+    for tier in posting.get("compensationTiers") or []:
+        if not isinstance(tier, dict):
+            continue
+        title = str(tier.get("title") or "").strip()
+        summary = str(tier.get("tierSummary") or "").strip()
+        if title and summary:
+            lines.append(f"{title}: {summary}")
+        elif summary:
+            lines.append(summary)
+    if lines:
+        return "\n".join(lines)
+    for key in ("scrapeableCompensationSalarySummary", "compensationTierSummary"):
+        summary = str(posting.get(key) or "").strip()
+        if summary:
+            return summary
+    return ""
+
+
+def ashby_compensation_tiers_from_app_data(body: str) -> list[tuple[str, int, int]]:
+    """Parse Ashby compensationTiers into (heading, low, high), skipping CAD/Canada."""
+    posting = _ashby_posting_from_app_data(body)
+    if not posting:
+        return []
+    money = _money_capture_pattern()
+    dash = r"(?:-|–|—|to)"
+    bands: list[tuple[str, int, int]] = []
+    for tier in posting.get("compensationTiers") or []:
+        if not isinstance(tier, dict):
+            continue
+        title = str(tier.get("title") or "").strip()
+        summary = str(tier.get("tierSummary") or "").strip()
+        blob = f"{title}: {summary}".strip(": ")
+        if re.search(r"CA\$|\bCAD\b", blob, re.I):
+            continue
+        if re.search(r"\bcanada\b", title, re.I) and not re.search(
+            r"\b(?:usa|united states)\b", title, re.I
+        ):
+            continue
+        for comp in tier.get("components") or []:
+            if not isinstance(comp, dict):
+                continue
+            if str(comp.get("compensationType") or "").strip().lower() != "salary":
+                continue
+            low = parse_money_amount(comp.get("minValue"))
+            high = parse_money_amount(comp.get("maxValue"))
+            if low > 0 and high > 0:
+                if low > high:
+                    low, high = high, low
+                if _comp_range_pair_plausible(low, high):
+                    bands.append((title or "US", low, high))
+                break
+        else:
+            ranges = _collect_comp_ranges_from_patterns(
+                summary,
+                (rf"(?:Base Salary\s*)?{money}\s*{dash}\s*{money}",),
+            )
+            if ranges:
+                bands.append((title or summary, ranges[0][0], ranges[0][1]))
+    if not bands:
+        named = extract_usa_named_geo_salary_bands(ashby_compensation_plain_from_app_data(body))
+        bands.extend(named)
+    return bands
+
+
+def ashby_comp_range_from_app_data(
+    body: str,
+    *,
+    cfg: dict[str, Any] | None = None,
+    location_name: str = "",
+) -> tuple[str, int, int] | None:
+    """Ashby SPA embeds compensation in window.__appData.posting (not the listing API)."""
+    tiers = ashby_compensation_tiers_from_app_data(body)
+    picked = pick_usa_named_geo_salary_band(
+        tiers, location_name=location_name, cfg=cfg
+    )
+    if picked:
+        return "base", picked[0], picked[1]
+    posting = _ashby_posting_from_app_data(body)
+    if not posting:
         return None
     lows: list[int] = []
     highs: list[int] = []
@@ -19753,23 +20613,31 @@ def ashby_comp_range_from_app_data(body: str) -> tuple[str, int, int] | None:
     for key in ("scrapeableCompensationSalarySummary", "compensationTierSummary"):
         summary = str(posting.get(key) or "").strip()
         if summary:
-            comp = extract_comp_range_from_text(summary)
+            comp = extract_comp_range_from_text(
+                summary, location_name=location_name, cfg=cfg
+            )
             if comp:
                 return comp
     return None
 
 
 def ashby_salary_from_posting_html(
-    body: str, cfg: dict[str, Any], *, title: str = ""
+    body: str,
+    cfg: dict[str, Any],
+    *,
+    title: str = "",
+    location_name: str = "",
 ) -> tuple[str, str | None]:
+    comp = ashby_comp_range_from_app_data(
+        body, cfg=cfg, location_name=location_name
+    )
+    if comp:
+        kind, low, high = comp
+        return salary_range_status(kind, low, high, cfg, title=title)
     for posting in extract_json_ld_jobpostings(body):
         salary, label = jsonld_salary_status(posting, cfg)
         if salary != "maybe" or label:
             return salary, label
-    comp = ashby_comp_range_from_app_data(body)
-    if comp:
-        kind, low, high = comp
-        return salary_range_status(kind, low, high, cfg, title=title)
     return "maybe", None
 
 
@@ -19792,7 +20660,56 @@ def ashby_salary_from_posting(
     body = ashby_fetch_posting_html(posting_url)
     if not body:
         return salary, salary_label
-    return ashby_salary_from_posting_html(body, cfg, title=title)
+    return ashby_salary_from_posting_html(
+        body, cfg, title=title, location_name=location_name
+    )
+
+
+def _job_url_is_ashby(url: str) -> bool:
+    return "ashbyhq.com" in str(url or "").lower()
+
+
+def _should_fetch_ashby_salary_page(
+    job: Job, company: dict[str, Any], cfg: dict[str, Any]
+) -> bool:
+    """True when rebuild should GET the Ashby posting page (pay lives in __appData)."""
+    if str(job.salary_label or "").strip():
+        return False
+    if str(job.loc or "") == "excluded":
+        return False
+    ctype = str(company.get("type") or "").strip().lower()
+    if ctype != "ashby" and not _job_url_is_ashby(job.url):
+        return False
+    text = str(job.description_text or "").strip()
+    if text:
+        _salary, label = company_salary_from_stored_description(company, job, cfg)
+        if label:
+            return False
+    return True
+
+
+def ashby_salary_from_job_url(
+    job: Job, cfg: dict[str, Any]
+) -> tuple[str, str | None]:
+    """Fetch Ashby posting HTML and pick the profile-zip geo band when present."""
+    url = str(job.url or "").strip()
+    if not url:
+        return str(job.salary or "maybe"), job.salary_label
+    body = ashby_fetch_posting_html(url)
+    if not body:
+        return str(job.salary or "maybe"), job.salary_label
+    loc_name = str(job.loc_label or "").strip()
+    salary, label = ashby_salary_from_posting_html(
+        body, cfg, title=job.title, location_name=loc_name
+    )
+    if label:
+        comp_plain = ashby_compensation_plain_from_app_data(body)
+        if comp_plain and comp_plain not in (job.description_text or ""):
+            job.description_text = f"{job.description_text or ''}\n{comp_plain}".strip()
+    return salary, label
+
+
+_ASHBY_REBUILD_SALARY_FETCH_MAX = 32
 
 
 def _ashby_read_timeout_sec() -> int:
@@ -19959,8 +20876,14 @@ def fetch_ashby(company: dict[str, Any], cfg: dict[str, Any]) -> tuple[list[RawP
         # Prefer pay from posting HTML whenever we already fetched it (board-html
         # JD window) — Ashby list payloads omit Cash Compensation.
         if posting_html_body:
+            comp_plain = ashby_compensation_plain_from_app_data(posting_html_body)
+            if comp_plain and comp_plain not in (description_text or ""):
+                description_text = f"{description_text}\n{comp_plain}".strip()
             salary, salary_label = ashby_salary_from_posting_html(
-                posting_html_body, cfg, title=title
+                posting_html_body,
+                cfg,
+                title=title,
+                location_name=location_name,
             )
         else:
             salary, salary_label = ashby_salary_from_posting(
@@ -27463,14 +28386,37 @@ def _job_meta_location_parts(job: Job) -> list[str]:
 
 
 def _job_primary_location_text(job: Job) -> str:
-    """Best location string for reclassify/badges: loc_label, else first meta place."""
+    """Best location string for reclassify/badges: ATS meta, else loc_label.
+
+    Prefer the original Greenhouse/Ashby place from meta when the badge was
+    rewritten to a stacked CAN+US (or similar) list the ATS location does not
+    actually contain.
+    """
     label = str(job.loc_label or "").strip()
-    if label:
-        return label
+    meta_loc = ""
     for part in _job_meta_location_parts(job):
         if _meta_part_is_location_candidate(part):
-            return part
-    return ""
+            meta_loc = part
+            break
+    if meta_loc and (
+        location_is_multi_country_us_eligible(meta_loc)
+        or location_is_multi_remote_locale_with_us(meta_loc)
+    ):
+        return meta_loc
+    if (
+        label
+        and meta_loc
+        and (
+            location_is_multi_country_us_eligible(label)
+            or _label_is_abbreviated_canada_us_remote(label)
+        )
+        and not location_is_multi_country_us_eligible(meta_loc)
+        and not location_is_multi_remote_locale_with_us(meta_loc)
+    ):
+        return meta_loc
+    if label:
+        return label
+    return meta_loc
 
 
 def _location_text_is_state_locked_remote_signal(text: str) -> bool:
@@ -27484,9 +28430,44 @@ def _location_text_is_state_locked_remote_signal(text: str) -> bool:
     )
 
 
+def _label_is_abbreviated_canada_us_remote(label: str) -> bool:
+    """True for ``CAN\\nUS`` / ``CAN, US`` (and legacy ``CA``) meaning Canada + United States."""
+    parts = [
+        p.strip()
+        for p in re.split(r"[\n,;/|]+", str(label or ""))
+        if p.strip()
+    ]
+    cleaned: list[str] = []
+    for part in parts:
+        lower = normalize_country_token(part)
+        if _segment_is_bare_remote(part):
+            continue
+        if lower in {"hybrid", "onsite", "on-site", "on site", "fulltime", "full-time", "full time"}:
+            continue
+        cleaned.append(lower)
+    if len(cleaned) != 2:
+        return False
+    norms = set(cleaned)
+    has_us = bool(norms & _US_COUNTRY_NAMES)
+    has_ca = bool(norms & {"ca", "can", "canada"})
+    return has_us and has_ca
+
+
 def _label_is_us_plus_allied_country_remote_eligible(label: str, job_loc: str) -> bool:
-    """Deprecated: US + allied-country lists are not nationwide US-only remote."""
-    return False
+    """True when remote is open to the US plus other countries (e.g. Canada + United States).
+
+    Remote US on the board is inclusive: workable remotely from the US, not US-exclusive.
+    """
+    text = str(label or "").strip()
+    if not text:
+        return False
+    loc = str(job_loc or "").strip()
+    if loc not in {"remote", "excluded"}:
+        if "remote" not in text.lower() and not location_text_has_explicit_remote_signal(text):
+            return False
+    if location_is_multi_country_us_eligible(text):
+        return True
+    return _label_is_abbreviated_canada_us_remote(text)
 
 
 def _job_jd_nationwide_remote_blocked(job: Job) -> bool:
@@ -27519,6 +28500,22 @@ def job_is_nationwide_us_remote_unrestricted(
         return False
     if _job_location_text_is_remote_nationwide(job):
         return True
+    # Inclusive Remote US: US + Canada (or similar) country lists are workable from
+    # the US even when the posting also allows another country.
+    if job.loc in {"remote", "excluded"}:
+        for part in (
+            str(job.loc_label or "").strip(),
+            *_job_meta_location_parts(job),
+            str(job.meta or "").strip(),
+        ):
+            if not part:
+                continue
+            if _location_text_is_state_locked_remote_signal(part):
+                continue
+            if location_text_is_state_locked_us_remote(part):
+                continue
+            if _label_is_us_plus_allied_country_remote_eligible(part, job.loc):
+                return True
     # Workday remote-eligible roles often list HQ cities plus additionalLocations
     # "US Remote". Badge sanitization may strip "US Remote" from loc_label; still
     # honor an explicit nationwide remote segment from label/meta.
@@ -27540,8 +28537,8 @@ def job_is_nationwide_us_remote_unrestricted(
     label = str(job.loc_label or "").strip()
     jd_blocked = _job_jd_nationwide_remote_blocked(job)
     if label:
-        if location_text_is_bare_us_country(label):
-            return False
+        if location_text_is_us_country_wide(label):
+            return True
         if location_text_is_non_us_country_remote(label):
             return False
         if location_text_is_remote_us_nationwide(label):
@@ -27556,8 +28553,8 @@ def job_is_nationwide_us_remote_unrestricted(
         return False
     explicit_remote = False
     for part in _job_meta_location_parts(job):
-        if location_text_is_bare_us_country(part):
-            continue
+        if location_text_is_us_country_wide(part):
+            return True
         if location_text_is_non_us_country_remote(part):
             continue
         # Anaplan-style ``Pennsylvania-Remote, United States`` in meta only (empty
@@ -27574,7 +28571,11 @@ def job_is_nationwide_us_remote_unrestricted(
 
 
 def job_is_nationwide_us_remote(job: Job, cfg: dict[str, Any] | None = None) -> bool:
-    """True when job is US-wide remote with no city/state anchor in loc_label/meta."""
+    """True when a US resident can work the role remotely (inclusive Remote US).
+
+    Includes US-only nationwide remote and multi-country remote that lists the US
+    (e.g. Canada + United States). Excludes state-locked and non-US-only remote.
+    """
     if job_is_onsite_work_model(job):
         return False
     return job_is_nationwide_us_remote_unrestricted(job, cfg)
@@ -27698,14 +28699,28 @@ def _remote_label_workable_from_home_states(
     *parts: str,
     cfg: dict[str, Any] | None = None,
 ) -> bool:
-    """True when location/title/JD text signals US-wide or profile-home-state remote."""
+    """True when location/title/JD text signals profile-home-state remote (not US-wide).
+
+    Nationwide / multi-country US-workable remote belongs to Remote US (nus), not
+    Remote-from-home.
+    """
     blob = "\n".join(str(p or "") for p in parts if str(p or "").strip())
     if not blob:
         return False
     if location_text_is_remote_us_nationwide(blob):
-        return True
+        return False
+    if location_is_multi_country_us_eligible(blob):
+        return False
+    if location_has_us_nationwide_remote_segment(blob):
+        return False
     if workday_remote_matches_profile(blob, cfg):
-        return True
+        # workday_remote_matches_profile is true for US-wide segments too; only
+        # accept when the match is actually state-locked to the profile.
+        if location_has_us_nationwide_remote_segment(blob):
+            return False
+        locked = extract_workday_state_locked_remote_states(blob)
+        if locked:
+            return bool(locked & profile_remote_ok_states(cfg))
     allowed = extract_state_limited_remote_allowed_states(blob)
     if allowed is not None:
         return bool(allowed & profile_remote_ok_states(cfg))
@@ -27714,7 +28729,10 @@ def _remote_label_workable_from_home_states(
         lower = segment.lower()
         state_remote = re.match(r"^remote\s*,\s*(?P<place>.+)$", lower)
         if state_remote:
-            state = _parse_us_state_token(state_remote.group("place").split(",")[0].strip())
+            place = state_remote.group("place").split(",")[0].strip()
+            if _state_blob_is_broad_us_remote(place) or place.lower() in _NATIONWIDE_US_REMOTE_COUNTRY_TOKENS:
+                continue
+            state = _parse_us_state_token(place)
             if state in ok_states:
                 return True
         if segment_is_state_usa_remote(segment):
@@ -27730,6 +28748,13 @@ def _remote_label_workable_from_home_states(
         name = US_STATE_CODE_TO_NAME.get(code, "").lower()
         if name and re.search(rf"\b{re.escape(name)}\b", lower):
             if location_name_is_remoteish(blob) or "remote" in lower:
+                # Avoid treating "Remote US" / "United States" prose as Oregon.
+                if location_text_is_remote_us_nationwide(blob):
+                    continue
+                if re.search(r"\b(?:united states|usa|u\.s\.a?\.?)\b", lower) and not re.search(
+                    rf"\b{re.escape(name)}\b", lower
+                ):
+                    continue
                 return True
         if re.search(rf"remote\s*,\s*{code.lower()}\b", lower):
             return True
@@ -27737,12 +28762,20 @@ def _remote_label_workable_from_home_states(
 
 
 def job_is_remote_workable_from_home(job: Job, cfg: dict[str, Any] | None = None) -> bool:
-    """True for nationwide US remote or remote workable from the profile home state."""
+    """True for state-limited remote that includes the profile home OK states.
+
+    Remote US (nationwide / multi-country US-workable) is a separate filter (nus).
+    Jobs labeled US remote / Remote US must not also count as Remote-from-Oregon.
+    """
     loc = str(job.loc or "").strip()
     if job_is_onsite_work_model(job):
         return False
     if loc == "local":
         return False
+    # Nationwide / inclusive US-workable remote → Remote US only.
+    if job_is_nationwide_us_remote(job, cfg):
+        return False
+
     loc_label = str(job.loc_label or "")
     loc_src = _job_primary_location_text(job) or loc_label
     title = str(job.title or "")
@@ -27753,39 +28786,20 @@ def job_is_remote_workable_from_home(job: Job, cfg: dict[str, Any] | None = None
         return dash_state in profile_remote_ok_states(cfg)
     if workday_has_state_locked_remote_only(loc_src):
         return workday_remote_matches_profile(loc_src, cfg)
-    # Nationwide US remote is always workable from the profile home state (OR).
-    if job_is_nationwide_us_remote_unrestricted(job, cfg):
-        return True
-
-    def us_remote_eligible() -> bool:
-        if job_is_nationwide_us_remote(job):
-            return True
-        if location_is_multi_country_us_eligible(loc_src):
-            return True
-        return _remote_label_workable_from_home_states(
-            loc_src,
-            title,
-            desc,
-            cfg=cfg,
-        )
-
-    if loc == "remote-intl":
-        return us_remote_eligible()
-
-    if loc == "excluded":
-        allowed = extract_state_limited_remote_allowed_states(loc_src, title, desc)
-        if allowed is not None:
-            return bool(allowed & profile_remote_ok_states(cfg))
-        return workday_remote_matches_profile(loc_src, cfg)
-
-    if loc != "remote":
-        return False
 
     allowed = extract_state_limited_remote_allowed_states(loc_src, title, desc)
     if allowed is not None:
         return bool(allowed & profile_remote_ok_states(cfg))
-    return us_remote_eligible()
 
+    if loc not in {"remote", "remote-intl", "excluded"}:
+        return False
+
+    return _remote_label_workable_from_home_states(
+        loc_src,
+        title,
+        desc,
+        cfg=cfg,
+    )
 
 def _job_location_text_is_remote_nationwide(job: Job) -> bool:
     """True when raw loc_label/meta names Remote Nationwide (not generic Remote US)."""
@@ -28082,6 +29096,9 @@ def _abbreviate_country_token(token: str, *, whole_segment: bool) -> str | None:
     if not key:
         return None
     upper = key.upper()
+    # Use CAN (not ISO CA) so badges are not confused with California.
+    if whole_segment and upper in {"CAN", "CANADA"}:
+        return "CAN"
     if whole_segment and upper in _COUNTRY_ALPHA3_TO_ISO2:
         return _COUNTRY_ALPHA3_TO_ISO2[upper]
     if whole_segment and upper == "GB":
@@ -28091,8 +29108,6 @@ def _abbreviate_country_token(token: str, *, whole_segment: bool) -> str | None:
         if not whole_segment and abbrev in US_STATE_CODES:
             return None
         return abbrev
-    if key == "canada" and whole_segment:
-        return "CA"
     return None
 
 
@@ -28203,35 +29218,56 @@ def abbreviate_location_label(text: str, *, company_name: str = "") -> str:
     )
 
 
+def _rewrite_ca_country_to_can_in_lines(lines: list[str]) -> list[str]:
+    """Prefer CAN over CA when the badge is Canada + United States (not California)."""
+    if len(lines) != 2:
+        return lines
+    norms = [normalize_country_token(p) for p in lines]
+    has_us = any(n in _US_COUNTRY_NAMES for n in norms)
+    if not has_us or "ca" not in norms:
+        return lines
+    out: list[str] = []
+    for part, norm in zip(lines, norms):
+        if norm == "ca":
+            out.append("CAN")
+        else:
+            out.append(part)
+    return out
+
+
 def stacked_location_lines(text: str, *, keep_country_readable: bool = False) -> list[str]:
     """Abbreviated location segments, one entry per line when multi-site."""
     abbrev = lambda seg: _abbreviate_location_segment(
         seg, keep_country_readable=keep_country_readable
     )
+
+    def _finish(lines: list[str]) -> list[str]:
+        return _rewrite_ca_country_to_can_in_lines(lines)
+
     gh_lines = greenhouse_multi_segment_display_lines(text)
     if len(gh_lines) >= 2:
-        return gh_lines
+        return _finish(gh_lines)
     hybrid_cities = extract_hybrid_any_office_cities(text)
     if len(hybrid_cities) >= 2:
-        return hybrid_cities
+        return _finish(hybrid_cities)
     chained = split_chained_city_state_locations(text)
     if len(chained) >= 2:
-        return chained
+        return _finish(chained)
     bare_cities = split_bare_multi_city_label(text)
     if len(bare_cities) >= 2:
-        return bare_cities
+        return _finish(bare_cities)
     multi_places = split_comma_separated_multi_place_label(text)
     if len(multi_places) >= 2:
-        return multi_places
+        return _finish(multi_places)
     if "\n" in str(text or ""):
         lines = [ln.strip() for ln in str(text).splitlines() if ln.strip()]
         if len(lines) >= 2:
-            return [abbrev(ln) for ln in lines]
+            return _finish([abbrev(ln) for ln in lines])
     segments = split_location_display_segments(text)
     if len(segments) <= 1:
         single = segments[0] if segments else str(text or "").strip()
-        return [abbrev(single)] if single else []
-    return [abbrev(s) for s in segments]
+        return _finish([abbrev(single)] if single else [])
+    return _finish([abbrev(s) for s in segments])
 
 def stacked_location_html(text: str, *, line_class: str = "loc-line") -> str:
     lines = stacked_location_lines(text)
@@ -28843,6 +29879,75 @@ def include_company_in_sidebar(co: CompanyResult | None, *, hide_zero_yield: boo
     if co is None:
         return False
     return bool(active_jobs_for_primary_sections(co))
+
+
+def primary_jobs_by_company_filter_key(
+    results: list[CompanyResult],
+    cfg: dict[str, Any],
+) -> dict[str, list[Job]]:
+    """Primary-board jobs keyed by sidebar filter key (includes LinkedIn employers).
+
+    First-party scrapes may be excluded-only while an aggregator still has local /
+    remote roles for the same employer. Job Sources must use this union so Microsoft /
+    Mercury / Ampere-style LinkedIn locals get checkboxes.
+    """
+    buckets: dict[str, list[Job]] = {}
+    seen_apply: dict[str, set[str]] = {}
+    for co in results:
+        for job in co.jobs:
+            if not job_is_active_in_sections(job):
+                continue
+            if job.loc == "excluded" or job.salary == "low":
+                continue
+            key = job_company_filter_key(job, co, cfg=cfg)
+            apply_key = job_apply_key(job)
+            seen = seen_apply.setdefault(key, set())
+            if apply_key in seen:
+                continue
+            seen.add(apply_key)
+            buckets.setdefault(key, []).append(job)
+    return buckets
+
+
+def _match_counts_for_jobs(jobs: list[Job]) -> dict[str, int]:
+    counts = {"strong": 0, "good": 0, "stretch": 0}
+    for job in jobs:
+        tier = job.match if job.match in counts else "stretch"
+        counts[tier] += 1
+    return counts
+
+
+def _sidebar_indicator_for_jobs(
+    jobs: list[Job],
+    *,
+    scraped_this_run: bool,
+    note: str = "",
+) -> tuple[int, str, dict[str, int]]:
+    """Dot count / tooltip / match tiers for a filter-key job set (not one CompanyResult)."""
+    match_counts = _match_counts_for_jobs(jobs)
+    visible_default = [j for j in jobs if j.match in SIDEBAR_DEFAULT_MATCH_LEVELS]
+    count = len(visible_default)
+    primary_total = len(jobs)
+    stretch_hidden = primary_total - count
+    tooltip_parts: list[str] = []
+    if not scraped_this_run:
+        tooltip_parts.append("Prior snapshot (not scraped this run)")
+    elif note:
+        tooltip_parts.append(note)
+    elif count:
+        tooltip_parts.append(
+            f"{count} visible with Strong+Good filters ({primary_total} total on board)"
+        )
+    else:
+        tooltip_parts.append("No matching live postings on board")
+    if stretch_hidden > 0:
+        tooltip_parts.append(
+            f"{stretch_hidden} Stretch — enable Stretch under Match level to view"
+        )
+    tooltip = ". ".join(tooltip_parts)
+    if tooltip and not tooltip.endswith("."):
+        tooltip += "."
+    return count, tooltip, match_counts
 
 
 def collect_empty_stub_companies(
@@ -30003,6 +31108,21 @@ def render_company_checklist(
     ui = board_ui_prefs(cfg)
     hide_zero = ui["hide_zero_yield_sidebar"]
     results_by_id = {co.id: co for co in results if co.id}
+    primary_by_key = primary_jobs_by_company_filter_key(results, cfg)
+    aggregator_scraped = scraped_ids is None or any(
+        co.id in scraped_ids
+        for co in results
+        if co.id and company_result_preserves_posting_employer(co)
+    )
+    # Job-site / recruiter row keys — never invent orphan employer rows for these.
+    aggregator_keys = {
+        company_filter_key(str(c.get("name") or ""))
+        for c in (cfg.get("companies") or [])
+        if isinstance(c, dict)
+        and str(c.get("source_group") or "").strip().lower()
+        in {"job_sites", "recruiters"}
+        and str(c.get("name") or "").strip()
+    }
     grouped: dict[str, list[tuple[str, str, str, bool, int, str, bool, dict[str, int]]]] = {
         "company": [],
         "job_sites": [],
@@ -30027,10 +31147,35 @@ def render_company_checklist(
         company_id = str(company.get("id") or "")
         co = results_by_id.get(company_id)
         scraped = scraped_ids is None or company_id in scraped_ids
-        count, tooltip, match_counts = company_scrape_indicator(co, scraped)
-        if not include_company_in_sidebar(co, hide_zero_yield=hide_zero):
+        key_jobs = primary_by_key.get(key) or []
+        co_primary = active_jobs_for_primary_sections(co) if co else []
+        has_primary = bool(co_primary) or bool(key_jobs)
+        if hide_zero and not has_primary:
             continue
+        if key_jobs:
+            count, tooltip, match_counts = _sidebar_indicator_for_jobs(
+                key_jobs,
+                scraped_this_run=scraped or aggregator_scraped,
+                note=(co.search_note or "").strip() if co else "",
+            )
+        else:
+            count, tooltip, match_counts = company_scrape_indicator(co, scraped)
         grouped[group].append((display, key, company_id, layoff_prone, count, tooltip, False, match_counts))
+    # Employers with primary aggregator jobs but no configured company row (e.g. Ampere).
+    for key, key_jobs in sorted(primary_by_key.items(), key=lambda kv: kv[0]):
+        if key in seen or key in aggregator_keys or not key_jobs:
+            continue
+        if hide_zero and not key_jobs:
+            continue
+        display = str(key_jobs[0].company_name or key).strip() or key
+        count, tooltip, match_counts = _sidebar_indicator_for_jobs(
+            key_jobs,
+            scraped_this_run=aggregator_scraped,
+        )
+        seen.add(key)
+        grouped["company"].append(
+            (display, key, "", False, count, tooltip, False, match_counts)
+        )
     # Hubs (type=hub) are omitted here; Job Sites footer lists careers URLs separately.
     items: list[str] = []
     labels = {
@@ -32152,18 +33297,20 @@ def build_html(
       <button type="button" class="legend-filter" data-legend-filter="stretch" aria-pressed="false">
         <i class="dot" style="background:var(--stretch)"></i> Stretch
       </button>
-      <button type="button" class="legend-filter" data-legend-filter="remote" aria-pressed="false">
+      <button type="button" class="legend-filter" data-legend-filter="remote" aria-pressed="false"
+        title="US-wide remote (not state-locked), including multi-country US+Canada. Combined with Oregon / local via OR.">
         <i class="dot" style="background:var(--remote)"></i> Remote US
       </button>
       <button type="button" class="legend-filter" data-legend-filter="remote-from-home" aria-pressed="false"
-        title="Nationwide US remote plus remote workable from {esc(pctx["home_state_name"])}">
+        title="State-limited remote that allows {esc(pctx["home_state_name"])} (including multi-state lists). Not US-wide Remote US. Combined with Remote US / local via OR.">
         <i class="dot" style="background:var(--remote-home)"></i> {esc(remote_from_home_label)}
       </button>
       <button type="button" class="legend-filter" data-legend-filter="remote-intl" aria-pressed="false"
         title="{esc(REMOTE_INTL_FILTER_HINT)}">
         <i class="dot" style="background:var(--remote-intl)"></i> Remote International
       </button>
-      <button type="button" class="legend-filter" data-legend-filter="local" aria-pressed="false">
+      <button type="button" class="legend-filter" data-legend-filter="local" aria-pressed="false"
+        title="Inclusive: any role with a site within {esc(pctx["local_radius_miles"])} mi of {esc(pctx["home_zip"])} (including multi-city lists). Combined with Remote US / Oregon via OR.">
         <i class="dot" style="background:var(--local)"></i> {esc(local_badge)}
       </button>
     </div>
@@ -35072,10 +36219,11 @@ def build_html(
     }}
 
     function legendFilterStatusText() {{
+      // Mirror pressed legend pills only (same keys as filter matching).
       const active = [...activeLegendFilterKeys()];
       if (!active.length) return '';
       const parts = [];
-      const ceiling = legendMatchCeiling();
+      const ceiling = legendMatchCeilingFromPressed(active);
       if (ceiling === 'strong') parts.push('strong only');
       else if (ceiling === 'good') parts.push('through good');
       else if (ceiling === 'stretch') parts.push('through stretch');
@@ -35244,20 +36392,22 @@ def build_html(
     function jobBlockedFromRemoteLegendFilters(job, locKeys) {{
       const needsRemote = locKeys.some(key => key === 'remote' || key === 'remote-from-home');
       if (!needsRemote) return false;
+      // nus/rfh already mark remote-eligible roles; stale in-office wm must not hide them.
+      if (jobMatchesNationwideUsRemote(job) || jobMatchesRemoteFromHome(job)) return false;
       if (workModelBlocksRemoteLegendFilters(jobWorkModelKey(job))) return true;
       const loc = job.dataset.loc || '';
       if (loc !== 'excluded') return false;
-      if (jobMatchesNationwideUsRemote(job) || jobMatchesRemoteFromHome(job)) return false;
       return Boolean((job.dataset.locLabel || '').trim());
     }}
 
     function entryBlockedFromRemoteLegendFilters(entry, locKeys) {{
       const needsRemote = locKeys.some(key => key === 'remote' || key === 'remote-from-home');
       if (!needsRemote) return false;
+      // Same as jobBlockedFromRemoteLegendFilters: trust nus/rfh over stale wm.
+      if (entryMatchesNationwideUsRemote(entry) || entryMatchesRemoteFromHome(entry)) return false;
       if (workModelBlocksRemoteLegendFilters(entryWorkModelKey(entry))) return true;
       const loc = entry.loc || '';
       if (loc !== 'excluded') return false;
-      if (entryMatchesNationwideUsRemote(entry) || entryMatchesRemoteFromHome(entry)) return false;
       return Boolean((entry.ll || '').trim());
     }}
 
@@ -37724,6 +38874,31 @@ def reclassify_results_locations(
     return updated
 
 
+def rewrite_greenhouse_embed_job_urls(
+    results: list[CompanyResult], cfg: dict[str, Any]
+) -> int:
+    """Rewrite career-index ?gh_jid= URLs to job-boards.greenhouse.io/{board}/jobs/{id}."""
+    company_by_id = {
+        str(c.get("id") or ""): c
+        for c in (cfg.get("companies") or [])
+        if isinstance(c, dict) and c.get("id")
+    }
+    updated = 0
+    for co in results:
+        company = company_by_id.get(co.id) or {}
+        if str(company.get("type") or "").strip().lower() != "greenhouse":
+            continue
+        board = str(company.get("board") or "").strip()
+        if not board:
+            continue
+        for job in co.jobs:
+            nxt = greenhouse_canonical_job_url(str(job.url or ""), board)
+            if nxt and nxt != job.url:
+                job.url = nxt
+                updated += 1
+    return updated
+
+
 def recompute_results_matches(
     results: list[CompanyResult], cfg: dict[str, Any]
 ) -> list[CompanyResult]:
@@ -37766,7 +38941,7 @@ def company_salary_from_stored_description(
             company, job.title, text, cfg, location_name=loc_name
         )
     if ctype in {"playwright", "workday"} or company.get("workday_fetch"):
-        return workday_salary_from_detail(text, cfg)
+        return workday_salary_from_detail(text, cfg, location_name=loc_name)
     if ctype in {"successfactors", "sap"}:
         return successfactors_salary_from_detail(
             company, job.title, loc_name, text, cfg
@@ -37789,24 +38964,70 @@ def recompute_results_salaries(
     *,
     only_missing: bool = False,
 ) -> int:
-    """Refresh salary badges from stored JD text (e.g. after prior-JD merge)."""
+    """Refresh salary badges from stored JD text (e.g. after prior-JD merge).
+
+    Ashby Cash Compensation is often only on the posting page. Rebuild fetches a
+    capped set of missing Ashby URLs so Cohere geo bands / OpenAI sidebar pay
+    appear without a full scrape.
+    """
     companies = company_list if company_list is not None else (cfg.get("companies") or [])
     by_id = {
         str(c.get("id") or ""): c
         for c in companies
         if isinstance(c, dict) and c.get("id")
     }
-    updated = 0
+    ashby_fetch_jobs: list[tuple[dict[str, Any], Job]] = []
     for co in results:
         company = by_id.get(co.id) or {"id": co.id, "type": "greenhouse"}
         for job in co.jobs:
-            if not str(job.description_text or "").strip():
+            if _should_fetch_ashby_salary_page(job, company, cfg):
+                ashby_fetch_jobs.append((company, job))
+    ashby_fetch_jobs.sort(
+        key=lambda item: (
+            0 if str(item[1].loc or "") in {"remote", "remote-intl", "local"} else 1,
+            0 if item[1].match in {"strong", "good"} else 1,
+            str(item[1].title or ""),
+        )
+    )
+    priority: list[tuple[dict[str, Any], Job]] = []
+    rest: list[tuple[dict[str, Any], Job]] = []
+    for item in ashby_fetch_jobs:
+        job = item[1]
+        loc_ok = str(job.loc or "") in {"remote", "remote-intl", "local"}
+        match_ok = job.match in {"strong", "good"}
+        if loc_ok and match_ok:
+            priority.append(item)
+        else:
+            rest.append(item)
+    to_fetch = priority + rest[:_ASHBY_REBUILD_SALARY_FETCH_MAX]
+    ashby_fetched = 0
+    ashby_filled = 0
+    for company, job in to_fetch:
+        salary, label = ashby_salary_from_job_url(job, cfg)
+        ashby_fetched += 1
+        if label and (job.salary != salary or job.salary_label != label):
+            job.salary = salary
+            job.salary_label = label
+            ashby_filled += 1
+    if ashby_fetched:
+        print(
+            f"Fetched {ashby_fetched} Ashby posting page(s) for missing salary badges"
+            + (f" ({ashby_filled} updated)" if ashby_filled else "")
+        )
+    updated = 0
+    newly_low = 0
+    for co in results:
+        company = by_id.get(co.id) or {"id": co.id, "type": "greenhouse"}
+        for job in co.jobs:
+            text = str(job.description_text or "").strip()
+            if not text:
                 continue
             ctype = str(company.get("type") or "").strip().lower()
             # LinkedIn guest salaries are often wrong/incomplete ($120 vs $120k,
             # single CA figure). Always refresh from stored JD when present.
             if only_missing and job.salary_label and ctype != "linkedin":
                 continue
+            prev_salary = str(job.salary or "")
             salary, label = company_salary_from_stored_description(company, job, cfg)
             if not label:
                 continue
@@ -37815,7 +39036,15 @@ def recompute_results_salaries(
             job.salary = salary
             job.salary_label = label
             updated += 1
-    return updated
+            if salary == "low" and prev_salary != "low":
+                newly_low += 1
+    if newly_low:
+        floor = salary_floor_label(cfg)
+        print(
+            f"Hidden {newly_low} listing(s) with posted pay below {floor} "
+            f"(still on the board under Show Hidden)"
+        )
+    return updated + ashby_filled
 
 
 def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
@@ -37828,6 +39057,7 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
         if arg in ("-h", "--help"):
             print(
                 "Usage: rebuild-snapshot [--recompute-matches] [--verify-urls]\n"
+                "  (always refreshes salary badges from stored JDs)\n"
                 "  --recompute-matches  Re-infer match tiers from snapshot JDs, save snapshot, rebuild HTML\n"
                 "  --verify-urls        GET-check posting URLs (incl. Greenhouse); drop expired; remember denylist"
             )
@@ -37903,22 +39133,27 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
                 )
     if recompute_matches:
         recompute_results_matches(results, cfg)
-        salary_n = recompute_results_salaries(
-            results, cfg, cfg.get("companies") or [], only_missing=False
-        )
-        if salary_n:
-            print(f"Refreshed {salary_n} salary badge(s) from stored JDs")
+    # Always refresh salary badges from stored JDs so extractor fixes (Docker typo
+    # repair, Mozilla tiers, etc.) apply without requiring --recompute-matches.
+    salary_n = recompute_results_salaries(
+        results, cfg, cfg.get("companies") or [], only_missing=False
+    )
+    if salary_n:
+        print(f"Refreshed {salary_n} salary badge(s) from stored JDs")
     results = reconcile_cfg_hub_results(results, cfg.get("companies") or [])
     results = reconcile_cfg_company_display(results, cfg.get("companies") or [])
     loc_n = reclassify_results_locations(results, cfg)
     if loc_n:
         print(f"Reclassified {loc_n} job location(s) from stored labels")
+    url_n = rewrite_greenhouse_embed_job_urls(results, cfg)
+    if url_n:
+        print(f"Rewrote {url_n} Greenhouse career-index URL(s) to job-boards.greenhouse.io")
     company_list = cfg.get("companies") or []
     dedupe_jobs_across_companies(results, company_list)
     consolidate_nike_family_jobs(results, company_list)
     consolidate_cisco_family_jobs(results, company_list)
     run_time = datetime.now(timezone.utc)
-    if recompute_matches or verify_urls or exclude_dropped or loc_n:
+    if recompute_matches or verify_urls or exclude_dropped or loc_n or salary_n or url_n:
         run_at_raw = snapshot.get("run_at")
         if run_at_raw:
             try:
@@ -37938,8 +39173,12 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
             print(f"Recomputed match tiers; saved {run_snapshot_path(out_path)}")
         elif verify_urls:
             print(f"Verified URLs; saved {run_snapshot_path(out_path)}")
+        elif salary_n and not loc_n:
+            print(f"Refreshed salaries; saved {run_snapshot_path(out_path)}")
         elif loc_n:
             print(f"Reclassified locations; saved {run_snapshot_path(out_path)}")
+        elif url_n:
+            print(f"Rewrote Greenhouse career-index URLs; saved {run_snapshot_path(out_path)}")
         elif exclude_dropped:
             print(f"Dropped excluded employers; saved {run_snapshot_path(out_path)}")
     pipeline = load_pipeline_store(out_path)

@@ -59,6 +59,24 @@ class TestStateDashRemoteUs(unittest.TestCase):
         self.assertEqual(job_loc, "excluded")
         self.assertIn("Pennsylvania", label or "")
 
+    def test_florida_remote_without_country_is_state_locked(self) -> None:
+        """Axon ``Florida-Remote`` (no country suffix) is Florida-only, not Remote US."""
+        loc = "Florida-Remote"
+        self.assertEqual(self.qj.parse_state_dash_remote_us_segment(loc), "FL")
+        self.assertEqual(self.qj.netflix_normalize_location(loc), "Florida, USA, Remote")
+        job_loc, label = self.qj.classify_location_with_fallback(
+            loc, "us", "", self.cfg, title="Staff Software Engineer"
+        )
+        self.assertEqual(job_loc, "excluded")
+        self.assertIn("Florida", label or "")
+        self.assertFalse(self.qj.location_text_is_remote_us_nationwide(loc))
+
+    def test_amer_us_remote_is_not_a_state_lock(self) -> None:
+        loc = "AMER-US-Remote"
+        self.assertIsNone(self.qj.parse_state_dash_remote_us_segment(loc))
+        self.assertEqual(self.qj.netflix_normalize_location(loc), loc)
+        self.assertTrue(self.qj.segment_is_us_country_remote(loc))
+
     def test_oregon_remote_workable_from_home(self) -> None:
         loc = "Oregon-Remote, United States"
         job_loc, _label = self.qj.classify_location_with_fallback(

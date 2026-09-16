@@ -154,6 +154,106 @@ class JobSourcesSidebarTests(unittest.TestCase):
         co.search_note = "Apple search (20 pages, 0 roles, 0 parsed)"
         self.assertTrue(qj.company_result_suspicious_zero_yield(co))
 
+    def test_checklist_includes_linkedin_employer_when_first_party_excluded(self) -> None:
+        """Microsoft ATS excluded-only + LinkedIn Hillsboro local → sidebar checkbox."""
+        qj = self.qj
+        cfg = {
+            "profile": {"board_ui": {"hide_zero_yield_sidebar": True}},
+            "companies": [
+                {"id": "microsoft", "name": "Microsoft", "source_group": "company"},
+                {
+                    "id": "linkedin",
+                    "name": "LinkedIn",
+                    "source_group": "job_sites",
+                },
+            ],
+        }
+        ms_ats = _co(
+            qj,
+            co_id="microsoft",
+            name="Microsoft",
+            jobs=[_job(qj, loc="excluded")],
+        )
+        ms_ats.jobs[0].company_id = "microsoft"
+        ms_ats.jobs[0].company_name = "Microsoft"
+        li_job = qj.Job(
+            company_id="linkedin",
+            company_name="Microsoft",
+            title="Senior Linux SRE",
+            url="https://www.linkedin.com/jobs/view/1",
+            loc="local",
+            loc_label="Hillsboro, OR",
+            match="strong",
+            salary="ok",
+            job_id="li-1",
+        )
+        linkedin = qj.CompanyResult(
+            id="linkedin",
+            name="LinkedIn",
+            label="LinkedIn",
+            section="aggregated",
+            source_group="job_sites",
+            jobs=[li_job],
+        )
+        html = qj.render_company_checklist(
+            cfg, [ms_ats, linkedin], scraped_ids={"microsoft", "linkedin"}
+        )
+        self.assertIn(f'data-company-filter="{qj.company_filter_key("Microsoft")}"', html)
+        # LinkedIn stays as a job-site row; Microsoft is added via employer remapping.
+        self.assertIn("Job Sources (2)", html)
+        self.assertIn('data-company-filter="microsoft"', html)
+
+    def test_checklist_adds_orphan_linkedin_employer_not_in_cfg(self) -> None:
+        qj = self.qj
+        cfg = {
+            "profile": {"board_ui": {"hide_zero_yield_sidebar": True}},
+            "companies": [
+                {
+                    "id": "linkedin",
+                    "name": "LinkedIn",
+                    "source_group": "job_sites",
+                },
+            ],
+        }
+        li_job = qj.Job(
+            company_id="linkedin",
+            company_name="Ampere",
+            title="Principal Engineer",
+            url="https://www.linkedin.com/jobs/view/2",
+            loc="local",
+            loc_label="Portland, OR",
+            match="good",
+            salary="ok",
+            job_id="li-2",
+        )
+        linkedin = qj.CompanyResult(
+            id="linkedin",
+            name="LinkedIn",
+            label="LinkedIn",
+            section="aggregated",
+            source_group="job_sites",
+            jobs=[li_job],
+        )
+        html = qj.render_company_checklist(cfg, [linkedin], scraped_ids={"linkedin"})
+        self.assertIn('data-company-filter="ampere"', html)
+        self.assertIn("Ampere", html)
+
+    def test_job_work_model_key_overrides_stale_in_office_when_remote(self) -> None:
+        qj = self.qj
+        job = qj.Job(
+            company_id="oscar",
+            company_name="Oscar Health",
+            title="Senior Software Engineer, Cloud Infrastructure / SRE",
+            url="https://example.com/oscar",
+            loc="remote",
+            loc_label="Remote US",
+            work_model="in-office",
+            match="good",
+            salary="ok",
+            job_id="1",
+        )
+        self.assertEqual(qj.job_work_model_key(job), "remote")
+
 
 if __name__ == "__main__":
     unittest.main()

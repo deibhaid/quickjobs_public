@@ -236,28 +236,28 @@ def _run_nationwide_us_remote_matrix(mod, path_name: str, cfg: dict) -> list[str
         title="Principal Product Manager, Growth",
         company_id="docker",
     )
-    if mod.job_is_nationwide_us_remote_unrestricted(docker_us_ca, cfg):
+    if not mod.job_is_nationwide_us_remote(docker_us_ca, cfg):
         failures.append(
-            f"{path_name}: Docker Ashby Canada+US remote must not be nationwide US"
+            f"{path_name}: Docker Ashby Canada+US remote must be inclusive Remote US"
         )
-    elif not mod.job_is_remote_workable_from_home(docker_us_ca, cfg):
+    elif mod.job_is_remote_workable_from_home(docker_us_ca, cfg):
         failures.append(
-            f"{path_name}: Docker Ashby Canada+US remote must be remote-workable from US"
+            f"{path_name}: Docker Ashby Canada+US must be Remote US, not Remote-from-Oregon"
         )
     else:
-        print("  [ok] Docker Ashby Canada+US is remote-workable but not nationwide US")
+        print("  [ok] Docker Ashby Canada+US is Remote US (nus), not Oregon (rfh)")
     for label in ("Canada; United States", "Canada, United States"):
         us_ca = _NationwideJob(loc="remote", loc_label=label, company_id="docker")
-        if mod.job_is_nationwide_us_remote_unrestricted(us_ca, cfg):
+        if not mod.job_is_nationwide_us_remote(us_ca, cfg):
             failures.append(
-                f"{path_name}: {label!r} must not be nationwide US remote"
+                f"{path_name}: {label!r} must be inclusive Remote US"
             )
-        elif not mod.job_is_remote_workable_from_home(us_ca, cfg):
+        elif mod.job_is_remote_workable_from_home(us_ca, cfg):
             failures.append(
-                f"{path_name}: {label!r} must remain remote-workable from US"
+                f"{path_name}: {label!r} must be Remote US, not Remote-from-Oregon"
             )
         else:
-            print(f"  [ok] {label!r} remote-workable from US, not nationwide US")
+            print(f"  [ok] {label!r} Remote US (nus), not Oregon (rfh)")
     if mod.remote_scope_is_broad_us("partner with global field teams"):
         failures.append(f"{path_name}: global marketing prose must not be broad US remote")
     else:
@@ -781,8 +781,8 @@ def main() -> int:
         ("Toronto, Ontario", "Toronto, ON"),
         ("Calgary, Alberta", "Calgary, AB"),
         ("Vancouver, British Columbia", "Vancouver, BC"),
-        ("United States / Canada", "US\nCA"),
-        ("Canada", "CA"),
+        ("United States / Canada", "US\nCAN"),
+        ("Canada", "CAN"),
         ("United Kingdom", "UK"),
         ("London, United Kingdom", "London, UK"),
         ("Mumbai, India", "Mumbai, India"),
@@ -1392,14 +1392,22 @@ def main() -> int:
                 failures.append(f"{path.name}: UK-only intl remote wrongly remote-workable from home")
             else:
                 print("  [ok] UK-only intl remote excluded from remote-workable from home")
-            if not mod.job_is_remote_workable_from_home(intl_us_job, cfg):
-                failures.append(f"{path.name}: intl employer Remote US not remote-workable from home")
+            if mod.job_is_remote_workable_from_home(intl_us_job, cfg):
+                failures.append(
+                    f"{path.name}: intl employer Remote US must be Remote US (nus), not Oregon (rfh)"
+                )
+            elif not mod.job_is_nationwide_us_remote(intl_us_job, cfg):
+                failures.append(f"{path.name}: intl employer Remote US not nationwide US remote")
             else:
-                print("  [ok] intl employer Remote US is remote-workable from home")
-            if not mod.job_is_remote_workable_from_home(nationwide_remote_job, cfg):
-                failures.append(f"{path.name}: Remote Nationwide not remote-workable from home")
+                print("  [ok] intl employer Remote US is nus, not rfh")
+            if mod.job_is_remote_workable_from_home(nationwide_remote_job, cfg):
+                failures.append(
+                    f"{path.name}: Remote Nationwide must be Remote US (nus), not Oregon (rfh)"
+                )
+            elif not mod.job_is_nationwide_us_remote(nationwide_remote_job, cfg):
+                failures.append(f"{path.name}: Remote Nationwide not nationwide US remote")
             else:
-                print("  [ok] Remote Nationwide is remote-workable from home")
+                print("  [ok] Remote Nationwide is nus, not rfh")
             if mod.profile_context(cfg).get("remote_from_home_label") != "Remote from Oregon":
                 failures.append(
                     f"{path.name}: remote_from_home_label "
@@ -1454,7 +1462,7 @@ def main() -> int:
                     "Hoover, AL",
                 ),
                 ("Austin, New York City", "", "Austin\nNew York City"),
-                ("United States, Canada", "", "US\nCA"),
+                ("United States, Canada", "", "US\nCAN"),
                 (
                     "['Austin, US'] Career Site Department: ['Engineering']",
                     "",
@@ -1562,7 +1570,7 @@ def main() -> int:
                 ("Hybrid-San Diego, CA", "hybrid"),
             ]
             audit_abbrev_cases = [
-                ("United States, Canada", "US\nCA"),
+                ("United States, Canada", "US\nCAN"),
                 ("Remote - Canada", "Canada"),
                 ("Poznań, PL, 61-569", "Poznań, PL"),
                 ("400604 Cluj-Napoca, Romania", "Cluj-Napoca, Romania"),

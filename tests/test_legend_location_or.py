@@ -22,15 +22,19 @@ def _load_qj():
 
 
 def _legend_location_or_match(entry: dict, loc_keys: list[str]) -> bool:
-    """Mirror fixed board JS: per-key remote/RFH in-office block; OR unions keys."""
+    """Mirror board JS: per-key remote/RFH in-office block; OR unions keys."""
 
     def work_model_blocks(wm: str) -> bool:
         return wm in {"in-office", "onsite", "on-site"}
 
     def matches_key(key: str) -> bool:
         wm = str(entry.get("wm") or "")
-        if key in {"remote", "remote-from-home"} and work_model_blocks(wm):
-            return False
+        if key in {"remote", "remote-from-home"}:
+            # Trust nus/rfh over stale in-office wm (Oscar Health case).
+            if entry.get("nus") or entry.get("rfh"):
+                pass
+            elif work_model_blocks(wm):
+                return False
         if key == "remote":
             return bool(entry.get("nus"))
         if key == "remote-from-home":
@@ -82,6 +86,28 @@ class LegendLocationOrTests(unittest.TestCase):
         self.assertTrue(_legend_location_or_match(remote_us, ["remote", "local"]))
         self.assertFalse(_legend_location_or_match(local_office, ["remote"]))
         self.assertTrue(_legend_location_or_match(local_office, ["local"]))
+
+    def test_stale_in_office_wm_does_not_block_nus(self) -> None:
+        """Oscar Health: nus=True with wm=in-office must still match Remote US."""
+        oscar = {
+            "loc": "remote",
+            "wm": "in-office",
+            "nus": True,
+            "rfh": False,
+        }
+        self.assertTrue(_legend_location_or_match(oscar, ["remote"]))
+        self.assertTrue(_legend_location_or_match(oscar, ["remote", "local"]))
+        # Truly in-office with no remote flags still blocked.
+        office = {"loc": "excluded", "wm": "in-office", "nus": False, "rfh": False}
+        self.assertFalse(_legend_location_or_match(office, ["remote"]))
+
+    def test_board_js_trusts_nus_before_wm_block(self) -> None:
+        start = self.src.index("function entryBlockedFromRemoteLegendFilters")
+        chunk = self.src[start : start + 550]
+        self.assertIn("entryMatchesNationwideUsRemote(entry)", chunk)
+        nus_pos = chunk.index("entryMatchesNationwideUsRemote(entry)")
+        wm_pos = chunk.index("workModelBlocksRemoteLegendFilters")
+        self.assertLess(nus_pos, wm_pos)
 
 
 if __name__ == "__main__":

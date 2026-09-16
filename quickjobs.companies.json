@@ -19984,14 +19984,14 @@
       "company_salary_by_title": [
         {
           "contains": "staff",
-          "label": "$195K–$260K · est."
+          "label": "$150K–$200K · est."
         },
         {
           "contains": "senior",
-          "label": "$155K–$200K · est."
+          "label": "$140K–$185K · est."
         },
         {
-          "label": "$140K–$180K · est."
+          "label": "$130K–$165K · est."
         }
       ],
       "cache_ttl_hours": 12,
