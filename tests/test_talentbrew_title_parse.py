@@ -127,11 +127,15 @@ class TalentbrewTitleParseTests(unittest.TestCase):
             "<b>Location:</b> United States",
             "Location: United States",
             "<b>Location:</b> United States · Remote",
+            "<B>LOCATION:</B> UNITED STATES",
         ):
             job_loc, label = self.qj.classify_location_with_fallback(loc, "", "", cfg)
             self.assertEqual(job_loc, "remote", msg=repr(loc))
             self.assertNotIn("<", str(label or ""))
             self.assertNotRegex(str(label or ""), r"(?i)^location\s*:")
+            badge = self.qj.sanitize_loc_label_for_badge(loc)
+            self.assertNotIn("<", badge)
+            self.assertNotRegex(badge, r"(?i)location\s*:")
 
     def test_netapp_bengaluru_path_beats_us_card_location(self) -> None:
         row = {

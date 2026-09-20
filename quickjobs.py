@@ -13324,7 +13324,7 @@ def normalize_location_display_label(
     for_badge: bool = True,
 ) -> str:
     """Ordered transforms for location badge display before classification helpers."""
-    raw = parse_location_parser_leaks(str(text or "").strip())
+    raw = parse_location_parser_leaks(strip_location_markup_prefix(str(text or "").strip()))
     if not raw:
         return raw
     raw, _remote_flag = strip_remote_location_markers(raw, for_badge=for_badge)
@@ -13445,7 +13445,9 @@ def sanitize_loc_label_for_badge(
     company_name: str = "",
 ) -> str:
     """Geographic label only: strip JD/title/work-model noise for loc-badge display."""
-    original = str(text or "").strip()
+    # Jack Henry Talentbrew stores ``<b>Location:</b> United States``; strip before
+    # display so badges never show raw HTML (classify already strips for loc bucket).
+    original = strip_location_markup_prefix(str(text or "").strip())
     raw = strip_company_prefix_from_location(original, company_name)
     raw = normalize_location_display_label(raw, description_text=description_text)
     raw = strip_work_model_prefix_from_location(raw)
@@ -39280,6 +39282,13 @@ def reclassify_results_locations(
                 continue
             src = _job_primary_location_text(job)
             if not src:
+                # Still scrub markup left in loc_label from older Talentbrew scrapes.
+                dirty = str(job.loc_label or "")
+                if dirty and ("<" in dirty or re.search(r"(?i)^location\s*:", dirty)):
+                    cleaned = strip_location_markup_prefix(dirty)
+                    if cleaned != dirty:
+                        job.loc_label = cleaned or None
+                        updated += 1
                 continue
             # Prefer original ATS location text when label was rewritten to exclusion prose.
             if src.lower().startswith("remote in ") and src.lower().endswith(" only"):
@@ -39302,6 +39311,7 @@ def reclassify_results_locations(
                 and str(label_out).lower().startswith("remote in ")
             ):
                 label_out = src
+            label_out = strip_location_markup_prefix(str(label_out or "")) or None
             if job.loc == job_loc and (job.loc_label or "") == (label_out or ""):
                 continue
             job.loc = job_loc
