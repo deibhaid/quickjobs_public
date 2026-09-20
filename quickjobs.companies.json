@@ -29,43 +29,8 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.10tanker.com/careers/"
-    },
-    {
-      "section": "matching",
-      "search_keywords": [
-        "devops",
-        "devops engineer",
-        "site reliability engineer",
-        "sre",
-        "platform engineer",
-        "platform engineering",
-        "infrastructure engineer",
-        "cloud engineer",
-        "cloud operations",
-        "systems engineer",
-        "production engineer",
-        "release engineer",
-        "build engineer",
-        "build and release",
-        "principal engineer",
-        "staff engineer",
-        "software engineer",
-        "observability",
-        "terraform",
-        "kubernetes"
-      ],
-      "default_salary": "maybe",
-      "cache_ttl_hours": 12,
-      "discover": true,
-      "id": "10x-genomics",
-      "name": "10x Genomics",
-      "label": "10x Genomics (Remote US)",
-      "type": "greenhouse",
-      "board": "10xgenomics",
-      "browse_url": "https://boards.greenhouse.io/10xgenomics",
-      "sector": "healthtech"
     },
     {
       "id": "1password",
@@ -111,7 +76,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.21air.com/careers/"
     },
     {
@@ -165,7 +130,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://www.3m.com/3M/en_US/careers-us/",
-      "hub_note": "Public ATS: none — Do not use Workday CXS — blocked off-VPN"
+      "hub_note": "Public ATS: none \u2014 Do not use Workday CXS \u2014 blocked off-VPN"
     },
     {
       "section": "matching",
@@ -217,7 +182,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.aosmith.com/careers"
     },
     {
@@ -281,7 +246,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.aarcorp.com/en/careers/"
     },
     {
@@ -328,7 +293,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.abbvie.com/"
     },
     {
@@ -360,7 +325,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.abxair.com/careers/"
     },
     {
@@ -381,7 +346,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.accenture.com/us-en/careers"
     },
     {
@@ -569,7 +534,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.advancedairlines.com/careers/"
     },
     {
@@ -636,7 +601,7 @@
     {
       "id": "aero-agricultural",
       "name": "Aerial Applicators (industry)",
-      "label": "NAAREF / ag aviation (crop-dusting employers — industry hub)",
+      "label": "NAAREF / ag aviation (crop-dusting employers \u2014 industry hub)",
       "section": "matching",
       "sector": "aviation",
       "type": "hub",
@@ -662,7 +627,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "National ag aviation association — links to operator members",
+      "hub_note": "National ag aviation association \u2014 links to operator members",
       "hub_url": "https://www.agaviation.org/careers/"
     },
     {
@@ -694,7 +659,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.aeroair.com/careers/"
     },
     {
@@ -715,7 +680,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.aes.com/careers"
     },
     {
@@ -813,7 +778,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.agilent.com/"
     },
     {
@@ -835,7 +800,7 @@
     {
       "id": "air-canada",
       "name": "Air Canada",
-      "label": "Air Canada (pilots — verify US work eligibility)",
+      "label": "Air Canada (pilots \u2014 verify US work eligibility)",
       "section": "matching",
       "sector": "aviation",
       "type": "phenom",
@@ -899,7 +864,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://www.aircargocarriers.com/careers/",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply"
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply"
     },
     {
       "id": "air-choice-one",
@@ -931,7 +896,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://www.airchoiceone.com/careers/",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply"
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply"
     },
     {
       "id": "air-products",
@@ -952,7 +917,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://jobs.airproducts.com/",
-      "hub_note": "Public ATS: none — Do not use Workday CXS — blocked off-VPN"
+      "hub_note": "Public ATS: none \u2014 Do not use Workday CXS \u2014 blocked off-VPN"
     },
     {
       "id": "air-transport-international",
@@ -984,12 +949,12 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://www.airtransport.cc/careers/",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply"
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply"
     },
     {
       "id": "air-wisconsin",
       "name": "Air Wisconsin",
-      "label": "Air Wisconsin (pilots — careers link)",
+      "label": "Air Wisconsin (pilots \u2014 careers link)",
       "section": "matching",
       "sector": "aviation",
       "type": "hub",
@@ -1016,7 +981,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://www.airwis.com/careers/",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply"
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply"
     },
     {
       "id": "airbnb",
@@ -1085,7 +1050,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.airevaclifeteam.com/careers/"
     },
     {
@@ -1277,78 +1242,36 @@
       "board": "alarmcom"
     },
     {
-      "id": "alaska-airlines",
-      "name": "Alaska Airlines",
-      "label": "Alaska Airlines (Remote US — verify)",
-      "section": "matching",
-      "sector": "aviation",
-      "default_salary": "maybe",
       "search_keywords": [
-        "pilot",
-        "first officer",
-        "captain",
-        "co-pilot",
-        "copilot",
-        "flight officer",
-        "line pilot",
-        "check airman",
-        "chief pilot",
-        "airline pilot",
-        "cargo pilot",
-        "corporate pilot",
-        "flight crew",
-        "aircraft commander",
-        "instructor pilot",
-        "direct entry captain",
-        "direct entry first officer",
-        "first officer fo",
-        "captain ca"
-      ],
-      "type": "playwright",
-      "max_details": 12,
-      "cache_ttl_hours": 24,
-      "browse_url": "https://careers-alaskaair.icims.com/jobs/search?ss=1&in_iframe=1",
-      "playwright_kind": "icims",
-      "search_url_template": "https://careers-alaskaair.icims.com/jobs/search?searchKeyword={query}&in_iframe=1"
-    },
-    {
-      "section": "matching",
-      "search_keywords": [
+        "engineer",
+        "technology",
+        "principal",
+        "software",
+        "cloud",
+        "platform",
+        "developer",
+        "architect",
+        "security",
+        "data engineer",
         "devops",
-        "devops engineer",
-        "site reliability engineer",
-        "sre",
-        "platform engineer",
-        "platform engineering",
-        "infrastructure engineer",
-        "cloud engineer",
-        "cloud operations",
-        "systems engineer",
-        "production engineer",
-        "release engineer",
-        "build engineer",
-        "build and release",
-        "principal engineer",
-        "staff engineer",
-        "software engineer",
-        "observability",
-        "terraform",
-        "kubernetes"
+        "infrastructure"
       ],
       "default_salary": "maybe",
       "cache_ttl_hours": 12,
       "id": "alaska-airlines-it",
       "name": "Alaska Airlines (IT)",
-      "label": "Alaska Airlines (IT — iCIMS; separate from pilot scrape)",
-      "type": "playwright",
+      "label": "Alaska Airlines (IT \u2014 corporate iCIMS)",
+      "type": "icims",
       "hub_url": "https://careers.alaskaair.com/",
-      "hub_note": "Airline IT/platform roles — verify remote/hybrid on req",
+      "hub_note": "Corporate IT via corporatejobs-alaskaair.icims.com (not careers-alaskaair.icims.com)",
       "sector": "aviation",
-      "playwright_kind": "icims",
-      "browse_url": "https://careers-alaskaair.icims.com/jobs/search?ss=1&in_iframe=1",
-      "search_url_template": "https://careers-alaskaair.icims.com/jobs/search?searchKeyword={query}&ss=1&in_iframe=1",
-      "max_details": 12,
-      "skip_verify": true
+      "browse_url": "https://corporatejobs-alaskaair.icims.com/jobs/search?ss=1&in_iframe=1",
+      "search_url_template": "https://corporatejobs-alaskaair.icims.com/jobs/search?searchKeyword={query}&ss=1&in_iframe=1",
+      "max_details": 24,
+      "skip_verify": true,
+      "section": "matching",
+      "icims_max_queries": 12,
+      "skip_search_keywords_extra": true
     },
     {
       "id": "albemarle",
@@ -1368,7 +1291,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.albemarle.com/careers"
     },
     {
@@ -1389,7 +1312,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.are.com/careers"
     },
     {
@@ -1471,7 +1394,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.allegion.com/careers"
     },
     {
@@ -1524,7 +1447,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.alliantenergy.com/about/careers"
     },
     {
@@ -1577,7 +1500,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.allstate.com/careers"
     },
     {
@@ -1635,7 +1558,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.alohaaircargo.com/careers/"
     },
     {
@@ -1785,13 +1708,13 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.altria.com/careers"
     },
     {
       "id": "amazon-air-ati",
       "name": "Amazon Air",
-      "label": "Amazon Air contractor — Air Transport International (cargo pilots)",
+      "label": "Amazon Air contractor \u2014 Air Transport International (cargo pilots)",
       "section": "matching",
       "sector": "aviation",
       "type": "hub",
@@ -1817,7 +1740,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.airtransport.cc/careers/"
     },
     {
@@ -1910,7 +1833,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.amcor.com/careers"
     },
     {
@@ -1931,13 +1854,13 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.ameren.com/careers"
     },
     {
       "id": "american-airlines",
       "name": "American Airlines",
-      "label": "American Airlines (pilots — Workday)",
+      "label": "American Airlines (pilots \u2014 Workday)",
       "section": "matching",
       "sector": "aviation",
       "type": "playwright",
@@ -1989,7 +1912,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.aep.com/company/careers/"
     },
     {
@@ -2040,7 +1963,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.aig.com/careers"
     },
     {
@@ -2088,7 +2011,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.amwater.com/careers/"
     },
     {
@@ -2120,7 +2043,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.ameriflight.com/careers/"
     },
     {
@@ -2153,7 +2076,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://www.amerijet.com/careers/",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply"
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply"
     },
     {
       "id": "ameriprise-financial",
@@ -2173,7 +2096,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.ameriprise.com/"
     },
     {
@@ -2245,7 +2168,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://amphenol.com/careers"
     },
     {
@@ -2474,7 +2397,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.apacorp.com/careers"
     },
     {
@@ -2559,7 +2482,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.apollo.com/careers"
     },
     {
@@ -2679,7 +2602,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.aptiv.com/careers"
     },
     {
@@ -2786,7 +2709,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.aresmgmt.com/careers"
     },
     {
@@ -2807,7 +2730,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.arista.com/"
     },
     {
@@ -2923,7 +2846,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://jobs.ajg.com/"
     },
     {
@@ -2973,7 +2896,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.asml.com/en/careers"
     },
     {
@@ -3026,7 +2949,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.assurant.com/"
     },
     {
@@ -3121,7 +3044,7 @@
     {
       "id": "atlas-air",
       "name": "Atlas Air",
-      "label": "Atlas Air (cargo pilots — Workday)",
+      "label": "Atlas Air (cargo pilots \u2014 Workday)",
       "section": "matching",
       "sector": "aviation",
       "type": "playwright",
@@ -3173,7 +3096,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.atmosenergy.com/careers"
     },
     {
@@ -3237,7 +3160,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://atpflightschool.com/become-a-cfi/careers/"
     },
     {
@@ -3271,38 +3194,6 @@
       "discover": true,
       "browse_url": "https://jobs.ashbyhq.com/atria",
       "ashby_board": "atria"
-    },
-    {
-      "section": "matching",
-      "id": "aurora-innovation-inc",
-      "name": "Aurora Innovation, Inc.",
-      "label": "Aurora Innovation, Inc. (Remote US)",
-      "type": "greenhouse",
-      "default_salary": "maybe",
-      "cache_ttl_hours": 12,
-      "search_keywords": [
-        "devops",
-        "devops engineer",
-        "site reliability engineer",
-        "sre",
-        "platform engineer",
-        "platform engineering",
-        "infrastructure engineer",
-        "cloud engineer",
-        "cloud operations",
-        "systems engineer",
-        "production engineer",
-        "release engineer",
-        "principal engineer",
-        "staff engineer",
-        "software engineer",
-        "observability",
-        "terraform",
-        "kubernetes"
-      ],
-      "discover": true,
-      "browse_url": "https://boards.greenhouse.io/aurorainnovation",
-      "board": "aurorainnovation"
     },
     {
       "id": "autodesk",
@@ -3355,13 +3246,13 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://jobs.adp.com/"
     },
     {
       "id": "automattic",
       "name": "Automattic",
-      "label": "Automattic (distributed — remote from US)",
+      "label": "Automattic (distributed \u2014 remote from US)",
       "section": "international",
       "employer_region": "international",
       "employer_hq": "Distributed (US-incorporated)",
@@ -3462,7 +3353,7 @@
     {
       "id": "avelo-airlines",
       "name": "Avelo Airlines",
-      "label": "Avelo Airlines (pilots — Workday)",
+      "label": "Avelo Airlines (pilots \u2014 Workday)",
       "section": "matching",
       "sector": "aviation",
       "type": "playwright",
@@ -3546,7 +3437,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.averydennison.com/careers"
     },
     {
@@ -3698,7 +3589,7 @@
       "type": "greenhouse",
       "default_salary": "maybe",
       "company_salary": "low",
-      "company_salary_label": "$120K–$165K · est.",
+      "company_salary_label": "$120K\u2013$165K \u00b7 est.",
       "cache_ttl_hours": 12,
       "search_keywords": [
         "devops",
@@ -3759,7 +3650,7 @@
     {
       "id": "bae-systems",
       "name": "BAE Systems",
-      "label": "BAE Systems (Remote US — verify)",
+      "label": "BAE Systems (Remote US \u2014 verify)",
       "section": "matching",
       "sector": "defense",
       "default_salary": "maybe",
@@ -3852,7 +3743,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.bankofamerica.com/"
     },
     {
@@ -3884,7 +3775,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.baronaviation.com/careers/"
     },
     {
@@ -4140,7 +4031,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://www.beringair.com/careers/",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply"
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply"
     },
     {
       "id": "berkshire-hathaway",
@@ -4160,7 +4051,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.berkshirehathaway.com/"
     },
     {
@@ -4181,7 +4072,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://jobs.bestbuy.com/"
     },
     {
@@ -4366,7 +4257,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.bio-techne.com/careers"
     },
     {
@@ -4387,7 +4278,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.biogen.com/"
     },
     {
@@ -4468,7 +4359,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.blackstone.com/careers/"
     },
     {
@@ -4625,10 +4516,10 @@
       "cache_ttl_hours": 12,
       "id": "boeing-it",
       "name": "Boeing (IT)",
-      "label": "Boeing (IT — Workday; separate from pilot scrape)",
+      "label": "Boeing (IT \u2014 Workday; separate from pilot scrape)",
       "type": "playwright",
       "hub_url": "https://jobs.boeing.com/",
-      "hub_note": "IT/platform careers — verify remote US on each req",
+      "hub_note": "IT/platform careers \u2014 verify remote US on each req",
       "sector": "defense",
       "playwright_kind": "workday",
       "workday_fetch": "cxs",
@@ -4656,7 +4547,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.bookingholdings.com/"
     },
     {
@@ -4774,7 +4665,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.boutiqueair.com/careers/"
     },
     {
@@ -4882,7 +4773,7 @@
     {
       "id": "breeze-airways",
       "name": "Breeze Airways",
-      "label": "Breeze Airways (pilots — Workday)",
+      "label": "Breeze Airways (pilots \u2014 Workday)",
       "section": "matching",
       "sector": "aviation",
       "type": "playwright",
@@ -4975,7 +4866,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.broadcom.com/company/careers"
     },
     {
@@ -5023,13 +4914,13 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.bbrown.com/"
     },
     {
       "id": "brown-forman",
-      "name": "Brown–Forman",
-      "label": "Brown–Forman (manual careers hub)",
+      "name": "Brown\u2013Forman",
+      "label": "Brown\u2013Forman (manual careers hub)",
       "section": "hubs",
       "type": "hub",
       "search_keywords": [
@@ -5044,7 +4935,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.brown-forman.com/careers"
     },
     {
@@ -5097,7 +4988,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.bldr.com/careers"
     },
     {
@@ -5180,8 +5071,8 @@
           "loc": "remote",
           "match": "good",
           "salary": "ok",
-          "salary_label": "$180K–$220K",
-          "meta": "Edtech · AWS, Terraform, EKS, Argo CD, OTEL, Datadog",
+          "salary_label": "$180K\u2013$220K",
+          "meta": "Edtech \u00b7 AWS, Terraform, EKS, Argo CD, OTEL, Datadog",
           "why": "Stack is an excellent match; role is engineering management not IC."
         },
         {
@@ -5189,16 +5080,16 @@
           "loc": "remote",
           "match": "strong",
           "salary": "ok",
-          "salary_label": "$163K–$272K",
-          "meta": "Cloud architecture · enterprise scale",
+          "salary_label": "$163K\u2013$272K",
+          "meta": "Cloud architecture \u00b7 enterprise scale",
           "why": "Architecture + cloud delivery; top of band exceeds $200K base."
         },
         {
-          "title": "Site Reliability Engineer — AI & ML Infrastructure (K8s, AWS, Terraform)",
+          "title": "Site Reliability Engineer \u2014 AI & ML Infrastructure (K8s, AWS, Terraform)",
           "loc": "remote",
           "match": "strong",
           "salary": "maybe",
-          "salary_label": "$150K–$220K",
+          "salary_label": "$150K\u2013$220K",
           "meta": "Kubernetes, Terraform, AWS",
           "why": "Core stack match; negotiate toward top of band for $200K base."
         },
@@ -5207,14 +5098,14 @@
           "loc": "remote",
           "match": "good",
           "salary": "ok",
-          "salary_label": "$212K–$300K",
+          "salary_label": "$212K\u2013$300K",
           "meta": "Argo CD, AWS, Terraform, K8s",
           "why": "Argo CD + platform; director level."
         }
       ],
       "footer_links": [
         {
-          "label": "Built In — Portland DevOps →",
+          "label": "Built In \u2014 Portland DevOps \u2192",
           "url": "https://builtin.com/jobs/portland/dev-engineering/devops"
         }
       ]
@@ -5229,12 +5120,12 @@
       "subsection": "Below $200K base or other",
       "entries": [
         {
-          "title": "Sr. Site Reliability Engineer — GovCloud (CrowdStrike)",
+          "title": "Sr. Site Reliability Engineer \u2014 GovCloud (CrowdStrike)",
           "url": "https://builtin.com/job/sr-site-reliability-engineer-govcloud-remote/4415482",
           "loc": "excluded",
           "match": "good",
           "salary": "low",
-          "salary_label": "$95K–$160K",
+          "salary_label": "$95K\u2013$160K",
           "loc_label": "Remote",
           "why": "Skills fit; base max under your floor."
         },
@@ -5243,7 +5134,7 @@
           "loc": "excluded",
           "match": "good",
           "salary": "low",
-          "salary_label": "$130K–$140K",
+          "salary_label": "$130K\u2013$140K",
           "why": "Below $200K base floor."
         }
       ]
@@ -5267,7 +5158,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://careers.bunge-global.com",
-      "hub_note": "Public ATS: none — Do not use Workday CXS — blocked off-VPN"
+      "hub_note": "Public ATS: none \u2014 Do not use Workday CXS \u2014 blocked off-VPN"
     },
     {
       "section": "matching",
@@ -5346,7 +5237,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://jobs.chrobinson.com/"
     },
     {
@@ -5443,7 +5334,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.cae.com/careers/"
     },
     {
@@ -5624,13 +5515,13 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.campbellsoupcompany.com/"
     },
     {
       "id": "canonical",
       "name": "Canonical",
-      "label": "Canonical (UK — remote from US)",
+      "label": "Canonical (UK \u2014 remote from US)",
       "section": "international",
       "employer_region": "international",
       "employer_hq": "United Kingdom",
@@ -5679,7 +5570,7 @@
     {
       "id": "cape-air",
       "name": "Cape Air",
-      "label": "Cape Air (pilots — careers link)",
+      "label": "Cape Air (pilots \u2014 careers link)",
       "section": "matching",
       "sector": "aviation",
       "type": "hub",
@@ -5705,7 +5596,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.capeair.com/careers/pilot/"
     },
     {
@@ -5857,7 +5748,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://jobs.cardinalhealth.com/"
     },
     {
@@ -6050,7 +5941,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.caseys.com/careers"
     },
     {
@@ -6082,7 +5973,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.castleaviation.com/careers/"
     },
     {
@@ -6141,7 +6032,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://careers.cathaypacific.com/"
     },
     {
@@ -6255,7 +6146,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.cbre.com/careers"
     },
     {
@@ -6311,7 +6202,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.cdw.com/content/cdwcorp/en_US/careers.html"
     },
     {
@@ -6423,7 +6314,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://jobs.centene.com/"
     },
     {
@@ -6484,7 +6375,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.cfindustries.com/careers"
     },
     {
@@ -6775,7 +6666,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://careers.church-dwight.com",
-      "hub_note": "Public ATS: none — Do not use Workday CXS — blocked off-VPN"
+      "hub_note": "Public ATS: none \u2014 Do not use Workday CXS \u2014 blocked off-VPN"
     },
     {
       "id": "ciena",
@@ -6795,7 +6686,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.ciena.com/about/careers.html"
     },
     {
@@ -6845,7 +6736,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.cinfin.com/"
     },
     {
@@ -7107,39 +6998,19 @@
       "sector": "edtech"
     },
     {
-      "section": "matching",
-      "search_keywords": [
-        "devops",
-        "devops engineer",
-        "site reliability engineer",
-        "sre",
-        "platform engineer",
-        "platform engineering",
-        "infrastructure engineer",
-        "cloud engineer",
-        "cloud operations",
-        "systems engineer",
-        "production engineer",
-        "release engineer",
-        "build engineer",
-        "build and release",
-        "principal engineer",
-        "staff engineer",
-        "software engineer",
-        "observability",
-        "terraform",
-        "kubernetes"
-      ],
-      "default_salary": "maybe",
-      "cache_ttl_hours": 12,
-      "discover": true,
       "id": "clickhouse",
       "name": "ClickHouse",
       "label": "ClickHouse (Remote US)",
-      "type": "greenhouse",
-      "board": "clickhouse",
-      "browse_url": "https://boards.greenhouse.io/clickhouse",
-      "sector": "tech"
+      "section": "matching",
+      "sector": "tech",
+      "type": "ashby",
+      "ashby_board": "clickhouse",
+      "browse_url": "https://jobs.ashbyhq.com/clickhouse",
+      "discover": true,
+      "watch_ids": [],
+      "default_salary": "maybe",
+      "cache_ttl_hours": 12,
+      "layoff_prone": false
     },
     {
       "id": "clorox",
@@ -7159,7 +7030,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.thecloroxcompany.com/careers/"
     },
     {
@@ -7261,7 +7132,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.cmegroup.com/careers.html"
     },
     {
@@ -7282,7 +7153,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.cmsenergy.com/careers"
     },
     {
@@ -7303,7 +7174,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.coca-colacompany.com/"
     },
     {
@@ -7394,7 +7265,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.cognizant.com/global-en"
     },
     {
@@ -7525,7 +7396,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://jobs.colgate.com/"
     },
     {
@@ -7647,7 +7518,7 @@
       "cache_ttl_hours": 24,
       "id": "collins-aerospace",
       "name": "Collins Aerospace",
-      "label": "Collins Aerospace (RTX — aviation IT + engineering)",
+      "label": "Collins Aerospace (RTX \u2014 aviation IT + engineering)",
       "type": "phenom",
       "sector": "defense",
       "browse_url": "https://careers.rtx.com/global/en/collins-aerospace",
@@ -7743,7 +7614,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.comfortsystemsusa.com/careers"
     },
     {
@@ -7775,7 +7646,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.commuteair.com/careers/"
     },
     {
@@ -7958,7 +7829,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.conocophillips.com/"
     },
     {
@@ -8130,7 +8001,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.contourairlines.com/careers/"
     },
     {
@@ -8151,7 +8022,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.coopercareers.com/"
     },
     {
@@ -8172,7 +8043,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.copart.com/"
     },
     {
@@ -8228,7 +8099,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.corning.com/worldwide/en/careers.html"
     },
     {
@@ -8249,7 +8120,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.corpay.com/careers"
     },
     {
@@ -8270,7 +8141,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.corteva.com/careers.html"
     },
     {
@@ -8350,7 +8221,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.coulsonaviation.com/careers/"
     },
     {
@@ -8440,7 +8311,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://careers.crh.com",
-      "hub_note": "Public ATS: none — Do not use Workday CXS — blocked off-VPN"
+      "hub_note": "Public ATS: none \u2014 Do not use Workday CXS \u2014 blocked off-VPN"
     },
     {
       "section": "matching",
@@ -8610,18 +8481,18 @@
       "label": "CrowdStrike (excluded)",
       "section": "excluded",
       "type": "entries",
-      "subsection": "Hybrid / hub — too far (&gt;{local_radius_miles} mi), regular office expected",
+      "subsection": "Hybrid / hub \u2014 too far (&gt;{local_radius_miles} mi), regular office expected",
       "subsection_warn": true,
       "entries": [
         {
-          "title": "Principal Engineer — System Infrastructure (CrowdStrike)",
+          "title": "Principal Engineer \u2014 System Infrastructure (CrowdStrike)",
           "url": "https://jobs.accel.com/companies/crowdstrike/jobs/72305843-principal-engineer-system-infrastructure-hybrid",
           "loc": "excluded",
           "match": "stretch",
           "salary": "ok",
-          "salary_label": "$195K–$290K",
+          "salary_label": "$195K\u2013$290K",
           "loc_label": "Hybrid Redmond ~175 mi",
-          "why": "Strong stack/pay; hybrid 2–3 days on-site in Redmond/Austin/NYC—not viable from {home_zip} without relocation."
+          "why": "Strong stack/pay; hybrid 2\u20133 days on-site in Redmond/Austin/NYC\u2014not viable from {home_zip} without relocation."
         }
       ]
     },
@@ -8644,7 +8515,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://careers.crown-castle.com",
-      "hub_note": "Public ATS: none — Do not use Workday CXS — blocked off-VPN"
+      "hub_note": "Public ATS: none \u2014 Do not use Workday CXS \u2014 blocked off-VPN"
     },
     {
       "id": "csx",
@@ -8866,32 +8737,6 @@
       "skip_verify": true
     },
     {
-      "id": "d-r-horton",
-      "name": "D. R. Horton",
-      "label": "D. R. Horton (manual careers hub)",
-      "section": "hubs",
-      "type": "greenhouse",
-      "search_keywords": [
-        "devops",
-        "site reliability engineer",
-        "platform engineer",
-        "cloud engineer",
-        "infrastructure engineer",
-        "systems engineer",
-        "principal engineer",
-        "staff engineer",
-        "software engineer"
-      ],
-      "default_salary": "maybe",
-      "browse_url": "https://boards.greenhouse.io/drhorton",
-      "max_details": 12,
-      "cache_ttl_hours": 24,
-      "skip_verify": true,
-      "default_loc": "remote",
-      "board": "drhorton",
-      "discover": true
-    },
-    {
       "section": "matching",
       "id": "damco-solutions-inc",
       "name": "Damco Solutions Inc.",
@@ -8970,7 +8815,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.darden.com/"
     },
     {
@@ -9101,7 +8946,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.deckers.com/careers"
     },
     {
@@ -9122,7 +8967,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.deere.com/en/our-company/john-deere-careers/"
     },
     {
@@ -9185,11 +9030,11 @@
     {
       "id": "delta-air-lines",
       "name": "Delta Air Lines",
-      "label": "Delta Air Lines (pilots — Workday)",
+      "label": "Delta Air Lines (pilots \u2014 Workday)",
       "section": "matching",
       "type": "playwright",
       "hub_url": "https://careers.delta.com/",
-      "hub_note": "Manual careers link — verify careers URL; probe for ATS conversion",
+      "hub_note": "Manual careers link \u2014 verify careers URL; probe for ATS conversion",
       "search_keywords": [
         "pilot",
         "first officer",
@@ -9272,7 +9117,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://careers.devon-energy.com",
-      "hub_note": "Public ATS: none — Do not use Workday CXS — blocked off-VPN"
+      "hub_note": "Public ATS: none \u2014 Do not use Workday CXS \u2014 blocked off-VPN"
     },
     {
       "id": "dexcom",
@@ -9385,7 +9230,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.diamondbackenergy.com/careers"
     },
     {
@@ -9633,7 +9478,7 @@
       "section": "matching",
       "id": "docusign-inc",
       "name": "DocuSign Inc",
-      "label": "DocuSign Inc (Remote US — iCIMS)",
+      "label": "DocuSign Inc (Remote US \u2014 iCIMS)",
       "type": "icims",
       "default_salary": "maybe",
       "cache_ttl_hours": 12,
@@ -9707,7 +9552,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.dollartree.com/"
     },
     {
@@ -9785,7 +9630,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://jobs.dominos.com/"
     },
     {
@@ -9893,7 +9738,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://corporate.dow.com/en-us/careers.html"
     },
     {
@@ -10093,7 +9938,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.duncanaviation.aero/careers/"
     },
     {
@@ -10186,7 +10031,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.dyn-intl.com/careers/"
     },
     {
@@ -10239,7 +10084,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.eaton.com/us/en-us/company/careers.html"
     },
     {
@@ -10425,7 +10270,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.edisoncareers.com/"
     },
     {
@@ -10519,7 +10364,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.electronic-arts.com"
     },
     {
@@ -10696,7 +10541,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://careers.erau.edu/"
     },
     {
@@ -10742,7 +10587,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.emerson.com/en-us/careers"
     },
     {
@@ -10774,7 +10619,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.empireairlines.com/careers/"
     },
     {
@@ -10812,7 +10657,7 @@
     {
       "id": "endeavor-air",
       "name": "Endeavor Air",
-      "label": "Endeavor Air (Delta Connection — pilots)",
+      "label": "Endeavor Air (Delta Connection \u2014 pilots)",
       "section": "matching",
       "sector": "aviation",
       "type": "icims",
@@ -10999,7 +10844,7 @@
       "cache_ttl_hours": 24,
       "id": "envoy-air",
       "name": "Envoy Air",
-      "label": "Envoy Air (American Eagle — pilots)",
+      "label": "Envoy Air (American Eagle \u2014 pilots)",
       "browse_url": "https://careers-envoyair.icims.com/jobs/search?ss=1&in_iframe=1",
       "search_url_template": "https://careers-envoyair.icims.com/jobs/search?searchKeyword={query}&ss=1&in_iframe=1"
     },
@@ -11021,7 +10866,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.eogresources.com/careers"
     },
     {
@@ -11053,7 +10898,7 @@
       "discover": true,
       "id": "epic-systems",
       "name": "Epic Systems",
-      "label": "Epic Systems (healthcare IT — Greenhouse)",
+      "label": "Epic Systems (healthcare IT \u2014 Greenhouse)",
       "type": "greenhouse",
       "board": "epicgames",
       "browse_url": "https://boards.greenhouse.io/epicgames",
@@ -11103,7 +10948,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.equifax.com/"
     },
     {
@@ -11124,7 +10969,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.equinix.com/"
     },
     {
@@ -11145,7 +10990,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.equityapartments.com/"
     },
     {
@@ -11166,7 +11011,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.erieinsurance.com/careers"
     },
     {
@@ -11222,13 +11067,13 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.essexapartmenthomes.com/careers"
     },
     {
       "id": "est-e-lauder-companies",
-      "name": "Estée Lauder Companies (The)",
-      "label": "Estée Lauder Companies (The) (manual careers hub)",
+      "name": "Est\u00e9e Lauder Companies (The)",
+      "label": "Est\u00e9e Lauder Companies (The) (manual careers hub)",
       "section": "hubs",
       "type": "hub",
       "search_keywords": [
@@ -11243,7 +11088,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.elcompanies.com/en/careers"
     },
     {
@@ -11264,7 +11109,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.everestglobal.com/us-en/careers"
     },
     {
@@ -11285,7 +11130,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.evergy.com/careers"
     },
     {
@@ -11374,7 +11219,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.evertsair.com/employment/"
     },
     {
@@ -11494,7 +11339,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.exeloncorp.com/"
     },
     {
@@ -11547,7 +11392,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.chk.com/careers"
     },
     {
@@ -11596,7 +11441,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.expeditors.com/careers"
     },
     {
@@ -11652,7 +11497,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.extraspace.com/careers/"
     },
     {
@@ -11729,28 +11574,41 @@
     {
       "id": "f5",
       "name": "F5, Inc.",
-      "label": "F5, Inc. (manual careers hub)",
-      "section": "hubs",
-      "type": "hub",
+      "label": "F5 (Workday CXS)",
+      "section": "matching",
+      "sector": "tech",
+      "type": "playwright",
+      "playwright_kind": "workday",
+      "workday_fetch": "cxs",
+      "workday_skip_playwright_on_422": false,
+      "browse_url": "https://ffive.wd5.myworkdayjobs.com/en-US/f5jobs",
       "search_keywords": [
+        "staff engineer",
+        "principal engineer",
+        "senior devops",
+        "senior platform",
         "devops",
         "site reliability engineer",
         "platform engineer",
         "cloud engineer",
         "infrastructure engineer",
         "systems engineer",
-        "principal engineer",
-        "staff engineer",
-        "software engineer"
+        "production engineer",
+        "software engineer",
+        "observability",
+        "kubernetes"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
-      "hub_url": "https://www.f5.com/company/careers"
+      "max_details": 48,
+      "cache_ttl_hours": 12,
+      "workday_playwright_max_queries": 4,
+      "workday_cxs_max_details_per_query": 12,
+      "skip_verify": true
     },
     {
       "id": "faa-pilot",
       "name": "FAA",
-      "label": "FAA (USAJOBS — pilot positions)",
+      "label": "FAA (USAJOBS \u2014 pilot positions)",
       "section": "matching",
       "sector": "aviation",
       "type": "hub",
@@ -11797,7 +11655,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.factset.com/careers"
     },
     {
@@ -11853,7 +11711,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.fico.com/en/careers"
     },
     {
@@ -11989,7 +11847,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.fastenal.com/about-fastenal/careers"
     },
     {
@@ -12024,13 +11882,13 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.federalrealty.com/"
     },
     {
       "id": "fedex",
       "name": "FedEx",
-      "label": "FedEx (cargo pilots — careers link)",
+      "label": "FedEx (cargo pilots \u2014 careers link)",
       "section": "matching",
       "type": "hub",
       "search_keywords": [
@@ -12056,13 +11914,13 @@
       ],
       "default_salary": "maybe",
       "sector": "aviation",
-      "hub_note": "Cargo pilot hiring — verify careers.fedex.com; may need Pilot Credentials",
+      "hub_note": "Cargo pilot hiring \u2014 verify careers.fedex.com; may need Pilot Credentials",
       "hub_url": "https://careers.fedex.com/"
     },
     {
       "id": "fedex-pilot-recruiting",
       "name": "FedEx Express Pilots",
-      "label": "FedEx Express — pilot careers (direct link)",
+      "label": "FedEx Express \u2014 pilot careers (direct link)",
       "section": "matching",
       "sector": "aviation",
       "type": "hub",
@@ -12088,7 +11946,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://careers.fedex.com/express/pilot"
     },
     {
@@ -12109,7 +11967,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.ferrovial.com/careers/"
     },
     {
@@ -12158,7 +12016,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.53.com/"
     },
     {
@@ -12299,7 +12157,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.firstenergy.com"
     },
     {
@@ -12588,7 +12446,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.flyexclusive.com/careers/"
     },
     {
@@ -12678,9 +12536,9 @@
       "cache_ttl_hours": 12,
       "id": "foreflight",
       "name": "ForeFlight",
-      "label": "ForeFlight (aviation software — IT)",
+      "label": "ForeFlight (aviation software \u2014 IT)",
       "type": "hub",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://foreflight.com/about/careers/"
     },
     {
@@ -12759,7 +12617,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.fortive.com/careers"
     },
     {
@@ -12838,7 +12696,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.franklintempletoncareers.com/"
     },
     {
@@ -12938,7 +12796,7 @@
     {
       "id": "frontier-airlines",
       "name": "Frontier Airlines",
-      "label": "Frontier Airlines (pilots — Workday)",
+      "label": "Frontier Airlines (pilots \u2014 Workday)",
       "section": "matching",
       "sector": "aviation",
       "type": "playwright",
@@ -13168,7 +13026,7 @@
     {
       "id": "garmin",
       "name": "Garmin",
-      "label": "Garmin (avionics software/hardware — IT)",
+      "label": "Garmin (avionics software/hardware \u2014 IT)",
       "section": "matching",
       "type": "hub",
       "search_keywords": [
@@ -13195,7 +13053,7 @@
       ],
       "default_salary": "maybe",
       "cache_ttl_hours": 12,
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.garmin.com/careers"
     },
     {
@@ -13248,7 +13106,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://jobs.gartner.com/"
     },
     {
@@ -13318,23 +13176,36 @@
     {
       "id": "ge-vernova",
       "name": "GE Vernova",
-      "label": "GE Vernova (manual careers hub)",
-      "section": "hubs",
-      "type": "hub",
+      "label": "GE Vernova (Workday CXS)",
+      "section": "matching",
+      "sector": "energy",
+      "type": "playwright",
+      "playwright_kind": "workday",
+      "workday_fetch": "cxs",
+      "workday_skip_playwright_on_422": false,
+      "browse_url": "https://gevernova.wd5.myworkdayjobs.com/en-US/Vernova_ExternalSite",
       "search_keywords": [
+        "staff engineer",
+        "principal engineer",
+        "senior devops",
+        "senior platform",
         "devops",
         "site reliability engineer",
         "platform engineer",
         "cloud engineer",
         "infrastructure engineer",
         "systems engineer",
-        "principal engineer",
-        "staff engineer",
-        "software engineer"
+        "production engineer",
+        "software engineer",
+        "observability",
+        "kubernetes"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
-      "hub_url": "https://careers.gevernova.com/"
+      "max_details": 36,
+      "cache_ttl_hours": 12,
+      "workday_playwright_max_queries": 4,
+      "workday_cxs_max_details_per_query": 12,
+      "skip_verify": true
     },
     {
       "section": "matching",
@@ -13386,7 +13257,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.gendigital.com/careers/"
     },
     {
@@ -13407,7 +13278,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.generac.com/careers"
     },
     {
@@ -13604,7 +13475,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://gilead.com/careers/"
     },
     {
@@ -13653,7 +13524,7 @@
           "match": "strong",
           "salary": "maybe",
           "salary_label": "$121.8K-$323.2K base",
-          "meta": "United States · IT / site reliability",
+          "meta": "United States \u00b7 IT / site reliability",
           "why": "Specific GitHub SRE role in the US; remote-first employer and direct reliability/platform fit."
         },
         {
@@ -13663,7 +13534,7 @@
           "match": "good",
           "salary": "maybe",
           "salary_label": "$140.4K-$372.3K base",
-          "meta": "United States · GitHub Actions / CI platform",
+          "meta": "United States \u00b7 GitHub Actions / CI platform",
           "why": "Strong CI/CD and developer-platform overlap; software-engineering tilt is heavier than a pure SRE role."
         }
       ]
@@ -13671,7 +13542,7 @@
     {
       "id": "gitlab",
       "name": "GitLab",
-      "label": "GitLab (Netherlands — remote from US)",
+      "label": "GitLab (Netherlands \u2014 remote from US)",
       "section": "international",
       "employer_region": "international",
       "employer_hq": "Netherlands",
@@ -13738,7 +13609,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://jobs.globalpayments.com/en/"
     },
     {
@@ -13759,40 +13630,8 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.globelifeinsurance.com/"
-    },
-    {
-      "section": "matching",
-      "id": "glossgenius",
-      "name": "GlossGenius",
-      "label": "GlossGenius (Remote US)",
-      "type": "greenhouse",
-      "default_salary": "maybe",
-      "cache_ttl_hours": 12,
-      "search_keywords": [
-        "devops",
-        "devops engineer",
-        "site reliability engineer",
-        "sre",
-        "platform engineer",
-        "platform engineering",
-        "infrastructure engineer",
-        "cloud engineer",
-        "cloud operations",
-        "systems engineer",
-        "production engineer",
-        "release engineer",
-        "principal engineer",
-        "staff engineer",
-        "software engineer",
-        "observability",
-        "terraform",
-        "kubernetes"
-      ],
-      "discover": true,
-      "browse_url": "https://boards.greenhouse.io/glossgenius",
-      "board": "glossgenius"
     },
     {
       "id": "gm",
@@ -13855,7 +13694,7 @@
     {
       "id": "gojet-airlines",
       "name": "GoJet Airlines",
-      "label": "GoJet Airlines (pilots — careers link)",
+      "label": "GoJet Airlines (pilots \u2014 careers link)",
       "section": "matching",
       "sector": "aviation",
       "type": "hub",
@@ -13881,7 +13720,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.gojetairlines.com/careers/"
     },
     {
@@ -13937,7 +13776,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.goldmansachs.com/careers/"
     },
     {
@@ -14114,7 +13953,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.grandcanyonairlines.com/careers/"
     },
     {
@@ -14146,7 +13985,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.flygrant.com/careers/"
     },
     {
@@ -14191,7 +14030,7 @@
       "type": "greenhouse",
       "default_salary": "maybe",
       "company_salary": "low",
-      "company_salary_label": "$125K–$160K · est.",
+      "company_salary_label": "$125K\u2013$160K \u00b7 est.",
       "cache_ttl_hours": 12,
       "search_keywords": [
         "devops",
@@ -14368,7 +14207,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.harbourair.com/careers/"
     },
     {
@@ -14480,13 +14319,13 @@
       "label": "HashiCorp (IT careers link)",
       "type": "hub",
       "sector": "tech",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.hashicorp.com/en/careers"
     },
     {
       "id": "hawaiian-airlines",
       "name": "Hawaiian Airlines",
-      "label": "Hawaiian Airlines (pilots — Workday)",
+      "label": "Hawaiian Airlines (pilots \u2014 Workday)",
       "section": "matching",
       "sector": "aviation",
       "type": "playwright",
@@ -14570,7 +14409,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.hca-healthcare.com"
     },
     {
@@ -14666,7 +14505,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.healthpeak.com/"
     },
     {
@@ -14687,7 +14526,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.henryschein.com/us-en/corporate/careers.aspx"
     },
     {
@@ -14902,7 +14741,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.hillsboroaviation.com/careers/"
     },
     {
@@ -15070,7 +14909,7 @@
     {
       "id": "horizon-air",
       "name": "Horizon Air",
-      "label": "Horizon Air (Alaska Horizon — pilots)",
+      "label": "Horizon Air (Alaska Horizon \u2014 pilots)",
       "section": "matching",
       "sector": "aviation",
       "type": "hub",
@@ -15096,7 +14935,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.horizonair.com/careers/"
     },
     {
@@ -15143,7 +14982,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.hosthotels.com/careers"
     },
     {
@@ -15350,7 +15189,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.huntington.com/"
     },
     {
@@ -15462,7 +15301,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.idexcorp.com/careers"
     },
     {
@@ -15774,7 +15613,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.irco.com/en-us/careers"
     },
     {
@@ -15939,7 +15778,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.interactivebrokers.com/en/general/career.php"
     },
     {
@@ -16163,7 +16002,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.invesco.com/"
     },
     {
@@ -16184,7 +16023,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.invitationhomes.com/careers"
     },
     {
@@ -16205,7 +16044,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://jobs.iqvia.com/"
     },
     {
@@ -16226,7 +16065,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.ironmountain.com/about-us/careers"
     },
     {
@@ -16384,7 +16223,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.jbhunt.com/"
     },
     {
@@ -16405,7 +16244,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.jmsmucker.com/"
     },
     {
@@ -16476,40 +16315,8 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.jacobs.com/"
-    },
-    {
-      "section": "matching",
-      "id": "jahnel-group",
-      "name": "Jahnel Group",
-      "label": "Jahnel Group (Remote US)",
-      "type": "greenhouse",
-      "default_salary": "maybe",
-      "cache_ttl_hours": 12,
-      "search_keywords": [
-        "devops",
-        "devops engineer",
-        "site reliability engineer",
-        "sre",
-        "platform engineer",
-        "platform engineering",
-        "infrastructure engineer",
-        "cloud engineer",
-        "cloud operations",
-        "systems engineer",
-        "production engineer",
-        "release engineer",
-        "principal engineer",
-        "staff engineer",
-        "software engineer",
-        "observability",
-        "terraform",
-        "kubernetes"
-      ],
-      "discover": true,
-      "browse_url": "https://boards.greenhouse.io/jahnelgroup",
-      "board": "jahnelgroup"
     },
     {
       "section": "matching",
@@ -16549,7 +16356,7 @@
     {
       "id": "janestreet",
       "name": "Jane Street",
-      "label": "Jane Street (Remote US — verify)",
+      "label": "Jane Street (Remote US \u2014 verify)",
       "section": "matching",
       "sector": "finance",
       "type": "greenhouse",
@@ -16653,13 +16460,13 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.jetaviation.com/careers/"
     },
     {
       "id": "jetblue",
       "name": "JetBlue",
-      "label": "JetBlue (Remote US — verify)",
+      "label": "JetBlue (Remote US \u2014 verify)",
       "section": "matching",
       "sector": "aviation",
       "default_salary": "maybe",
@@ -16745,7 +16552,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.johnsoncontrols.com/careers"
     },
     {
@@ -16766,7 +16573,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.careers.jnj.com/"
     },
     {
@@ -16827,7 +16634,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://www.jsfirm.com/",
-      "hub_note": "Aggregated pilot listings — search manually"
+      "hub_note": "Aggregated pilot listings \u2014 search manually"
     },
     {
       "id": "jsx",
@@ -16859,7 +16666,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://www.jsx.com/careers",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply"
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply"
     },
     {
       "section": "matching",
@@ -16959,7 +16766,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.kalittaair.com/about-us/careers/"
     },
     {
@@ -17005,7 +16812,7 @@
       "type": "greenhouse",
       "default_salary": "maybe",
       "company_salary": "low",
-      "company_salary_label": "$150K–$165K · est.",
+      "company_salary_label": "$150K\u2013$165K \u00b7 est.",
       "cache_ttl_hours": 12,
       "search_keywords": [
         "devops",
@@ -17060,7 +16867,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.kenmoreair.com/careers/"
     },
     {
@@ -17116,7 +16923,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.kenvue.com/careers"
     },
     {
@@ -17162,7 +16969,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.key.com/about/careers/"
     },
     {
@@ -17183,7 +16990,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://jobs.keysight.com/"
     },
     {
@@ -17204,7 +17011,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.kimberly-clark.com/"
     },
     {
@@ -17225,7 +17032,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.kimcorealty.com/careers"
     },
     {
@@ -17246,7 +17053,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.kindermorgan.com/"
     },
     {
@@ -17267,7 +17074,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.kkr.com/careers"
     },
     {
@@ -17599,7 +17406,7 @@
       ],
       "footer_links": [
         {
-          "label": "Levels.fyi — Lam Research salaries (market medians)",
+          "label": "Levels.fyi \u2014 Lam Research salaries (market medians)",
           "url": "https://www.levels.fyi/companies/lam-research/salaries"
         }
       ]
@@ -17637,7 +17444,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.sands.com/careers"
     },
     {
@@ -17776,7 +17583,7 @@
       "cache_ttl_hours": 12,
       "id": "legacy-health-it",
       "name": "Legacy Health",
-      "label": "Legacy Health (Portland — IT)",
+      "label": "Legacy Health (Portland \u2014 IT)",
       "type": "icims",
       "sector": "healthcare",
       "browse_url": "https://careers-lhs.icims.com/jobs/search?ss=1&in_iframe=1",
@@ -17843,7 +17650,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.lennar.com/"
     },
     {
@@ -18046,7 +17853,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.linde.com/careers"
     },
     {
@@ -18114,7 +17921,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.livenationentertainment.com/careers"
     },
     {
@@ -18227,7 +18034,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.loews.com/careers"
     },
     {
@@ -18288,7 +18095,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://lufthansagroup.careers/en",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply"
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply"
     },
     {
       "id": "lululemon-athletica",
@@ -18308,7 +18115,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.lululemon.com/"
     },
     {
@@ -18329,7 +18136,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.lumentum.com/en/careers"
     },
     {
@@ -18376,7 +18183,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.lynden.com/lac/careers/"
     },
     {
@@ -18490,7 +18297,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.magellanjets.com/careers/"
     },
     {
@@ -18545,43 +18352,8 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://jobs.marathonpetroleum.com/"
-    },
-    {
-      "section": "matching",
-      "search_keywords": [
-        "devops",
-        "devops engineer",
-        "site reliability engineer",
-        "sre",
-        "platform engineer",
-        "platform engineering",
-        "infrastructure engineer",
-        "cloud engineer",
-        "cloud operations",
-        "systems engineer",
-        "production engineer",
-        "release engineer",
-        "build engineer",
-        "build and release",
-        "principal engineer",
-        "staff engineer",
-        "software engineer",
-        "observability",
-        "terraform",
-        "kubernetes"
-      ],
-      "default_salary": "maybe",
-      "cache_ttl_hours": 12,
-      "discover": true,
-      "id": "marqeta",
-      "name": "Marqeta",
-      "label": "Marqeta (Remote US)",
-      "type": "greenhouse",
-      "board": "marqeta",
-      "browse_url": "https://boards.greenhouse.io/marqeta",
-      "sector": "finance"
     },
     {
       "id": "marriott-international",
@@ -18653,7 +18425,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.martinmarietta.com/careers"
     },
     {
@@ -18685,7 +18457,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.martinaire.com/careers/"
     },
     {
@@ -19090,7 +18862,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.mercadolibre.com/"
     },
     {
@@ -19205,7 +18977,7 @@
     {
       "id": "mesa-airlines",
       "name": "Mesa Airlines",
-      "label": "Mesa Airlines (pilots — careers link)",
+      "label": "Mesa Airlines (pilots \u2014 careers link)",
       "section": "matching",
       "sector": "aviation",
       "type": "hub",
@@ -19231,7 +19003,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.mesa-air.com/careers/"
     },
     {
@@ -19273,7 +19045,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://jobs.metlife.com/"
     },
     {
@@ -19294,7 +19066,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.mt.com/us/en/home/meta/careers.html"
     },
     {
@@ -19315,7 +19087,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.mgmresorts.com/"
     },
     {
@@ -19347,7 +19119,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.miamiair.com/careers/"
     },
     {
@@ -19368,7 +19140,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.microchip.com/en-us/careers"
     },
     {
@@ -19439,7 +19211,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.maac.com/careers"
     },
     {
@@ -19656,7 +19428,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.modernatx.com/careers"
     },
     {
@@ -19688,7 +19460,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.mokuleleairlines.com/careers/"
     },
     {
@@ -19734,7 +19506,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.mondelezinternational.com/careers"
     },
     {
@@ -19770,7 +19542,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.monolithicpower.com/en/careers"
     },
     {
@@ -19791,7 +19563,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.monsterbevcorp.com/careers/"
     },
     {
@@ -19900,7 +19672,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.mosaicco.com/careers"
     },
     {
@@ -19970,7 +19742,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.motorolasolutions.com/"
     },
     {
@@ -19984,14 +19756,14 @@
       "company_salary_by_title": [
         {
           "contains": "staff",
-          "label": "$150K–$200K · est."
+          "label": "$150K\u2013$200K \u00b7 est."
         },
         {
           "contains": "senior",
-          "label": "$140K–$185K · est."
+          "label": "$140K\u2013$185K \u00b7 est."
         },
         {
-          "label": "$130K–$165K · est."
+          "label": "$130K\u2013$165K \u00b7 est."
         }
       ],
       "cache_ttl_hours": 12,
@@ -20132,7 +19904,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.nasdaq.com/about/careers"
     },
     {
@@ -20239,7 +20011,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://www.neptuneaviation.com/careers/",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply"
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply"
     },
     {
       "id": "netapp",
@@ -20312,7 +20084,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.netjets.com/en-us/careers"
     },
     {
@@ -20437,7 +20209,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://jobs.newmont.com/"
     },
     {
@@ -20458,7 +20230,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.newscorp.com/careers/"
     },
     {
@@ -20578,7 +20350,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.nexteraenergy.com/careers.html"
     },
     {
@@ -20661,12 +20433,12 @@
           "label": "$175K"
         },
         {
-          "label": "$160K–$176K"
+          "label": "$160K\u2013$176K"
         }
       ],
       "footer_links": [
         {
-          "label": "Levels.fyi — Nike salaries (market medians)",
+          "label": "Levels.fyi \u2014 Nike salaries (market medians)",
           "url": "https://www.levels.fyi/companies/nike/salaries"
         }
       ]
@@ -20699,7 +20471,7 @@
       "cache_ttl_hours": 12,
       "id": "nike-it",
       "name": "Nike (IT)",
-      "label": "Nike (IT — Workday)",
+      "label": "Nike (IT \u2014 Workday)",
       "type": "playwright",
       "sector": "ecommerce",
       "playwright_kind": "workday",
@@ -20760,7 +20532,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.nisource.com/careers"
     },
     {
@@ -21014,7 +20786,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.nordson.com/en/about-us/careers"
     },
     {
@@ -21065,7 +20837,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://norfolksouthern.com/en/careers"
     },
     {
@@ -21129,7 +20901,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.northernaircargo.com/careers/"
     },
     {
@@ -21347,11 +21119,11 @@
     {
       "id": "nvidia",
       "name": "NVIDIA",
-      "label": "NVIDIA (Remote US — Workday)",
+      "label": "NVIDIA (Remote US \u2014 Workday)",
       "section": "matching",
       "type": "playwright",
       "hub_url": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite",
-      "hub_note": "Large hardware/software employer — search devops/platform on careers site",
+      "hub_note": "Large hardware/software employer \u2014 search devops/platform on careers site",
       "search_keywords": [
         "devops",
         "devops engineer",
@@ -21402,7 +21174,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.nvrinc.com/careers"
     },
     {
@@ -21441,13 +21213,13 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.nxp.com/"
     },
     {
       "id": "o-reilly-automotive",
-      "name": "O’Reilly Automotive",
-      "label": "O’Reilly Automotive (manual careers hub)",
+      "name": "O\u2019Reilly Automotive",
+      "label": "O\u2019Reilly Automotive (manual careers hub)",
       "section": "hubs",
       "type": "phenom",
       "search_keywords": [
@@ -21523,7 +21295,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.oxy.com/careers/"
     },
     {
@@ -21602,36 +21374,36 @@
       "label": "Okta (excluded)",
       "section": "excluded",
       "type": "entries",
-      "subsection": "Hybrid / hub — too far (&gt;{local_radius_miles} mi), regular office expected",
+      "subsection": "Hybrid / hub \u2014 too far (&gt;{local_radius_miles} mi), regular office expected",
       "subsection_warn": true,
       "entries": [
         {
-          "title": "Staff Site Reliability Engineer — Kubernetes (Okta)",
+          "title": "Staff Site Reliability Engineer \u2014 Kubernetes (Okta)",
           "url": "https://www.okta.com/company/careers/engineering/staff-site-reliability-engineer-kubernetes-7743339/",
           "loc": "excluded",
           "match": "strong",
           "salary": "maybe",
-          "salary_label": "$174K–$214K",
+          "salary_label": "$174K\u2013$214K",
           "loc_label": "Hybrid Bellevue ~160 mi",
           "why": "Excellent stack; posting asks within {local_radius_miles} mi of Bellevue/SF/DC/NYC and in-person onboarding."
         },
         {
-          "title": "Staff Site Reliability Engineer — Observability (Okta)",
+          "title": "Staff Site Reliability Engineer \u2014 Observability (Okta)",
           "url": "https://www.okta.com/company/careers/engineering/staff-site-reliability-engineer-observability-7658254/",
           "loc": "excluded",
           "match": "good",
           "salary": "ok",
-          "salary_label": "$194K–$267K",
+          "salary_label": "$194K\u2013$267K",
           "loc_label": "Hybrid Bellevue",
           "why": "Bellevue hybrid + SF onboarding week."
         },
         {
-          "title": "Senior SRE — Security & Data Systems, Federal (Okta)",
+          "title": "Senior SRE \u2014 Security & Data Systems, Federal (Okta)",
           "url": "https://www.okta.com/company/careers/engineering/senior-site-reliability-engineer-security-and-data-systems-federal/",
           "loc": "excluded",
           "match": "good",
           "salary": "maybe",
-          "salary_label": "$147K–$202K",
+          "salary_label": "$147K\u2013$202K",
           "loc_label": "Hybrid Bellevue",
           "why": "{local_radius_miles} mi of Bellevue or relocate; not remote from {home_zip}."
         }
@@ -21640,19 +21412,19 @@
     {
       "id": "okta-other",
       "name": "Okta",
-      "label": "Okta (excluded — other)",
+      "label": "Okta (excluded \u2014 other)",
       "section": "excluded",
       "type": "entries",
       "subsection": "Below $200K base or other",
       "entries": [
         {
-          "title": "DevOps Data Engineer — Okta (Washington, DC)",
+          "title": "DevOps Data Engineer \u2014 Okta (Washington, DC)",
           "url": "https://www.okta.com/company/careers/business-technology/devops-data-engineer-7615384/",
           "loc": "excluded",
           "match": "strong",
           "salary": "maybe",
           "salary_label": "Pay OK",
-          "loc_label": "DC ~2,800 mi · hybrid",
+          "loc_label": "DC ~2,800 mi \u00b7 hybrid",
           "why": "Strong skill match; greater-DC hybrid, not remote from {home_zip}."
         },
         {
@@ -21697,7 +21469,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.odfl.com/us/en/careers.html"
     },
     {
@@ -21799,7 +21571,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.omniairintl.com/careers/"
     },
     {
@@ -21820,7 +21592,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.omnicomgroup.com/careers/"
     },
     {
@@ -21867,7 +21639,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.oneok.com/careers"
     },
     {
@@ -22058,7 +21830,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.otis.com/en/careers"
     },
     {
@@ -22254,7 +22026,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.packagingcorp.com/careers"
     },
     {
@@ -22488,7 +22260,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.parker.com/"
     },
     {
@@ -22605,7 +22377,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.paychex.com/careers"
     },
     {
@@ -22656,7 +22428,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://careers.pinduoduo.com/",
-      "hub_note": "Public ATS: none — Do not use Workday CXS — blocked off-VPN"
+      "hub_note": "Public ATS: none \u2014 Do not use Workday CXS \u2014 blocked off-VPN"
     },
     {
       "section": "matching",
@@ -22755,7 +22527,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.penair.com/careers/"
     },
     {
@@ -22877,7 +22649,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.pfizer.com/about/careers"
     },
     {
@@ -22959,7 +22731,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.pmi.com/careers"
     },
     {
@@ -22990,7 +22762,7 @@
     {
       "id": "piedmont-airlines",
       "name": "Piedmont Airlines",
-      "label": "Piedmont Airlines (American Eagle — pilots)",
+      "label": "Piedmont Airlines (American Eagle \u2014 pilots)",
       "section": "matching",
       "sector": "aviation",
       "type": "hub",
@@ -23016,7 +22788,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.piedmont-airlines.com/careers/"
     },
     {
@@ -23121,7 +22893,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.pinnaclewest.com/careers"
     },
     {
@@ -23239,7 +23011,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://www.planesense.com/careers/",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply"
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply"
     },
     {
       "id": "planet-labs",
@@ -23400,7 +23172,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.poolcorp.com/en/careers"
     },
     {
@@ -23451,7 +23223,16 @@
       "layoff_prone": false
     },
     {
+      "id": "postman",
+      "name": "Postman",
+      "label": "Postman (Remote US)",
       "section": "matching",
+      "sector": "tech",
+      "type": "playwright",
+      "playwright_kind": "workday",
+      "workday_fetch": "cxs",
+      "workday_skip_playwright_on_422": false,
+      "browse_url": "https://postman.wd108.myworkdayjobs.com/en-US/careers",
       "search_keywords": [
         "devops",
         "devops engineer",
@@ -23475,15 +23256,11 @@
         "kubernetes"
       ],
       "default_salary": "maybe",
+      "max_details": 48,
       "cache_ttl_hours": 12,
-      "discover": true,
-      "id": "postman",
-      "name": "Postman",
-      "label": "Postman (Remote US)",
-      "type": "greenhouse",
-      "board": "postman",
-      "browse_url": "https://boards.greenhouse.io/postman",
-      "sector": "tech"
+      "workday_playwright_max_queries": 4,
+      "workday_cxs_max_details_per_query": 12,
+      "discover": true
     },
     {
       "id": "ppg-industries",
@@ -23529,7 +23306,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.pplweb.com/careers"
     },
     {
@@ -23702,7 +23479,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.progressive.com/careers/"
     },
     {
@@ -23723,7 +23500,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.prologis.com/careers"
     },
     {
@@ -23856,7 +23633,7 @@
       "cache_ttl_hours": 24,
       "id": "providence-it",
       "name": "Providence Health",
-      "label": "Providence Health (Pacific NW — IT)",
+      "label": "Providence Health (Pacific NW \u2014 IT)",
       "type": "oracle_hcm",
       "sector": "healthcare",
       "browse_url": "https://providence.jobs/",
@@ -23892,7 +23669,7 @@
     {
       "id": "psa-airlines",
       "name": "PSA Airlines",
-      "label": "PSA Airlines (American Eagle — pilots)",
+      "label": "PSA Airlines (American Eagle \u2014 pilots)",
       "section": "matching",
       "sector": "aviation",
       "type": "icims",
@@ -24083,7 +23860,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.pultegroup.com/careers"
     },
     {
@@ -24621,7 +24398,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.ralphlauren.com/"
     },
     {
@@ -24705,7 +24482,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.flyravn.com/careers/"
     },
     {
@@ -24726,7 +24503,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.raymondjames.com/careers"
     },
     {
@@ -24747,7 +24524,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.realtyincome.com/careers"
     },
     {
@@ -24815,38 +24592,38 @@
       "board": "redcellpartners"
     },
     {
+      "id": "red-hat",
+      "name": "Red Hat",
+      "label": "Red Hat (Workday CXS)",
       "section": "matching",
+      "sector": "tech",
+      "type": "playwright",
+      "playwright_kind": "workday",
+      "workday_fetch": "cxs",
+      "workday_skip_playwright_on_422": false,
+      "browse_url": "https://redhat.wd5.myworkdayjobs.com/en-US/jobs",
       "search_keywords": [
+        "staff engineer",
+        "principal engineer",
+        "senior devops",
+        "senior platform",
         "devops",
-        "devops engineer",
         "site reliability engineer",
-        "sre",
         "platform engineer",
-        "platform engineering",
-        "infrastructure engineer",
         "cloud engineer",
-        "cloud operations",
+        "infrastructure engineer",
         "systems engineer",
         "production engineer",
-        "release engineer",
-        "build engineer",
-        "build and release",
-        "principal engineer",
-        "staff engineer",
         "software engineer",
         "observability",
-        "terraform",
         "kubernetes"
       ],
       "default_salary": "maybe",
+      "max_details": 48,
       "cache_ttl_hours": 12,
-      "id": "red-hat",
-      "name": "Red Hat",
-      "label": "Red Hat (IT careers link)",
-      "type": "hub",
-      "sector": "tech",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
-      "hub_url": "https://www.redhat.com/en/jobs"
+      "workday_playwright_max_queries": 4,
+      "workday_cxs_max_details_per_query": 12,
+      "skip_verify": true
     },
     {
       "section": "matching",
@@ -25022,38 +24799,6 @@
       "board": "redwoodmaterials"
     },
     {
-      "id": "reed-college",
-      "name": "Reed College",
-      "label": "Reed College (Portland, OR)",
-      "section": "local",
-      "type": "html_jsonld",
-      "html_jsonld_profile": "reed",
-      "browse_url": "https://jobs.reed.edu/index.html",
-      "listing_urls": [
-        "https://jobs.reed.edu/index.html",
-        "https://jobs.reed.edu/get-a-job-at-reed.html"
-      ],
-      "search_keywords": [
-        "devops",
-        "software engineer",
-        "system engineer",
-        "systems engineer",
-        "platform engineer",
-        "site reliability engineer",
-        "cloud engineer",
-        "infrastructure engineer",
-        "principal engineer",
-        "information technology",
-        "systems analyst",
-        "network engineer"
-      ],
-      "employer_hq": "Portland, OR",
-      "default_loc": "local",
-      "default_salary": "maybe",
-      "cache_ttl_hours": 12,
-      "skip_verify": true
-    },
-    {
       "id": "regency-centers",
       "name": "Regency Centers",
       "label": "Regency Centers (manual careers hub)",
@@ -25071,7 +24816,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.regencycenters.com/careers"
     },
     {
@@ -25092,7 +24837,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.regeneron.com/"
     },
     {
@@ -25139,7 +24884,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — careers page timed out off-VPN; verify manually",
+      "hub_note": "Public ATS: unknown \u2014 careers page timed out off-VPN; verify manually",
       "hub_url": "https://www.rei.com/jobs"
     },
     {
@@ -25243,13 +24988,13 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.rjet.com/careers/"
     },
     {
       "id": "republic-pilot-recruiting",
       "name": "Republic Airways Pilots",
-      "label": "Republic Airways — pilot careers (direct link)",
+      "label": "Republic Airways \u2014 pilot careers (direct link)",
       "section": "matching",
       "sector": "aviation",
       "type": "hub",
@@ -25275,7 +25020,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.rjet.com/careers/pilots/"
     },
     {
@@ -25323,7 +25068,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.resmed.com/en-us/careers/"
     },
     {
@@ -25386,7 +25131,7 @@
     {
       "id": "rivian",
       "name": "Rivian",
-      "label": "Rivian (Remote US — verify)",
+      "label": "Rivian (Remote US \u2014 verify)",
       "section": "matching",
       "sector": "automotive",
       "layoff_prone": true,
@@ -25689,7 +25434,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.ropertech.com/careers"
     },
     {
@@ -25710,7 +25455,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://jobs.rossstores.com/"
     },
     {
@@ -25767,7 +25512,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.royalcaribbeangroup.com/careers/"
     },
     {
@@ -25919,7 +25664,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.flyrusts.com/careers/"
     },
     {
@@ -25940,7 +25685,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.spglobal.com/"
     },
     {
@@ -26006,7 +25751,7 @@
       "cache_ttl_hours": 12,
       "id": "saic",
       "name": "SAIC",
-      "label": "SAIC (Remote US — Workday)",
+      "label": "SAIC (Remote US \u2014 Workday)",
       "type": "playwright",
       "playwright_kind": "workday",
       "workday_fetch": "cxs",
@@ -26099,7 +25844,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.sandisk.com/company/careers"
     },
     {
@@ -26140,7 +25885,7 @@
     {
       "id": "sap",
       "name": "SAP",
-      "label": "SAP (Germany — remote from US)",
+      "label": "SAP (Germany \u2014 remote from US)",
       "section": "international",
       "employer_region": "international",
       "employer_hq": "Germany",
@@ -26212,7 +25957,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.sbasite.com/careers/"
     },
     {
@@ -26268,7 +26013,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.slb.com/"
     },
     {
@@ -26476,7 +26221,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.seagate.com/jobs/"
     },
     {
@@ -26567,7 +26312,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.sempra.com/careers"
     },
     {
@@ -26658,7 +26403,7 @@
     {
       "id": "shopify",
       "name": "Shopify",
-      "label": "Shopify (Canada — remote from US)",
+      "label": "Shopify (Canada \u2014 remote from US)",
       "section": "international",
       "employer_region": "international",
       "employer_hq": "Canada",
@@ -26776,7 +26521,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://www.silverairways.com/careers/",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply"
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply"
     },
     {
       "id": "simon-property-group",
@@ -26796,7 +26541,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.simoncareers.com/"
     },
     {
@@ -26869,41 +26614,6 @@
       "skip_verify": true
     },
     {
-      "section": "matching",
-      "sector": "aviation",
-      "type": "playwright",
-      "search_keywords": [
-        "pilot",
-        "first officer",
-        "captain",
-        "co-pilot",
-        "copilot",
-        "flight officer",
-        "line pilot",
-        "check airman",
-        "chief pilot",
-        "airline pilot",
-        "cargo pilot",
-        "corporate pilot",
-        "flight crew",
-        "aircraft commander",
-        "instructor pilot",
-        "direct entry captain",
-        "direct entry first officer",
-        "first officer fo",
-        "captain ca"
-      ],
-      "default_salary": "maybe",
-      "max_details": 12,
-      "cache_ttl_hours": 24,
-      "id": "skywest-airlines",
-      "name": "SkyWest Airlines",
-      "label": "SkyWest Airlines (pilots)",
-      "browse_url": "https://careers-skywest.icims.com/jobs/search?ss=1&in_iframe=1",
-      "search_url_template": "https://careers-skywest.icims.com/jobs/search?searchKeyword={query}&ss=1&in_iframe=1",
-      "playwright_kind": "icims"
-    },
-    {
       "id": "skyworks-solutions",
       "name": "Skyworks Solutions",
       "label": "Skyworks Solutions (manual careers hub)",
@@ -26921,7 +26631,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.skyworksinc.com/careers"
     },
     {
@@ -27026,42 +26736,42 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.smurfitwestrock.com/careers"
     },
     {
+      "id": "snap",
+      "name": "Snap",
+      "label": "Snap (Workday CXS)",
       "section": "matching",
+      "sector": "tech",
+      "type": "playwright",
+      "playwright_kind": "workday",
+      "workday_fetch": "cxs",
+      "workday_skip_playwright_on_422": false,
+      "browse_url": "https://snapchat.wd1.myworkdayjobs.com/en-US/snap",
       "search_keywords": [
+        "staff engineer",
+        "principal engineer",
+        "senior devops",
+        "senior platform",
         "devops",
-        "devops engineer",
         "site reliability engineer",
-        "sre",
         "platform engineer",
-        "platform engineering",
-        "infrastructure engineer",
         "cloud engineer",
-        "cloud operations",
+        "infrastructure engineer",
         "systems engineer",
         "production engineer",
-        "release engineer",
-        "build engineer",
-        "build and release",
-        "principal engineer",
-        "staff engineer",
         "software engineer",
         "observability",
-        "terraform",
         "kubernetes"
       ],
       "default_salary": "maybe",
+      "max_details": 48,
       "cache_ttl_hours": 12,
-      "id": "snap",
-      "name": "Snap",
-      "label": "Snap (IT careers link)",
-      "type": "hub",
-      "sector": "tech",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
-      "hub_url": "https://careers.snap.com/jobs"
+      "workday_playwright_max_queries": 4,
+      "workday_cxs_max_details_per_query": 12,
+      "skip_verify": true
     },
     {
       "id": "snap-on",
@@ -27155,7 +26865,7 @@
       "label": "Snyk (IT careers link)",
       "type": "hub",
       "sector": "tech",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://snyk.io/careers/all-jobs/"
     },
     {
@@ -27367,7 +27077,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.solventum.com/en-us/careers/"
     },
     {
@@ -27435,7 +27145,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://www.southernair.com/careers/",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply"
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply"
     },
     {
       "id": "southern-airways",
@@ -27466,13 +27176,13 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.iflysouthern.com/careers"
     },
     {
       "id": "southwest",
       "name": "Southwest Airlines",
-      "label": "Southwest (Remote US — verify)",
+      "label": "Southwest (Remote US \u2014 verify)",
       "section": "matching",
       "sector": "aviation",
       "default_salary": "maybe",
@@ -27521,44 +27231,9 @@
       "cache_ttl_hours": 12
     },
     {
-      "section": "matching",
-      "sector": "aviation",
-      "type": "playwright",
-      "search_keywords": [
-        "pilot",
-        "first officer",
-        "captain",
-        "co-pilot",
-        "copilot",
-        "flight officer",
-        "line pilot",
-        "check airman",
-        "chief pilot",
-        "airline pilot",
-        "cargo pilot",
-        "corporate pilot",
-        "flight crew",
-        "aircraft commander",
-        "instructor pilot",
-        "direct entry captain",
-        "direct entry first officer",
-        "first officer fo",
-        "captain ca"
-      ],
-      "default_salary": "maybe",
-      "max_details": 12,
-      "cache_ttl_hours": 24,
-      "id": "spirit-airlines",
-      "name": "Spirit Airlines",
-      "label": "Spirit Airlines (pilots)",
-      "browse_url": "https://corporatecareers-spirit.icims.com/jobs/search?ss=1&in_iframe=1",
-      "search_url_template": "https://corporatecareers-spirit.icims.com/jobs/search?searchKeyword={query}&ss=1&in_iframe=1",
-      "playwright_kind": "icims"
-    },
-    {
       "id": "spotify",
       "name": "Spotify",
-      "label": "Spotify (Sweden — remote from US)",
+      "label": "Spotify (Sweden \u2014 remote from US)",
       "section": "international",
       "employer_region": "international",
       "employer_hq": "Sweden",
@@ -27692,7 +27367,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.stanleyblackanddecker.com/careers"
     },
     {
@@ -27713,7 +27388,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.starbucks.com/"
     },
     {
@@ -27741,19 +27416,6 @@
       "default_loc": "remote",
       "phenom_base": "https://careers.statestreet.com",
       "phenom_refnum": "STSTGLOBAL"
-    },
-    {
-      "id": "statefarm",
-      "name": "State Farm",
-      "label": "State Farm (Remote US)",
-      "section": "matching",
-      "type": "playwright",
-      "default_salary": "maybe",
-      "browse_url": "https://events-statefarm.icims.com/jobs/search?ss=1&in_iframe=1",
-      "max_details": 12,
-      "cache_ttl_hours": 24,
-      "playwright_kind": "icims",
-      "search_url_template": "https://events-statefarm.icims.com/jobs/search?searchKeyword={query}&in_iframe=1"
     },
     {
       "id": "steel-dynamics",
@@ -27856,7 +27518,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.strategy.com/careers"
     },
     {
@@ -27921,7 +27583,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.stryker.com/"
     },
     {
@@ -27996,7 +27658,7 @@
     {
       "id": "sun-country-airlines",
       "name": "Sun Country Airlines",
-      "label": "Sun Country Airlines (pilots — Workday)",
+      "label": "Sun Country Airlines (pilots \u2014 Workday)",
       "section": "matching",
       "sector": "aviation",
       "type": "playwright",
@@ -28132,7 +27794,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://www.surfair.com/careers",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply"
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply"
     },
     {
       "section": "matching",
@@ -28222,7 +27884,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.synchrony.com/careers"
     },
     {
@@ -28318,23 +27980,36 @@
     {
       "id": "t-mobile-us",
       "name": "T-Mobile US",
-      "label": "T-Mobile US (manual careers hub)",
-      "section": "hubs",
-      "type": "hub",
+      "label": "T-Mobile US (Workday CXS)",
+      "section": "matching",
+      "sector": "telecom",
+      "type": "playwright",
+      "playwright_kind": "workday",
+      "workday_fetch": "cxs",
+      "workday_skip_playwright_on_422": false,
+      "browse_url": "https://tmobile.wd1.myworkdayjobs.com/en-US/External",
       "search_keywords": [
+        "staff engineer",
+        "principal engineer",
+        "senior devops",
+        "senior platform",
         "devops",
         "site reliability engineer",
         "platform engineer",
         "cloud engineer",
         "infrastructure engineer",
         "systems engineer",
-        "principal engineer",
-        "staff engineer",
-        "software engineer"
+        "production engineer",
+        "software engineer",
+        "observability",
+        "kubernetes"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
-      "hub_url": "https://careers.t-mobile.com/"
+      "max_details": 48,
+      "cache_ttl_hours": 12,
+      "workday_playwright_max_queries": 4,
+      "workday_cxs_max_details_per_query": 12,
+      "skip_verify": true
     },
     {
       "id": "t-rowe-price",
@@ -28354,7 +28029,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.troweprice.com/corporate/en/employment.html"
     },
     {
@@ -28447,7 +28122,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.talkeetnaair.com/careers/"
     },
     {
@@ -28506,7 +28181,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.tapestry.com/"
     },
     {
@@ -28527,7 +28202,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.targaresources.com/careers"
     },
     {
@@ -28579,7 +28254,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.te.com/"
     },
     {
@@ -28847,43 +28522,23 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.teledyne.com/careers/"
     },
     {
-      "section": "matching",
-      "search_keywords": [
-        "devops",
-        "devops engineer",
-        "site reliability engineer",
-        "sre",
-        "platform engineer",
-        "platform engineering",
-        "infrastructure engineer",
-        "cloud engineer",
-        "cloud operations",
-        "systems engineer",
-        "production engineer",
-        "release engineer",
-        "build engineer",
-        "build and release",
-        "principal engineer",
-        "staff engineer",
-        "software engineer",
-        "observability",
-        "terraform",
-        "kubernetes"
-      ],
-      "default_salary": "maybe",
-      "cache_ttl_hours": 12,
-      "discover": true,
       "id": "temporal",
       "name": "Temporal",
       "label": "Temporal (Remote US)",
-      "type": "greenhouse",
-      "board": "temporaltechnologies",
-      "browse_url": "https://boards.greenhouse.io/temporaltechnologies",
+      "section": "matching",
       "sector": "tech",
+      "type": "ashby",
+      "ashby_board": "temporal",
+      "browse_url": "https://jobs.ashbyhq.com/temporal",
+      "discover": true,
+      "watch_ids": [],
+      "default_salary": "maybe",
+      "cache_ttl_hours": 12,
+      "layoff_prone": false,
       "glassdoor": {
         "url": "https://www.glassdoor.com/Overview/Working-at-Temporal-EI_IE10993761.11,19.htm",
         "employer_id": 10993761
@@ -28999,7 +28654,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.tesla.com"
     },
     {
@@ -29045,7 +28700,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.texaspacific.com/careers"
     },
     {
@@ -29066,14 +28721,14 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.textron.com/Careers"
     },
     {
       "section": "matching",
       "id": "thales-usa",
       "name": "Thales USA",
-      "label": "Thales USA (Remote US — Workday)",
+      "label": "Thales USA (Remote US \u2014 Workday)",
       "type": "playwright",
       "playwright_kind": "workday",
       "workday_fetch": "cxs",
@@ -29279,7 +28934,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.tkogrp.com/careers"
     },
     {
@@ -29462,7 +29117,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://careers.trade-desk.com",
-      "hub_note": "Public ATS: none — Do not use Workday CXS — blocked off-VPN"
+      "hub_note": "Public ATS: none \u2014 Do not use Workday CXS \u2014 blocked off-VPN"
     },
     {
       "id": "trane-technologies",
@@ -29508,7 +29163,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.transdigm.com/careers/"
     },
     {
@@ -29529,7 +29184,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.travelers.com/"
     },
     {
@@ -29582,7 +29237,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.trimble.com/en/careers"
     },
     {
@@ -29799,7 +29454,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.tylertech.com/careers"
     },
     {
@@ -29820,7 +29475,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.tysonfoods.com/careers"
     },
     {
@@ -29910,7 +29565,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.udr.com/careers"
     },
     {
@@ -29931,7 +29586,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.ulta.com/"
     },
     {
@@ -29994,7 +29649,7 @@
     {
       "id": "united-airlines",
       "name": "United Airlines",
-      "label": "United Airlines (Remote US — verify)",
+      "label": "United Airlines (Remote US \u2014 verify)",
       "section": "matching",
       "sector": "aviation",
       "default_salary": "maybe",
@@ -30224,7 +29879,7 @@
       "cache_ttl_hours": 24,
       "id": "ups-it",
       "name": "UPS (IT)",
-      "label": "UPS (IT — separate from pilot scrape)",
+      "label": "UPS (IT \u2014 separate from pilot scrape)",
       "type": "phenom",
       "sector": "logistics",
       "browse_url": "https://www.jobs-ups.com/us/en",
@@ -30350,7 +30005,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.valero.com/careers"
     },
     {
@@ -30511,7 +30166,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.ventasreit.com/careers"
     },
     {
@@ -30660,7 +30315,7 @@
       ],
       "default_salary": "maybe",
       "hub_url": "https://www.verizon.com/about/work",
-      "hub_note": "Public ATS: none — Do not use Workday CXS — blocked off-VPN"
+      "hub_note": "Public ATS: none \u2014 Do not use Workday CXS \u2014 blocked off-VPN"
     },
     {
       "id": "vertex-pharmaceuticals",
@@ -30680,7 +30335,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.vertexpharmaceuticals.com/"
     },
     {
@@ -30727,7 +30382,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.viatris.com/en/careers"
     },
     {
@@ -30748,7 +30403,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.viciproperties.com/careers"
     },
     {
@@ -30789,7 +30444,7 @@
     {
       "id": "visa",
       "name": "Visa",
-      "label": "Visa (Remote US — Workday)",
+      "label": "Visa (Remote US \u2014 Workday)",
       "section": "matching",
       "sector": "finance",
       "type": "playwright",
@@ -31085,7 +30740,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.wabteccorp.com/careers"
     },
     {
@@ -31116,7 +30771,7 @@
       "playwright_kind": "workday",
       "workday_fetch": "cxs",
       "workday_skip_playwright_on_422": false,
-      "browse_url": "https://walmart.wd5.myworkdayjobs.com/en-US/WalmartExternal",
+      "browse_url": "https://walmart.wd504.myworkdayjobs.com/en-US/WalmartExternal",
       "default_loc": "remote",
       "workday_playwright_max_queries": 4,
       "remote_card_only": false,
@@ -31217,7 +30872,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.waters.com/waters/careers.htm"
     },
     {
@@ -31267,27 +30922,27 @@
       "company_salary_by_title": [
         {
           "contains": "staff",
-          "label": "$150K–$180K · est."
+          "label": "$150K\u2013$180K \u00b7 est."
         },
         {
           "contains": "principal",
-          "label": "$155K–$185K · est."
+          "label": "$155K\u2013$185K \u00b7 est."
         },
         {
           "contains": "senior",
-          "label": "$130K–$165K · est."
+          "label": "$130K\u2013$165K \u00b7 est."
         },
         {
           "contains": "platform",
-          "label": "$130K–$165K · est."
+          "label": "$130K\u2013$165K \u00b7 est."
         },
         {
-          "label": "$120K–$155K · est."
+          "label": "$120K\u2013$155K \u00b7 est."
         }
       ],
       "footer_links": [
         {
-          "label": "Levels.fyi — Weave SWE (market estimate)",
+          "label": "Levels.fyi \u2014 Weave SWE (market estimate)",
           "url": "https://www.levels.fyi/companies/weave/salaries/software-engineer/locations/united-states"
         }
       ]
@@ -31434,7 +31089,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.wellsfargojobs.com/"
     },
     {
@@ -31455,7 +31110,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.welltower.com/careers"
     },
     {
@@ -31476,7 +31131,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.westpharma.com/careers"
     },
     {
@@ -31497,7 +31152,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://jobs.westerndigital.com/"
     },
     {
@@ -31529,13 +31184,13 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.westernglobal.com/careers/"
     },
     {
       "id": "westjet",
       "name": "WestJet",
-      "label": "WestJet (pilots — verify US work eligibility)",
+      "label": "WestJet (pilots \u2014 verify US work eligibility)",
       "section": "matching",
       "sector": "aviation",
       "type": "hub",
@@ -31561,7 +31216,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://careers.westjet.com/"
     },
     {
@@ -31631,7 +31286,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.weyerhaeuser.com/careers/"
     },
     {
@@ -31699,7 +31354,7 @@
         "captain ca"
       ],
       "default_salary": "maybe",
-      "hub_note": "Pilot careers — verify URL; OAuth/blocked ATS may need manual apply",
+      "hub_note": "Pilot careers \u2014 verify URL; OAuth/blocked ATS may need manual apply",
       "hub_url": "https://www.wiggins-air.com/careers/"
     },
     {
@@ -31720,7 +31375,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.williams.com/careers/"
     },
     {
@@ -31741,7 +31396,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://ehcm.williams-sonomainc.com/"
     },
     {
@@ -31762,7 +31417,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.wtwco.com/"
     },
     {
@@ -31835,7 +31490,7 @@
     {
       "id": "wise",
       "name": "Wise",
-      "label": "Wise (UK — remote from US)",
+      "label": "Wise (UK \u2014 remote from US)",
       "section": "international",
       "employer_region": "international",
       "employer_hq": "United Kingdom",
@@ -31992,7 +31647,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.wynnresorts.com/careers"
     },
     {
@@ -32013,7 +31668,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://jobs.xcelenergy.com/"
     },
     {
@@ -32034,7 +31689,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.xylem.com/en-us/careers/"
     },
     {
@@ -32115,7 +31770,7 @@
       "type": "greenhouse",
       "default_salary": "maybe",
       "company_salary": "maybe",
-      "company_salary_label": "$150K–$210K · est.",
+      "company_salary_label": "$150K\u2013$210K \u00b7 est.",
       "cache_ttl_hours": 12,
       "search_keywords": [
         "devops",
@@ -32194,7 +31849,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.yum.com/"
     },
     {
@@ -32247,7 +31902,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://www.zebra.com/us/en/about-zebra/careers.html"
     },
     {
@@ -32456,7 +32111,7 @@
         "software engineer"
       ],
       "default_salary": "maybe",
-      "hub_note": "Public ATS: unknown — Do not use Workday CXS — blocked off-VPN",
+      "hub_note": "Public ATS: unknown \u2014 Do not use Workday CXS \u2014 blocked off-VPN",
       "hub_url": "https://careers.zoetis.com/"
     },
     {

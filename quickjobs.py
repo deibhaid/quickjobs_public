@@ -43,7 +43,7 @@ import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable
@@ -5003,6 +5003,8 @@ def preserve_prior_jobs_if_empty_scrape(
         ),
         layoff_prone=prior.layoff_prone,
         source_group=prior.source_group or fresh.source_group,
+        h1b_grade=prior.h1b_grade or fresh.h1b_grade,
+        h1b_label=prior.h1b_label or fresh.h1b_label,
     )
     print(
         f"preserve_prior_jobs: {fresh.id} kept {len(prior.jobs)} prior job(s) "
@@ -5011,6 +5013,96 @@ def preserve_prior_jobs_if_empty_scrape(
     )
     sys.stderr.flush()
     return kept
+
+
+def _job_seen_in_scrape(company_id: str, job: Job, fresh_keys: set[str], fresh_urls: set[str]) -> bool:
+    if _job_identity_key(company_id, job) in fresh_keys:
+        return True
+    if job.url and normalize_job_url(job.url) in fresh_urls:
+        return True
+    return False
+
+
+def retain_prior_open_jobs(
+    fresh: CompanyResult, prior: CompanyResult | None
+) -> CompanyResult:
+    """Keep prior jobs missing from this scrape until URL verify proves them closed.
+
+    Partial ATS scrapes (pagination gaps, rate limits, flaky APIs) must not wipe
+    open postings. Fresh rows win on identity; prior-only rows are carried with
+    ``force_url_verify`` so ``verify_jobs`` can drop dead links. Confirmed-dead
+    boards (e.g. Greenhouse HTTP 404) still clear to empty without carry-forward.
+    """
+    if not prior or not prior.jobs:
+        return fresh
+    if company_result_suspicious_zero_yield(fresh):
+        return preserve_prior_jobs_if_empty_scrape(fresh, prior)
+    if not fresh.jobs and not company_result_suspicious_zero_yield(fresh):
+        # Intentional empty (dead board / no roles) — do not resurrect priors.
+        return fresh
+
+    fresh_keys = {_job_identity_key(fresh.id, job) for job in fresh.jobs}
+    fresh_urls = {
+        normalize_job_url(job.url) for job in fresh.jobs if job.url
+    }
+    carried: list[Job] = []
+    for job in prior.jobs:
+        if _job_seen_in_scrape(prior.id or fresh.id, job, fresh_keys, fresh_urls):
+            continue
+        # Mark for URL check: ATS hosts normally skip verify because the list
+        # scrape already validated presence; absence from this scrape means we
+        # must probe the posting URL before dropping.
+        carried.append(replace(job, force_url_verify=True, skip_verify=False))
+    if not carried:
+        return fresh
+
+    note = (fresh.search_note or "").strip()
+    carry_note = (
+        f"retained {len(carried)} prior job(s) missing from scrape "
+        "(drop only when posting URL is closed)"
+    )
+    search_note = f"{note} · {carry_note}" if note else carry_note
+    print(
+        f"retain_prior_open_jobs: {fresh.id} carried {len(carried)} prior job(s)",
+        file=sys.stderr,
+    )
+    sys.stderr.flush()
+    return CompanyResult(
+        id=fresh.id,
+        name=fresh.name or prior.name,
+        label=fresh.label or prior.label,
+        section=fresh.section or prior.section,
+        jobs=list(fresh.jobs) + carried,
+        browse_url=fresh.browse_url or prior.browse_url,
+        hub_url=fresh.hub_url or prior.hub_url,
+        hub_note=fresh.hub_note or prior.hub_note,
+        footer_links=list(fresh.footer_links or prior.footer_links),
+        subsection=fresh.subsection if fresh.subsection is not None else prior.subsection,
+        subsection_warn=fresh.subsection_warn or prior.subsection_warn,
+        search_note=search_note,
+        layoff_prone=fresh.layoff_prone or prior.layoff_prone,
+        source_group=fresh.source_group or prior.source_group,
+        h1b_grade=fresh.h1b_grade or prior.h1b_grade,
+        h1b_label=fresh.h1b_label or prior.h1b_label,
+    )
+
+
+def verify_retained_prior_jobs(
+    results: list[CompanyResult],
+    removed: list[str],
+    *,
+    out_path: Path | None = None,
+) -> int:
+    """URL-verify jobs carried forward from a prior snapshot; drop only if closed."""
+    checked = 0
+    for co in results:
+        if not any(getattr(job, "force_url_verify", False) for job in co.jobs):
+            continue
+        before = len(co.jobs)
+        co.jobs = verify_jobs(co.jobs, removed, out_path=out_path)
+        co.jobs = sort_jobs(co.jobs)
+        checked += before
+    return checked
 
 
 def merge_company_results(
@@ -5029,7 +5121,7 @@ def merge_company_results(
                     continue
                 by_id[cid] = company_result_from_dict(row)
     for co in fresh:
-        by_id[co.id] = preserve_prior_jobs_if_empty_scrape(co, by_id.get(co.id))
+        by_id[co.id] = retain_prior_open_jobs(co, by_id.get(co.id))
     ordered: list[CompanyResult] = []
     seen: set[str] = set()
     for cid in company_order:
@@ -9572,6 +9664,23 @@ def _recover_truncated_multi_remote_location(
     return None
 
 
+def strip_location_markup_prefix(location_name: str) -> str:
+    """Strip HTML tags and a leading ``Location:`` label from ATS location text.
+
+    Jack Henry Talentbrew embeds ``<b>Location:</b> United States`` in list cards.
+    Without this, ``location_text_is_us_country_wide`` fails and remote US roles
+    are reclassified to ``excluded`` on rebuild.
+    """
+    raw = str(location_name or "").strip()
+    if not raw:
+        return ""
+    if "<" in raw:
+        raw = re.sub(r"<[^>]+>", " ", raw)
+        raw = html.unescape(re.sub(r"\s+", " ", raw).strip(" ,"))
+    raw = re.sub(r"(?i)^location\s*:\s*", "", raw).strip(" ,")
+    return raw
+
+
 def classify_location_with_fallback(
     location_name: str,
     employer_region: str,
@@ -9581,13 +9690,19 @@ def classify_location_with_fallback(
     title: str = "",
     description_text: str = "",
 ) -> tuple[str | None, str | None]:
-    original = str(location_name or "").strip()
+    original = strip_location_markup_prefix(location_name)
     rejected_title = bool(original and location_text_looks_like_job_title(original))
     if rejected_title:
         location_name = ""
     elif original and location_text_looks_like_jd_prose(original):
         geo = extract_geographic_location_fragment(original)
         location_name = geo if geo else ""
+    else:
+        location_name = original
+    # India worksites must not ride along on multi-city US remote labels
+    # (e.g. NetApp ``US\\nMiami\\n…\\nBengaluru`` or card text that mixed hubs).
+    if location_name and location_text_indicates_india(location_name, title):
+        return "excluded", excluded_location_label(location_name) or location_name
     # Netflix/Anaplan ``State-Remote, United States`` → ``State, USA, Remote``.
     if location_name:
         location_name = netflix_normalize_location(location_name)
@@ -14078,9 +14193,9 @@ def dedupe_duplicate_city_in_location(text: str, description_text: str = "") -> 
 
 def talentbrew_normalize_listing_location(location: str, description_text: str = "") -> str:
     """Normalize Talentbrew listing labels (Kaiser city/county/schedule tails)."""
-    raw = str(location or "").strip()
+    raw = strip_location_markup_prefix(location)
     if not raw:
-        return raw
+        return ""
     return dedupe_duplicate_city_in_location(raw, description_text) or raw
 
 
@@ -14093,6 +14208,19 @@ def talentbrew_loc_from_path(path: str) -> str:
     if not slug or slug.isdigit():
         return ""
     return slug.title()
+
+
+def url_indicates_bengaluru_india(url_or_path: str) -> bool:
+    """True when the apply URL/path contains Bengaluru/Bangalore (always India)."""
+    low = str(url_or_path or "").lower()
+    return "bengaluru" in low or "bangalore" in low
+
+
+def talentbrew_force_bengaluru_location(url_or_path: str) -> str:
+    """Canonical location when ``url_indicates_bengaluru_india`` is true."""
+    if url_indicates_bengaluru_india(url_or_path):
+        return "Bengaluru, India"
+    return ""
 
 
 def talentbrew_extract_location_from_detail(body: str) -> str:
@@ -14118,10 +14246,31 @@ def talentbrew_extract_location_from_detail(body: str) -> str:
 
 
 def talentbrew_resolve_listing_location(row: dict[str, str], detail_text: str = "") -> str:
+    """Resolve Talentbrew list location; URL ``bengaluru``/``bangalore`` always wins.
+
+    NetApp cards for ``/job/bengaluru/...`` often list US hubs. Any URL containing
+    bengaluru/bangalore is India-based — ignore the card/detail US office list.
+    """
+    path = str(row.get("path") or "")
+    forced = talentbrew_force_bengaluru_location(path)
+    if forced:
+        return forced
+    path_loc = talentbrew_loc_from_path(path)
     location = str(row.get("location") or "").strip()
     if location and not location_text_looks_like_job_title(location):
-        return talentbrew_normalize_listing_location(location, detail_text)
-    path_loc = talentbrew_loc_from_path(str(row.get("path") or ""))
+        location = talentbrew_normalize_listing_location(location, detail_text)
+    else:
+        location = ""
+    if (
+        path_loc
+        and location
+        and location_text_indicates_non_us_worksite(path_loc)
+        and not location_text_indicates_non_us_worksite(location)
+        and path_loc.lower() not in location.lower()
+    ):
+        return path_loc
+    if location:
+        return location
     if path_loc:
         return path_loc
     detail_loc = talentbrew_extract_location_from_detail(detail_text)
@@ -15878,7 +16027,7 @@ def _job_skip_verify(job: Job) -> bool:
     return False
 
 
-_LINKEDIN_EXPIRED_PURGED_PATHS: set[str] = set()
+_GREENHOUSE_EXPIRED_PURGED_PATHS: set[str] = set()
 
 
 def _job_url_verify_force(job: Job, *, ignore_skip: bool) -> bool:
@@ -15904,11 +16053,15 @@ def verify_jobs(
     including ATS hosts that were never first-party scraped.
     """
     # LinkedIn guest URLs were historically false-positived into the denylist.
+    # Always purge (cheap no-op when none present) so planted/stale entries cannot
+    # linger after an earlier verify_jobs on the same sidecar path.
+    purge_linkedin_expired_job_urls(out_path)
+    # Greenhouse 406 false positives: strip once per sidecar path so confirmed-dead
+    # Greenhouse URLs remembered later in this process still denylist on later calls.
     denylist_key = str(expired_job_urls_path(out_path))
-    if denylist_key not in _LINKEDIN_EXPIRED_PURGED_PATHS:
-        purge_linkedin_expired_job_urls(out_path)
+    if denylist_key not in _GREENHOUSE_EXPIRED_PURGED_PATHS:
         purge_greenhouse_expired_job_urls(out_path)
-        _LINKEDIN_EXPIRED_PURGED_PATHS.add(denylist_key)
+        _GREENHOUSE_EXPIRED_PURGED_PATHS.add(denylist_key)
     expired = load_expired_job_urls(out_path)
     need_check: list[tuple[Job, bool]] = []
     live: list[Job] = []
@@ -19419,8 +19572,38 @@ def taleo_fetch_detail_text(url: str, cache_ttl_hours: float = 12.0) -> str:
     return text
 
 
+def talentbrew_title_from_path(path: str) -> str:
+    """Best-effort title from Talentbrew path ``/job/{loc}/{slug}/{org}/{id}``."""
+    parts = [p for p in str(path or "").strip("/").split("/") if p]
+    if len(parts) < 3 or parts[0].lower() != "job":
+        return ""
+    slug = parts[2].replace("-", " ").strip()
+    if not slug:
+        return ""
+    titled = slug.title()
+    replacements = (
+        ("Sre", "SRE"),
+        ("Ai", "AI"),
+        ("Ml", "ML"),
+        ("Iam", "IAM"),
+        ("Api", "API"),
+        ("Gcp", "GCP"),
+        ("Aws", "AWS"),
+        ("Iii", "III"),
+        ("Ii", "II"),
+    )
+    for old, new in replacements:
+        titled = re.sub(rf"\b{old}\b", new, titled)
+    return titled
+
+
 def talentbrew_fetch_detail_text(url: str, cache_ttl_hours: float = 12.0) -> str:
-    cache_key = f"talentbrew-detail-{re.sub(r'[^a-zA-Z0-9]+', '-', url).strip('-')[:120]}"
+    # Include trailing numeric job id so long shared URL prefixes do not collide
+    # when the sanitized key is truncated.
+    id_m = re.search(r"/(\d+)/?$", str(url or "").rstrip("/"))
+    id_suffix = id_m.group(1) if id_m else "x"
+    stem = re.sub(r"[^a-zA-Z0-9]+", "-", str(url or "")).strip("-")[:100]
+    cache_key = f"talentbrew-detail-{stem}-{id_suffix}"
     cached = cache_get(SCRIPT_DIR, cache_key, ttl_hours=cache_ttl_hours)
     if cached is not None:
         return cached
@@ -19472,8 +19655,94 @@ def talentbrew_search_page_url(host: str, keyword: str, page: int) -> str:
     return f"{base}/search-jobs/{kw}?page={page}"
 
 
+def talentbrew_title_looks_plausible(title: str) -> bool:
+    """Reject NetApp-style marketing blobs mistaken for the posting title."""
+    raw = str(title or "").strip()
+    if not (3 <= len(raw) <= 120):
+        return False
+    low = raw.lower()
+    if "http://" in low or "https://" in low:
+        return False
+    if "custom_fields." in low or "-->" in raw:
+        return False
+    if re.search(r"(?i)\bown[- ]every[- ]moment\b", raw):
+        return False
+    # Hyphenated marketing copy (spaces replaced with -) is not a job title.
+    hyphen_ratio = raw.count("-") / max(len(raw), 1)
+    if hyphen_ratio > 0.08 and raw.count(" ") < 3:
+        return False
+    if hyphen_ratio > 0.12:
+        return False
+    return True
+
+
+def talentbrew_strip_company_title_suffix(title: str, *, company_name: str = "") -> str:
+    """Drop trailing ``at Employer[, Inc.]`` from a Talentbrew detail title."""
+    raw = str(title or "").strip(" -·|:;")
+    if not raw:
+        return ""
+    company = str(company_name or "").strip()
+    patterns: list[str] = []
+    if company:
+        patterns.append(
+            rf"\s+at\s+{re.escape(company)}(?:\s*,?\s*(?:Inc\.?|LLC\.?|Ltd\.?))?\s*$"
+        )
+    patterns.append(r"\s+at\s+.+(?:Inc\.?|LLC\.?|Ltd\.?)\s*$")
+    for pat in patterns:
+        stripped = re.sub(pat, "", raw, flags=re.I).strip(" -·|:;")
+        if stripped and stripped.lower() != raw.lower() and talentbrew_title_looks_plausible(stripped):
+            return stripped
+    return raw
+
+
+def talentbrew_title_from_detail(description_text: str, *, company_name: str = "") -> str:
+    """Extract the posting title from Talentbrew detail plain text when present."""
+    text = str(description_text or "").strip()
+    if not text:
+        return ""
+    head = text.split("\n", 1)[0].strip()
+    head = head.split("Skip to main content", 1)[0].strip()
+    if not head:
+        return ""
+    # NetApp detail pages bury the real title after an HTML-comment residue.
+    arrow = re.search(r"-->\s*([^\n<>]{3,120})\s*$", head)
+    if arrow:
+        arrow_title = talentbrew_strip_company_title_suffix(
+            arrow.group(1), company_name=company_name
+        )
+        if talentbrew_title_looks_plausible(arrow_title):
+            return arrow_title
+    company = str(company_name or "").strip()
+    if company:
+        marker = f" at {company}"
+        idx = head.lower().find(marker.lower())
+        if idx > 0:
+            cut = head[:idx].strip(" -·|:;")
+            if talentbrew_title_looks_plausible(cut):
+                return cut
+    # Generic "Title at Employer" (employer often ends with Inc/LLC before nav noise).
+    match = re.match(
+        r"^(?P<title>.+?)\s+at\s+(?P<co>.+?)(?:\s+(?:Inc\.?|LLC\.?|Ltd\.?)\b.*)?$",
+        head,
+        re.I,
+    )
+    if match:
+        title = match.group("title").strip(" -·|:;")
+        if talentbrew_title_looks_plausible(title):
+            return title
+    if talentbrew_title_looks_plausible(head) and "http" not in head.lower():
+        return head
+    return ""
+
+
 def parse_talentbrew_search(html_text: str) -> list[dict[str, str]]:
-    """Parse Radancy Talentbrew /search-jobs HTML (UHG, Kaiser, Disney, etc.)."""
+    """Parse Radancy Talentbrew /search-jobs HTML (UHG, Kaiser, Disney, Jack Henry, etc.).
+
+    Modern Talentbrew wraps the job-id anchor *inside* ``<h2>…</h2>`` with the title as
+    the anchor's own text. Older markup put ``<h2>`` inside the anchor. Looking *forward*
+    for the next ``<h2>`` after the anchor picks up the *next* card's title (Jack Henry
+    off-by-one that paired Cloud Infra titles with Manager URLs).
+    """
     found: list[dict[str, str]] = []
     seen: set[str] = set()
 
@@ -19482,7 +19751,12 @@ def parse_talentbrew_search(html_text: str) -> list[dict[str, str]]:
         return html.unescape(re.sub(r"\s+", " ", title_raw).strip())
 
     def _clean_loc(raw: str) -> str:
-        return html.unescape(re.sub(r"\s+", " ", raw).strip())
+        # Jack Henry embeds "<b>Location:</b> United States" inside .job-location;
+        # strip tags (like titles) then drop a leading Location: label.
+        text = re.sub(r"<[^>]+>", " ", raw)
+        text = html.unescape(re.sub(r"\s+", " ", text).strip(" ,"))
+        text = re.sub(r"(?i)^location\s*:\s*", "", text).strip(" ,")
+        return text
 
     def _append(path: str, job_id: str, title: str, location: str) -> None:
         if job_id in seen:
@@ -19507,24 +19781,58 @@ def parse_talentbrew_search(html_text: str) -> list[dict[str, str]]:
         path, job_id = match.groups()
         if job_id in seen:
             continue
-        chunk = html_text[match.start() : min(len(html_text), match.end() + chunk_limit)]
-        title_m = re.search(r"<h2[^>]*>(.*?)</h2>", chunk, re.I | re.DOTALL)
-        if not title_m:
+        title = ""
+        # 1) Title text inside this anchor (Jack Henry: <h2><a data-job-id>TITLE</a></h2>).
+        close = html_text.find("</a>", match.end())
+        if close != -1 and 0 < (close - match.end()) < 800:
+            title = _clean_title(html_text[match.end() : close])
+        # 2) Enclosing <h2> that contains this anchor (search back, then through </h2>).
+        if not title:
+            h2_open = html_text.rfind("<h2", max(0, match.start() - 400), match.start())
+            if h2_open != -1:
+                h2_close = html_text.find("</h2>", match.end(), match.end() + 400)
+                if h2_close != -1:
+                    title = _clean_title(html_text[h2_open : h2_close + 5])
+        # 3) Legacy: <a data-job-id>…<h2>TITLE</h2>… within a short forward window only.
+        if not title:
+            chunk = html_text[match.end() : min(len(html_text), match.end() + 1200)]
+            title_m = re.search(r"<h2[^>]*>(.*?)</h2>", chunk, re.I | re.DOTALL)
+            if title_m:
+                title = _clean_title(title_m.group(1))
+        # 4) Path slug last resort.
+        if not title:
+            title = talentbrew_title_from_path(path)
+        if not title:
             continue
-        title = _clean_title(title_m.group(1))
-        loc_m = re.search(r'<span class="job-location"[^>]*>([^<]+)</span>', chunk, re.I)
+        loc_chunk = html_text[match.start() : min(len(html_text), match.end() + chunk_limit)]
+        loc_m = re.search(
+            r'<span class="job-location"[^>]*>(.*?)</span>',
+            loc_chunk,
+            re.I | re.DOTALL,
+        )
         location = _clean_loc(loc_m.group(1)) if loc_m else ""
         if not location:
             location = talentbrew_loc_from_path(path)
         remote_m = re.search(
             r'<span class="job-info job-worksetting"[^>]*>([^<]+)</span>',
-            chunk,
+            loc_chunk,
             re.I,
         )
         if remote_m:
             remote_txt = html.unescape(remote_m.group(1).strip())
             if remote_txt and remote_txt.lower() not in location.lower():
                 location = f"{location} · {remote_txt}" if location else remote_txt
+        # Also accept Jack Henry Workplace Type span.
+        if not remote_m:
+            wp_m = re.search(
+                r'<span class="job-remote"[^>]*>\s*<b>\s*Workplace Type:\s*</b>\s*([^<]+)</span>',
+                loc_chunk,
+                re.I,
+            )
+            if wp_m:
+                remote_txt = html.unescape(wp_m.group(1).strip())
+                if remote_txt and remote_txt.lower() not in location.lower():
+                    location = f"{location} · {remote_txt}" if location else remote_txt
         _append(path, job_id, title, location)
     return found
 
@@ -19637,8 +19945,28 @@ def fetch_talentbrew_search(company: dict[str, Any], cfg: dict[str, Any]) -> tup
         if job_url in detail_urls:
             description_text = detail_text_by_url.get(job_url, "")
             if description_text:
+                detail_title = talentbrew_title_from_detail(
+                    description_text,
+                    company_name=str(company.get("name") or ""),
+                )
+                if (
+                    detail_title
+                    and talentbrew_title_looks_plausible(detail_title)
+                    and detail_title.lower() != title.lower()
+                ):
+                    title = detail_title
+                elif not talentbrew_title_looks_plausible(title):
+                    path_title = talentbrew_title_from_path(str(row.get("path") or ""))
+                    if path_title:
+                        title = path_title
                 detail_loc = talentbrew_extract_location_from_detail(description_text)
-                if detail_loc and (
+                # URL bengaluru/bangalore always means Bengaluru, India — never overwrite.
+                forced_blr = talentbrew_force_bengaluru_location(
+                    str(row.get("path") or "") or job_url
+                )
+                if forced_blr:
+                    location = forced_blr
+                elif detail_loc and (
                     not location
                     or location_text_looks_like_job_title(location)
                 ):
@@ -19651,6 +19979,15 @@ def fetch_talentbrew_search(company: dict[str, Any], cfg: dict[str, Any]) -> tup
                     job_loc=item["job_loc"],
                 )
         meta_parts = [x for x in (location, "Live posting (Talentbrew)") if x]
+        force_loc = item["job_loc"]
+        force_loc_label = item["loc_label"]
+        # Hard rule: URL with bengaluru/bangalore is always Bengaluru, India.
+        forced_blr = talentbrew_force_bengaluru_location(job_url)
+        if forced_blr:
+            location = forced_blr
+            force_loc = "excluded"
+            force_loc_label = forced_blr
+            meta_parts = [x for x in (location, "Live posting (Talentbrew)") if x]
         raw.append(
             RawPosting(
                 title=title,
@@ -19661,8 +19998,8 @@ def fetch_talentbrew_search(company: dict[str, Any], cfg: dict[str, Any]) -> tup
                 salary=salary,
                 salary_label=salary_label,
                 meta_parts=meta_parts,
-                force_loc=item["job_loc"],
-                force_loc_label=item["loc_label"],
+                force_loc=force_loc,
+                force_loc_label=force_loc_label,
                 skip_keyword_filter=True,
             )
         )
@@ -30226,6 +30563,83 @@ def company_group_sort_attrs(co: CompanyResult, cfg: dict[str, Any]) -> str:
     )
 
 
+def _listing_shell_filter_keys(listings: list[str]) -> set[str]:
+    """data-company-filter values already emitted as company-group shells."""
+    if not listings:
+        return set()
+    return set(re.findall(r'data-company-filter="([^"]+)"', "\n".join(listings)))
+
+
+def _cfg_aggregator_filter_keys(cfg: dict[str, Any]) -> set[str]:
+    """Sidebar keys for job_sites / recruiters (LinkedIn, Dice, …) — not employer shells."""
+    keys: set[str] = set()
+    for company in cfg.get("companies") or []:
+        if not isinstance(company, dict):
+            continue
+        if str(company.get("source_group") or "").strip().lower() not in {
+            "job_sites",
+            "recruiters",
+        }:
+            continue
+        name = str(company.get("name") or "").strip()
+        if name:
+            keys.add(company_filter_key(name))
+    return keys
+
+
+def render_missing_aggregator_employer_shells(
+    lazy: LazyBoardCollector,
+    results: list[CompanyResult],
+    cfg: dict[str, Any],
+    existing_shell_keys: set[str],
+) -> list[str]:
+    """Emit listings shells for employer lazy buckets that have cards but no shell.
+
+    Aggregators (LinkedIn / Dice) write job HTML under employer keys while the
+    listings body only gets an aggregator shell (``linkedin``). First-party
+    scrapes usually already own that employer shell; orphan employers (e.g.
+    Collins Aerospace LinkedIn-only) otherwise appear in the index/sidebar with
+    no mount target, so date/salary flat-sort shows an empty board.
+    """
+    skip = set(existing_shell_keys) | _cfg_aggregator_filter_keys(cfg)
+    primary_by_key = primary_jobs_by_company_filter_key(results, cfg)
+    lines: list[str] = []
+    for key, html in sorted((lazy.companies or {}).items()):
+        key = str(key or "").strip()
+        if not key or key in skip:
+            continue
+        if not str(html or "").strip():
+            continue
+        jobs = list(primary_by_key.get(key) or [])
+        display = ""
+        if jobs:
+            display = str(jobs[0].company_name or "").strip()
+        if not display:
+            display = key.replace("-", " ").title()
+        co = CompanyResult(
+            id=key,
+            name=display,
+            label=display,
+            section="matching",
+            jobs=jobs,
+            layoff_prone=any(bool(job.layoff_prone) for job in jobs),
+        )
+        filter_attr = f' data-company-filter="{esc(key)}"'
+        sort_attr = company_group_sort_attrs(co, cfg)
+        layoff_attr = ' data-layoff-prone="true"' if co.layoff_prone else ""
+        title = format_company_header_title_html(co, cfg)
+        lines.extend(
+            [
+                f'      <div class="company-group company-group-lazy" data-company="{esc(key)}"'
+                f' data-lazy-loaded="0"{filter_attr}{sort_attr}{layoff_attr}>',
+                f"        <h3>{title}</h3>",
+                "",
+                "      </div>",
+            ]
+        )
+    return lines
+
+
 def company_filter_key(name: str) -> str:
     cleaned = re.sub(r"[^a-z0-9]+", "-", (name or "").lower()).strip("-")
     return cleaned or "unknown"
@@ -31891,6 +32305,18 @@ def build_html(
         if sec_body:
             primary_listings.extend(sec_body)
 
+    # Aggregator employer buckets (LinkedIn → Collins Aerospace, etc.) may have
+    # lazy card HTML without a first-party company-group shell. Add shells so
+    # date/salary flat-sort and company checkboxes can mount those cards.
+    primary_listings.extend(
+        render_missing_aggregator_employer_shells(
+            lazy_board,
+            results,
+            cfg,
+            _listing_shell_filter_keys(primary_listings),
+        )
+    )
+
     job_listings_html = ""
     if primary_listings:
         job_listings_html = (
@@ -32208,8 +32634,9 @@ def build_html(
     .filters button {{ background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 0.4rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }}
     .filters button.active {{ border-color: var(--accent); background: var(--btn-active-bg); color: var(--btn-active-fg); }}
     .company-filters {{ display: grid; gap: 0.85rem; }}
-    .company-filter-all {{ margin-bottom: 0.15rem; }}
+    .company-filter-all {{ margin-bottom: 0.55rem; }}
     .company-filter-group {{ display: grid; gap: 0.45rem; }}
+    .company-filter-group + .company-filter-group {{ margin-top: 0.55rem; }}
     .company-filter-title {{ font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }}
     .job-sources-filter-toggle {{
       font-size: 0.75rem;
@@ -38842,6 +39269,15 @@ def reclassify_results_locations(
         employer_region = company_employer_region(company) if company else "us"
         default_loc = str(company.get("default_loc") or "")
         for job in co.jobs:
+            # URL containing bengaluru/bangalore is always Bengaluru, India (NetApp
+            # cards often list US hubs and were wrongly stored as loc=remote).
+            forced_blr = talentbrew_force_bengaluru_location(str(job.url or ""))
+            if forced_blr:
+                if job.loc != "excluded" or (job.loc_label or "") != forced_blr:
+                    job.loc = "excluded"
+                    job.loc_label = forced_blr
+                    updated += 1
+                continue
             src = _job_primary_location_text(job)
             if not src:
                 continue
@@ -38870,6 +39306,47 @@ def reclassify_results_locations(
                 continue
             job.loc = job_loc
             job.loc_label = label_out
+            updated += 1
+    return updated
+
+
+def reconcile_talentbrew_job_titles(
+    results: list[CompanyResult], company_list: list[dict[str, Any]] | None = None
+) -> int:
+    """Fix Talentbrew list-title/URL swaps using stored detail text (or URL slug).
+
+    Jack Henry-style markup put the title inside the job-id anchor; an older parser
+    grabbed the *next* card's ``<h2>``, so board titles disagreed with apply URLs.
+    """
+    company_by_id = {
+        str(c.get("id") or ""): c
+        for c in (company_list or [])
+        if isinstance(c, dict) and c.get("id")
+    }
+    updated = 0
+    for co in results:
+        company = company_by_id.get(co.id) or {}
+        is_talentbrew = str(company.get("type") or "").lower() == "talentbrew"
+        company_name = str(company.get("name") or co.name or "")
+        for job in co.jobs:
+            meta = str(job.meta or "")
+            if not is_talentbrew and "talentbrew" not in meta.lower():
+                continue
+            new_title = talentbrew_title_from_detail(
+                str(job.description_text or ""),
+                company_name=company_name,
+            )
+            if new_title and not talentbrew_title_looks_plausible(new_title):
+                new_title = ""
+            if not new_title and job.url:
+                new_title = talentbrew_title_from_path(
+                    urllib.parse.urlparse(str(job.url)).path
+                )
+            if not new_title:
+                continue
+            if new_title.lower() == str(job.title or "").lower():
+                continue
+            job.title = new_title
             updated += 1
     return updated
 
@@ -39145,6 +39622,11 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
     loc_n = reclassify_results_locations(results, cfg)
     if loc_n:
         print(f"Reclassified {loc_n} job location(s) from stored labels")
+    title_n = reconcile_talentbrew_job_titles(results, cfg.get("companies") or [])
+    if title_n:
+        print(f"Corrected {title_n} Talentbrew title(s) from stored JD/URL")
+        # Title text feeds match heuristics and client title filters (e.g. -manager).
+        recompute_results_matches(results, cfg)
     url_n = rewrite_greenhouse_embed_job_urls(results, cfg)
     if url_n:
         print(f"Rewrote {url_n} Greenhouse career-index URL(s) to job-boards.greenhouse.io")
@@ -39153,7 +39635,7 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
     consolidate_nike_family_jobs(results, company_list)
     consolidate_cisco_family_jobs(results, company_list)
     run_time = datetime.now(timezone.utc)
-    if recompute_matches or verify_urls or exclude_dropped or loc_n or salary_n or url_n:
+    if recompute_matches or verify_urls or exclude_dropped or loc_n or salary_n or url_n or title_n:
         run_at_raw = snapshot.get("run_at")
         if run_at_raw:
             try:
@@ -39177,6 +39659,8 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
             print(f"Refreshed salaries; saved {run_snapshot_path(out_path)}")
         elif loc_n:
             print(f"Reclassified locations; saved {run_snapshot_path(out_path)}")
+        elif title_n:
+            print(f"Corrected Talentbrew titles; saved {run_snapshot_path(out_path)}")
         elif url_n:
             print(f"Rewrote Greenhouse career-index URLs; saved {run_snapshot_path(out_path)}")
         elif exclude_dropped:
@@ -39952,12 +40436,24 @@ def _run_board_scrape_phase4_body(
                 if isinstance(row, dict) and row.get("id")
             }
             results = [
-                preserve_prior_jobs_if_empty_scrape(co, prior_by_id.get(co.id))
+                retain_prior_open_jobs(co, prior_by_id.get(co.id))
                 for co in results
             ]
             # Do not re-inject profile/CLI-excluded companies from the prior
             # snapshot — that left excluded employers (e.g. tria-federal) on the
             # Matching board after a successful skip.
+
+    # Prior-only jobs (missing from this scrape) stay until URL verify proves closed.
+    retained_removed: list[str] = []
+    verify_retained_prior_jobs(results, retained_removed, out_path=out_path)
+    if retained_removed:
+        removed.extend(retained_removed)
+        if not args.quiet:
+            print(
+                f"Prior-open verify: dropped {len(retained_removed)} closed posting(s); "
+                "open jobs missing from scrape were kept",
+                flush=True,
+            )
 
     # Drop excluded employers from board results + next snapshot (scrape already skipped).
     if skip_company_ids:

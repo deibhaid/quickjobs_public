@@ -733,6 +733,102 @@ class LinkedInJobsTests(unittest.TestCase):
         self.assertEqual(len(raw), 0)
         # Austin city HQ from remote pass with no remote cue is dropped.
 
+    def test_missing_aggregator_employer_shell_for_linkedin_only_employer(self) -> None:
+        """LinkedIn cards under Collins Aerospace need a listings shell to mount."""
+        qj = self.qj
+        cfg = {
+            "companies": [
+                {
+                    "id": "collins-aerospace",
+                    "name": "Collins Aerospace",
+                    "source_group": "company",
+                },
+                {
+                    "id": "linkedin",
+                    "name": "LinkedIn",
+                    "type": "linkedin",
+                    "source_group": "job_sites",
+                },
+            ],
+            "sections": {
+                "matching": {"id": "sec-matching", "title": "Matching"},
+                "aggregated": {"id": "sec-aggregated", "title": "Aggregated"},
+            },
+            "profile": {"salary_floor": 200000, "home_zip": "00000", "home_state": "OR"},
+        }
+        linkedin_job = qj.Job(
+            title="Senior Principle Software Engineer (Remote)",
+            company_id="linkedin",
+            url=(
+                "https://www.linkedin.com/jobs/view/"
+                "senior-principle-software-engineer-remote-at-collins-aerospace-4468828119"
+            ),
+            loc="remote",
+            match="strong",
+            salary="maybe",
+            company_name="Collins Aerospace",
+            posted_ts=1789603200,
+        )
+        linkedin = qj.CompanyResult(
+            id="linkedin",
+            name="LinkedIn",
+            label="LinkedIn (aggregated)",
+            section="aggregated",
+            source_group="job_sites",
+            jobs=[linkedin_job],
+        )
+        # Configured Collins row is excluded-only (no primary shell from first-party).
+        collins_excluded = qj.Job(
+            title="Systems Engineer",
+            company_id="collins-aerospace",
+            url="https://example.com/excluded",
+            loc="excluded",
+            match="good",
+            salary="maybe",
+            company_name="Collins Aerospace",
+        )
+        collins = qj.CompanyResult(
+            id="collins-aerospace",
+            name="Collins Aerospace",
+            label="Collins Aerospace",
+            section="matching",
+            jobs=[collins_excluded],
+        )
+        lazy = qj.LazyBoardCollector(cfg)
+        # Simulate LinkedIn render writing employer bucket HTML without a shell.
+        primary = qj.render_primary_section_body(
+            "aggregated",
+            [linkedin],
+            [linkedin, collins],
+            "ok",
+            "local",
+            cfg,
+            lazy,
+        )
+        self.assertIn('data-company-filter="linkedin"', "\n".join(primary))
+        self.assertIn("collins-aerospace", lazy.companies)
+        self.assertTrue(str(lazy.companies["collins-aerospace"]).strip())
+        # Before the fix, listings had LinkedIn shell only — no Collins mount target.
+        self.assertNotIn('data-company-filter="collins-aerospace"', "\n".join(primary))
+        shells = qj.render_missing_aggregator_employer_shells(
+            lazy,
+            [linkedin, collins],
+            cfg,
+            qj._listing_shell_filter_keys(primary),
+        )
+        joined = "\n".join(shells)
+        self.assertIn('data-company-filter="collins-aerospace"', joined)
+        self.assertIn("company-group-lazy", joined)
+        self.assertIn("Collins Aerospace", joined)
+        # Affirm-style first-party shell already present must not duplicate.
+        affirm_lazy = qj.LazyBoardCollector(cfg)
+        affirm_lazy.companies["affirm"] = '<article class="job" data-company-filter="affirm"></article>'
+        existing = {"affirm", "linkedin"}
+        dup = qj.render_missing_aggregator_employer_shells(
+            affirm_lazy, [], cfg, existing
+        )
+        self.assertEqual(dup, [])
+
 
 if __name__ == "__main__":
     unittest.main()
