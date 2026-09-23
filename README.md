@@ -320,19 +320,15 @@ scrape start and HTML build.
    certified/denied counts for H-1B / H1B / H-1B1 visa classes. User-facing labels
    say “visa”; underlying data is LCA/H-1B-centric, not all US work visa types.
 
-6. **LCA salary fallback**  
-   Same build also writes `lca-wage-index.json` (certified SOC 15-xxxx wages,
-   annualized). When a US-workable posting has no salary on the JD and no
-   Levels.fyi/`company_salary_label` reference, the board fills a badge from
-   LCA p25–p75 for the employer (title needle when enough samples), labeled
-   `· DOL LCA` (hover shows full provenance). Attested H-1B wages, not a
-   guarantee of the open req’s band.
+6. **Salary waterfall (most specific first)**  
+   1. Posted pay on the JD/ATS (Greenhouse/Ashby extract, etc.) — plain badge  
+   2. Company benchmark (`company_salary_label` / `company_salary_by_title`, e.g.
+      Levels.fyi / Glassdoor-style) — badge shows `· est.`  
+   3. DOL LCA wage index for the employer — `· DOL LCA`  
+   4. Broad US tech market band by title seniority — `· market est.`  
 
-   Company config can also set `company_salary_label` / `company_salary_by_title`
-   from crowd sources (e.g. Levels.fyi). Those badges show `· est.` in the badge
-   text so they read as estimates, not posting-disclosed pay. Bands are title-tiered
-   where possible (e.g. Weave senior platform ≈ $130K–$165K base). JD text always
-   wins when present.
+   Company config bands are title-tiered where possible (e.g. Weave senior platform
+   ≈ $130K–$165K base). JD text always wins when present.
 
 Build index:
 

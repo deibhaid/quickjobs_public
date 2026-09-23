@@ -5158,9 +5158,21 @@ def attach_company_flags(co: CompanyResult, company: dict[str, Any], cfg: dict[s
 
 
 _SALARY_PROVENANCE_SUFFIX_RE = re.compile(
-    r"\s*[·•]\s*(?:DOL\s+LCA|est\.|Levels\.fyi|Levels\s+est\.)\s*$",
+    r"\s*[·•]\s*(?:DOL\s+LCA|market\s+est\.|est\.|Levels\.fyi|Levels\s+est\.)\s*$",
     re.I,
 )
+
+
+def salary_label_provenance_suffix(label: str) -> str:
+    """Visible provenance tail for salary badges (empty when JD-posted)."""
+    raw = str(label or "")
+    if re.search(r"DOL\s+LCA", raw, re.I):
+        return " · DOL LCA"
+    if re.search(r"market\s+est\.", raw, re.I):
+        return " · market est."
+    if re.search(r"[·•]\s*est\.|Levels\.fyi|Levels\s+est\.", raw, re.I):
+        return " · est."
+    return ""
 
 
 def salary_label_preserve_provenance(label: str, *, title: str = "") -> str:
@@ -5174,8 +5186,10 @@ def salary_label_preserve_provenance(label: str, *, title: str = "") -> str:
         tail = match.group(0)
         if re.search(r"DOL\s+LCA", tail, re.I):
             prov = " · DOL LCA"
+        elif re.search(r"market\s+est\.", tail, re.I):
+            prov = " · market est."
         else:
-            # Crowd / Levels.fyi company reference — mark as estimation.
+            # Crowd / Levels.fyi / company benchmark — mark as estimation.
             prov = " · est."
         raw = raw[: match.start()].strip()
     compact = compact_salary_badge_label(raw, title=title)
@@ -5185,7 +5199,7 @@ def salary_label_preserve_provenance(label: str, *, title: str = "") -> str:
 
 
 def company_salary_label_for_title(company: dict[str, Any], title: str) -> str:
-    """Resolve Levels.fyi / reference pay label from company config (not posting text)."""
+    """Resolve Levels.fyi / Glassdoor-style reference pay from company config (not JD)."""
     rules = company.get("company_salary_by_title")
     if isinstance(rules, list):
         title_lower = (title or "").lower()
@@ -5208,10 +5222,57 @@ def company_salary_label_for_title(company: dict[str, Any], title: str) -> str:
     return salary_label_preserve_provenance(label, title=title) if label else ""
 
 
+# Last-resort US tech IC base bands when JD, company benchmark, and DOL LCA all miss.
+# Conservative remote-US software ranges; not employer-specific.
+_MARKET_SALARY_BY_TITLE: tuple[tuple[str, str], ...] = (
+    ("distinguished", "$220K–$320K · market est."),
+    ("fellow", "$220K–$320K · market est."),
+    ("principal", "$190K–$280K · market est."),
+    ("sr. staff", "$175K–$250K · market est."),
+    ("sr staff", "$175K–$250K · market est."),
+    ("staff", "$170K–$240K · market est."),
+    ("senior", "$140K–$200K · market est."),
+    ("architect", "$140K–$200K · market est."),
+)
+
+
+def market_salary_label_for_title(title: str) -> str:
+    """Broad US tech market band by seniority tokens (lowest waterfall tier)."""
+    title_lower = (title or "").lower()
+    if not title_lower:
+        return ""
+    for needle, label in _MARKET_SALARY_BY_TITLE:
+        if needle in title_lower:
+            return salary_label_preserve_provenance(label, title=title)
+    if any(
+        tok in title_lower
+        for tok in (
+            "engineer",
+            "developer",
+            "sre",
+            "devops",
+            "platform",
+            "security",
+            "software",
+        )
+    ):
+        return salary_label_preserve_provenance(
+            "$120K–$170K · market est.", title=title
+        )
+    return ""
+
+
 def apply_company_salary_reference(
     job: Job, company: dict[str, Any], cfg: dict[str, Any]
 ) -> None:
-    """Fill salary badge from Levels.fyi/est. or DOL LCA when JD has no pay (US-workable only)."""
+    """Fill salary when the JD omitted pay (most-specific first).
+
+    Waterfall:
+      1. Posted JD/ATS pay (already on ``job.salary_label`` — do not replace)
+      2. Company benchmark (``company_salary_*`` / Levels-style) → ``· est.``
+      3. DOL LCA wage index → ``· DOL LCA``
+      4. Broad US tech market band by title → ``· market est.``
+    """
     if not job_us_salary_eligible(job):
         return
     if job.salary_label or job.salary == "low":
@@ -5225,6 +5286,9 @@ def apply_company_salary_reference(
         reconcile_job_salary_status(job, cfg)
         return
     apply_lca_salary_reference(job, company, cfg)
+    if job.salary_label or job.salary == "low":
+        return
+    apply_market_salary_estimate(job, cfg)
 
 
 def apply_lca_salary_reference(
@@ -5253,6 +5317,19 @@ def apply_lca_salary_reference(
     if not hit or not hit.get("label"):
         return
     job.salary_label = str(hit["label"])
+    reconcile_job_salary_status(job, cfg)
+
+
+def apply_market_salary_estimate(job: Job, cfg: dict[str, Any]) -> None:
+    """Last-resort title-tiered US tech market band when JD, company est., and LCA miss."""
+    if not job_us_salary_eligible(job):
+        return
+    if job.salary_label or job.salary == "low":
+        return
+    label = market_salary_label_for_title(job.title or "")
+    if not label:
+        return
+    job.salary_label = label
     reconcile_job_salary_status(job, cfg)
 
 
@@ -6953,6 +7030,11 @@ def greenhouse_job_id_from_url(url: str) -> str:
         return match.group(1)
     match = _GH_BOARD_JOBS_RE.search(raw)
     return match.group("jid") if match else ""
+
+
+def greenhouse_board_from_url(url: str) -> str:
+    match = _GH_BOARD_JOBS_RE.search(str(url or "").strip())
+    return match.group("board") if match else ""
 
 
 def greenhouse_canonical_job_url(url: str, board: str = "") -> str:
@@ -10237,6 +10319,162 @@ def pick_usa_named_geo_salary_band(
     return None
 
 
+_GH_LOCALE_SALARY_NON_US_HEAD_RE = re.compile(
+    r"\b(?:canada|ontario|british columbia|quebec|germany|netherlands|united kingdom|"
+    r"uk|emea|apac|europe|india|mexico|australia|ireland|france|spain)\b",
+    re.I,
+)
+_GH_LOCALE_SALARY_NATIONAL_HEAD_RE = re.compile(
+    r"^(?:us\s+national|national|united states|u\.s\.a?\.?|usa|all other(?:\s+states)?|"
+    r"remote(?:\s+us)?|continental united states)$",
+    re.I,
+)
+_GH_LOCALE_SALARY_HIGH_COST_HEAD_RE = re.compile(
+    r"\b(?:san francisco|bay area|new york|nyc|seattle|los angeles|california|"
+    r"washington|massachusetts|boston)\b",
+    re.I,
+)
+
+
+def extract_greenhouse_locale_salary_bands(
+    detail_text: str,
+) -> list[tuple[str, int, int]]:
+    """Parse Greenhouse ``California Salary Range $X — $Y USD`` multi-locale blocks.
+
+    Planet Labs / GitLab / Pinterest embed structured pay-range divs that flatten to
+    ``{Locale} Salary Range $low - $high USD``. Prefer these over the first CA hit.
+    """
+    text = _normalize_comp_detail_text(detail_text)
+    if not text or not re.search(r"\bsalary range\b", text, re.I):
+        return []
+    money = _money_capture_pattern()
+    dash = r"(?:-|–|—|to)"
+    pattern = (
+        rf"(?P<head>[A-Za-z][A-Za-z0-9 .'/()+-]{{1,48}}?)\s+Salary Range\s*"
+        rf"{money}\s*{dash}\s*{money}\s*(?:USD|US\$)?"
+    )
+    bands: list[tuple[str, int, int]] = []
+    seen: set[tuple[str, int, int]] = set()
+    for match in re.finditer(pattern, text, re.I):
+        snippet = match.group(0)
+        if re.search(r"(?:CA\$|\bCAD\b|\bEUR\b|€|£)", snippet, re.I):
+            continue
+        head = " ".join(match.group("head").split())
+        # Greenhouse often prefixes workplace codes: "LI-REMOTE New York City + California".
+        parts = re.split(r"\s*[+|·•/]\s*", head)
+        head = (parts[-1] if parts else head).strip()
+        head = re.sub(
+            r"^(?:LI[- ]?)?(?:REMOTE|HYBRID|ONSITE)\s+",
+            "",
+            head,
+            flags=re.I,
+        ).strip(" -·")
+        if not head or _GH_LOCALE_SALARY_NON_US_HEAD_RE.search(head):
+            continue
+        low = parse_money_amount(match.group(2))
+        high = parse_money_amount(match.group(3))
+        low, high = apply_shared_k_salary_suffix(low, high, snippet)
+        if low <= 0 or high <= 0:
+            continue
+        if low > high:
+            low, high = high, low
+        if not _comp_range_pair_plausible(low, high):
+            continue
+        key = (head.lower(), low, high)
+        if key in seen:
+            continue
+        seen.add(key)
+        bands.append((head, low, high))
+    return bands
+
+
+def pick_greenhouse_locale_salary_band(
+    bands: list[tuple[str, int, int]],
+    *,
+    location_name: str = "",
+    cfg: dict[str, Any] | None = None,
+) -> tuple[int, int] | None:
+    """Pick US National / home-state band for remote OR profile; avoid defaulting to CA/SF."""
+    if not bands:
+        return None
+    if len(bands) == 1:
+        _head, low, high = bands[0]
+        return low, high
+    home = profile_home_us_state(cfg or {})
+    loc = str(location_name or "").lower()
+
+    def _loc_hit(head: str) -> bool:
+        h = head.lower()
+        if not loc:
+            return False
+        if h in loc or any(tok and tok in loc for tok in re.split(r"[\s,/]+", h) if len(tok) > 3):
+            return True
+        states = _usa_named_geo_heading_states(head)
+        return bool(states) and any(
+            marker in loc
+            for marker in (
+                "california",
+                "new york",
+                "washington",
+                "oregon",
+                ", ca",
+                ", ny",
+                ", wa",
+                ", or",
+            )
+        ) and bool(states & {"CA", "NY", "WA", "OR"})
+
+    loc_hits = [(h, lo, hi) for h, lo, hi in bands if _loc_hit(h)]
+    if loc_hits:
+        # Prefer national over a city band when location is remote-wide.
+        if re.search(r"\bremote\b|\bunited states\b|\busa\b", loc) and not re.search(
+            r"\b(?:california|san francisco|new york|seattle|oregon|portland)\b", loc
+        ):
+            national = [
+                (h, lo, hi)
+                for h, lo, hi in loc_hits
+                if _GH_LOCALE_SALARY_NATIONAL_HEAD_RE.search(h)
+            ]
+            if national:
+                return national[0][1], national[0][2]
+        # Prefer the most specific matching locale (San Francisco over California).
+        loc_hits = sorted(
+            loc_hits,
+            key=lambda item: (
+                0 if item[0].lower() in loc else 1,
+                -len(item[0]),
+            ),
+        )
+        return loc_hits[0][1], loc_hits[0][2]
+
+    home_hits = [
+        (h, lo, hi)
+        for h, lo, hi in bands
+        if home in _usa_named_geo_heading_states(h)
+        or (home == "OR" and re.search(r"\boregon\b|\bportland\b", h, re.I))
+    ]
+    if home_hits:
+        return home_hits[0][1], home_hits[0][2]
+
+    national = [
+        (h, lo, hi)
+        for h, lo, hi in bands
+        if _GH_LOCALE_SALARY_NATIONAL_HEAD_RE.search(h)
+    ]
+    if national:
+        return national[0][1], national[0][2]
+
+    if home not in {"CA", "NY", "WA", "NJ", "CT", "MA"}:
+        non_high = [
+            (h, lo, hi)
+            for h, lo, hi in bands
+            if not _GH_LOCALE_SALARY_HIGH_COST_HEAD_RE.search(h)
+        ]
+        if non_high:
+            return non_high[0][1], non_high[0][2]
+    return bands[0][1], bands[0][2]
+
+
 def extract_posted_point_salary(detail_text: str) -> int | None:
     """Single posted amount such as Dragos ``Salary: $225,000`` (not a min-max range)."""
     text = _normalize_comp_detail_text(detail_text)
@@ -11478,12 +11716,30 @@ def _normalize_comp_detail_text(detail_text: str) -> str:
     cleaned = cleaned.replace("\u00a0", " ").replace("&nbsp;", " ")
     for ch in ("\u2010", "\u2011", "\u2012", "\u2013", "\u2014", "\u2212"):
         cleaned = cleaned.replace(ch, "-")
+    # Literal entity leftovers after partial unescape / html_to_plain.
+    cleaned = (
+        cleaned.replace("&mdash;", "-")
+        .replace("&ndash;", "-")
+        .replace("&#8212;", "-")
+        .replace("&#8211;", "-")
+    )
     while True:
         merged = re.sub(r"(\d)\s+,\s*(\d{3})\b", r"\1,\2", cleaned)
         if merged == cleaned:
             break
         cleaned = merged
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    # Robots and Pencils / similar: "$110,000. - $151,000." (period after thousands).
+    cleaned = re.sub(
+        r"(\$\s*\d[\d,]*)\.(?=\s*(?:-|–|—|to)\s*\$)",
+        r"\1",
+        cleaned,
+    )
+    cleaned = re.sub(
+        r"(\$\s*\d[\d,]*)\.(?=\s*(?:USD|US\$)\b)",
+        r"\1",
+        cleaned,
+    )
     # Docker-style typo: "$171,500 - $245,00" (missing trailing 0) → "$245,000".
     # Only repair when the peer amount already uses US thousands (",xxx").
     cleaned = re.sub(
@@ -13869,21 +14125,52 @@ def greenhouse_resolve_location(
 
 
 def greenhouse_extract_locations_from_content(content: str) -> str:
+    """Pull geographic places from Greenhouse JD ``Available Locations`` blocks.
+
+    Cloudflare (and similar) use an ``Available Locations`` heading without a
+    colon, then a country/city list. API location is often only ``Distributed`` /
+    ``Hybrid``, which must not win over an explicit non-US list like Germany.
+    """
     if not content:
         return ""
-    text = html_to_plain(content)
-    for pattern in (
-        r"Available Locations?:\s*([^.\n]+?)(?:\.|\n|$)",
-        r"Role Location[s]?:\s*([^.\n]+?)(?:\.|\n|$)",
-        r"Office Location[s]?:\s*([^.\n]+?)(?:\.|\n|$)",
-        r"Location[s]?:\s*([A-Za-z][^.\n]{3,80}?,\s*[A-Za-z][^.\n]{2,40})",
-    ):
-        match = re.search(pattern, text, re.I)
+    # Greenhouse job ``content`` is often entity-escaped (``&lt;h2&gt;``); unescape
+    # before the ``<`` check so we still strip tags and read Available Locations.
+    raw = html.unescape(str(content))
+    text = html_to_plain(raw) if "<" in raw else raw
+    text = re.sub(r"[ \t]+", " ", text)
+    text = re.sub(r"\n{2,}", "\n", text)
+    stop = (
+        r"Responsibilities|About the Role|About Us|About the Department|"
+        r"About the role|What You['’]?ll|What You Will|Requirements|"
+        r"Qualifications|Nice to Haves?|Benefits|Compensation|Equity|"
+        r"Bonus|Equal Opportunity|Apply for this|The Customer Engineer|"
+        r"We are seeking|This role is"
+    )
+    patterns = (
+        rf"Available Locations?\s*:\s*(.+?)(?=\s*(?:{stop})\b|$)",
+        # Heading form: ``Available Locations`` then Germany / city list (no colon).
+        rf"Available Locations?\s+(?!:)(.+?)(?=\s+(?:{stop})\b|$)",
+        rf"Role Location[s]?\s*:\s*(.+?)(?=\s*(?:{stop})\b|$)",
+        rf"Office Location[s]?\s*:\s*(.+?)(?=\s*(?:{stop})\b|$)",
+        rf"Location[s]?:\s*([A-Za-z][^.\n]{{3,80}}?,\s*[A-Za-z][^.\n]{{2,40}})",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text, re.I | re.S)
         if not match:
             continue
-        loc = re.sub(r"\s+", " ", match.group(1)).strip(" .,&")
-        if loc and not location_text_is_work_model_only(loc):
-            return loc
+        loc = re.sub(r"\s+", " ", match.group(1)).strip(" .,&;:")
+        loc = _truncate_at_jd_boundary(loc)
+        # Drop trailing prose if a stop word leaked into the capture.
+        loc = re.split(rf"\s+(?:{stop})\b", loc, maxsplit=1, flags=re.I)[0].strip(" .,&;:")
+        if len(loc) > 120:
+            continue
+        if not loc or location_text_is_work_model_only(loc):
+            continue
+        if location_text_looks_like_jd_prose(loc):
+            continue
+        if location_text_looks_like_job_title(loc):
+            continue
+        return loc
     return ""
 
 
@@ -14369,6 +14656,14 @@ def extract_comp_range_from_text(
     )
     if named_picked:
         low, high = named_picked
+        return "base", low, high
+    # Greenhouse multi-locale blocks (Planet Labs ``US National Salary Range`` etc.).
+    locale_bands = extract_greenhouse_locale_salary_bands(detail_text)
+    locale_picked = pick_greenhouse_locale_salary_band(
+        locale_bands, location_name=location_name, cfg=cfg
+    )
+    if locale_picked:
+        low, high = locale_picked
         return "base", low, high
     if location_country_paren_remote_lock(location_name) or greenhouse_title_country_lock(location_name):
         return None
@@ -21049,6 +21344,56 @@ def ashby_salary_from_job_url(
 
 
 _ASHBY_REBUILD_SALARY_FETCH_MAX = 32
+_GREENHOUSE_REBUILD_SALARY_FETCH_MAX = 40
+
+
+def _job_url_is_greenhouse(url: str) -> bool:
+    raw = str(url or "").lower()
+    return "greenhouse.io" in raw or bool(greenhouse_job_id_from_url(raw))
+
+
+def _should_fetch_greenhouse_salary_page(
+    job: Job, company: dict[str, Any], cfg: dict[str, Any]
+) -> bool:
+    """True when rebuild should GET Greenhouse job content (pay often only on detail)."""
+    if str(job.salary_label or "").strip():
+        return False
+    if str(job.loc or "") == "excluded":
+        return False
+    ctype = str(company.get("type") or "").strip().lower()
+    if ctype != "greenhouse" and not _job_url_is_greenhouse(job.url):
+        return False
+    board = str(company.get("board") or "").strip() or greenhouse_board_from_url(job.url)
+    jid = greenhouse_job_id_from_url(job.url) or str(getattr(job, "job_id", "") or "")
+    if not board or not str(jid).isdigit():
+        return False
+    text = str(job.description_text or "").strip()
+    if text:
+        _salary, label = company_salary_from_stored_description(company, job, cfg)
+        if label:
+            return False
+    return True
+
+
+def greenhouse_salary_from_job_url(
+    job: Job, company: dict[str, Any], cfg: dict[str, Any]
+) -> tuple[str, str | None]:
+    """Fetch Greenhouse job content and extract posted pay for rebuild fills."""
+    board = str(company.get("board") or "").strip() or greenhouse_board_from_url(job.url)
+    jid_raw = greenhouse_job_id_from_url(job.url) or str(getattr(job, "job_id", "") or "")
+    if not board or not str(jid_raw).isdigit():
+        return str(job.salary or "maybe"), job.salary_label
+    content = greenhouse_fetch_job_content(board, int(jid_raw), force_refresh=False)
+    if not content:
+        return str(job.salary or "maybe"), job.salary_label
+    plain = html_to_plain(content)
+    if plain and plain not in (job.description_text or ""):
+        # Keep pay text for later rebuilds without another fetch.
+        job.description_text = f"{job.description_text or ''}\n{plain}".strip()
+    loc_name = str(job.loc_label or "").strip()
+    return greenhouse_salary_from_detail(
+        company, job.title, plain or content, cfg, location_name=loc_name
+    )
 
 
 def _ashby_read_timeout_sec() -> int:
@@ -29829,26 +30174,31 @@ def reconcile_job_salary_status(job: Job, cfg: dict[str, Any]) -> None:
 
 
 def salary_label_is_estimate(label: str) -> bool:
-    """True when salary_label is a crowd/config estimate (not JD or DOL LCA)."""
+    """True when salary_label is a crowd/config/market estimate (not JD or DOL LCA)."""
     raw = str(label or "")
     if not raw:
         return False
     if re.search(r"DOL\s+LCA", raw, re.I):
         return False
     return bool(
-        re.search(r"[·•]\s*est\.|Levels\.fyi|Levels\s+est\.", raw, re.I)
+        re.search(
+            r"[·•]\s*(?:market\s+)?est\.|Levels\.fyi|Levels\s+est\.",
+            raw,
+            re.I,
+        )
     )
 
 
 def salary_badge_visible_label(job: Job, cfg: dict[str, Any] | None = None) -> str:
-    """Dollar text shown on the salary badge; keeps a visible · est. for estimates."""
+    """Dollar text shown on the salary badge; keeps visible provenance for estimates."""
     cfg = cfg or {}
+    prov = salary_label_provenance_suffix(job.salary_label or "")
     if job.salary == "low":
         floor_label = salary_floor_label(cfg)
         if salary_label_is_estimate(job.salary_label or ""):
             compact = compact_salary_badge_label(job.salary_label or "", title=job.title)
             if compact:
-                return f"{compact} · est."
+                return f"{compact}{prov or ' · est.'}"
         label = compact_salary_badge_label(job.salary_label or f"Below {floor_label}")
         return label or f"Below {floor_label}"
     default_label = ""
@@ -29857,6 +30207,8 @@ def salary_badge_visible_label(job: Job, cfg: dict[str, Any] | None = None) -> s
     label = compact_salary_badge_label(job.salary_label or default_label, title=job.title)
     if not label:
         return ""
+    if prov and prov.strip().lstrip("· ").lower() not in label.lower():
+        return f"{label}{prov}"
     if salary_label_is_estimate(job.salary_label or "") and "est." not in label.lower():
         return f"{label} · est."
     return label
@@ -29867,13 +30219,16 @@ def badge_salary(job: Job, cfg: dict[str, Any] | None = None) -> str:
     label = salary_badge_visible_label(job, cfg)
     if not label:
         return ""
-    if job.salary == "low":
-        return f'<span class="badge badge-salary-low">{esc(label)}</span>'
-    cls = "badge-salary-ok" if job.salary == "ok" else "badge-salary-maybe"
     title_attr = ""
     full = str(job.salary_label or "").strip()
     if full and full != label:
         title_attr = f' title="{esc(full)}"'
+    # Estimates (company · est. / market est.) use a distinct red badge.
+    if salary_label_is_estimate(job.salary_label or ""):
+        return f'<span class="badge badge-salary-est"{title_attr}>{esc(label)}</span>'
+    if job.salary == "low":
+        return f'<span class="badge badge-salary-low"{title_attr}>{esc(label)}</span>'
+    cls = "badge-salary-ok" if job.salary == "ok" else "badge-salary-maybe"
     return f'<span class="badge {cls}"{title_attr}>{esc(label)}</span>'
 
 
@@ -33433,13 +33788,19 @@ def build_html(
     .job-title {{ min-width: 0; font-weight: 600; font-size: 1rem; line-height: 1.35; margin: 0; }}
     .job-title a {{ color: var(--link); text-decoration: none; }}
     .job-title a:hover {{ color: var(--link-hover); text-decoration: underline; }}
-    .badges {{ flex: 0 0 auto; display: flex; flex-flow: row nowrap; align-items: flex-start; justify-content: flex-end; gap: 6px; min-width: 36rem; max-width: 42rem; align-self: flex-start; }}
+    .badges {{ flex: 0 0 auto; display: flex; flex-flow: row nowrap; align-items: flex-start; justify-content: flex-end; gap: 6px; min-width: 38.25rem; max-width: 44rem; align-self: flex-start; }}
     .badge-cell {{ display: flex; align-items: flex-start; justify-content: flex-start; min-width: 0; flex: 0 0 auto; align-self: flex-start; }}
     .badge-col-loc {{ flex: 0 1 auto; min-width: 0; max-width: 14rem; overflow: hidden; margin-right: 2px; align-self: flex-start; }}
     .badge-col-match {{ flex: 0 0 4.75rem; }}
     .badge-col-work-model {{ flex: 0 0 5.25rem; }}
     .badge-col-emp {{ flex: 0 0 5.5rem; }}
-    .badge-col-salary {{ flex: 0 0 10.5rem; }}
+    .badge-col-salary {{ flex: 0 0 12.75rem; }}
+    .badge-col-salary .badge {{
+      padding: 0.18rem 0.55rem 0.18rem 0.65rem;
+      overflow: visible;
+      text-overflow: clip;
+      max-width: none;
+    }}
     .badge-col-loc .badge, .badge-col-loc .badge-loc {{ min-width: 0; max-width: 100%; text-align: right; justify-content: flex-end; white-space: nowrap; }}
     .badge-loc-truncated {{ cursor: help; }}
     .badge-slot {{ display: inline-flex; align-items: flex-start; justify-content: flex-start; align-self: flex-start; min-height: 1.35rem; line-height: 1.2; margin: 0; }}
@@ -33497,6 +33858,7 @@ def build_html(
     .badge-salary-ok {{ background: var(--badge-success-bg); color: var(--strong); }}
     .badge-salary-maybe {{ background: var(--badge-warning-bg); color: var(--stretch); }}
     .badge-salary-low {{ background: var(--badge-danger-bg); color: var(--warn); }}
+    .badge-salary-est {{ background: var(--badge-danger-bg); color: var(--warn); }}
     .badge-emp-fte {{ background: var(--badge-info-bg); color: var(--good); }}
     .badge-emp-contract {{ background: var(--badge-warning-bg); color: var(--stretch); }}
     .badge-emp-search {{ background: var(--badge-neutral-muted-bg); color: var(--muted); }}
@@ -39281,6 +39643,17 @@ def reclassify_results_locations(
                     updated += 1
                 continue
             src = _job_primary_location_text(job)
+            desc = str(job.description_text or "")
+            # Cloudflare-style: API says Distributed/Hybrid but JD lists
+            # ``Available Locations Germany`` (or other non-US-only places).
+            if desc and (
+                not src
+                or location_text_is_work_model_only(src)
+                or location_text_is_scrape_note(src)
+            ):
+                from_jd = greenhouse_extract_locations_from_content(desc)
+                if from_jd:
+                    src = from_jd
             if not src:
                 # Still scrub markup left in loc_label from older Talentbrew scrapes.
                 dirty = str(job.loc_label or "")
@@ -39299,7 +39672,7 @@ def reclassify_results_locations(
                 default_loc,
                 cfg,
                 title=str(job.title or ""),
-                description_text=str(job.description_text or "")[:2500],
+                description_text=desc[:2500],
             )
             if not job_loc:
                 continue
@@ -39453,9 +39826,10 @@ def recompute_results_salaries(
 ) -> int:
     """Refresh salary badges from stored JD text (e.g. after prior-JD merge).
 
-    Ashby Cash Compensation is often only on the posting page. Rebuild fetches a
-    capped set of missing Ashby URLs so Cohere geo bands / OpenAI sidebar pay
-    appear without a full scrape.
+    Ashby Cash Compensation is often only on the posting page. Greenhouse pay-range
+    blocks are often missing when the scrape stayed list-only. Rebuild fetches a
+    capped set of missing Ashby/Greenhouse URLs so posted bands appear without a
+    full scrape.
     """
     companies = company_list if company_list is not None else (cfg.get("companies") or [])
     by_id = {
@@ -39464,32 +39838,44 @@ def recompute_results_salaries(
         if isinstance(c, dict) and c.get("id")
     }
     ashby_fetch_jobs: list[tuple[dict[str, Any], Job]] = []
+    greenhouse_fetch_jobs: list[tuple[dict[str, Any], Job]] = []
     for co in results:
         company = by_id.get(co.id) or {"id": co.id, "type": "greenhouse"}
         for job in co.jobs:
             if _should_fetch_ashby_salary_page(job, company, cfg):
                 ashby_fetch_jobs.append((company, job))
-    ashby_fetch_jobs.sort(
-        key=lambda item: (
-            0 if str(item[1].loc or "") in {"remote", "remote-intl", "local"} else 1,
-            0 if item[1].match in {"strong", "good"} else 1,
-            str(item[1].title or ""),
-        )
-    )
-    priority: list[tuple[dict[str, Any], Job]] = []
-    rest: list[tuple[dict[str, Any], Job]] = []
-    for item in ashby_fetch_jobs:
+            elif _should_fetch_greenhouse_salary_page(job, company, cfg):
+                greenhouse_fetch_jobs.append((company, job))
+
+    def _salary_fetch_sort_key(item: tuple[dict[str, Any], Job]) -> tuple[int, int, str]:
         job = item[1]
-        loc_ok = str(job.loc or "") in {"remote", "remote-intl", "local"}
-        match_ok = job.match in {"strong", "good"}
-        if loc_ok and match_ok:
-            priority.append(item)
-        else:
-            rest.append(item)
-    to_fetch = priority + rest[:_ASHBY_REBUILD_SALARY_FETCH_MAX]
+        return (
+            0 if str(job.loc or "") in {"remote", "remote-intl", "local"} else 1,
+            0 if job.match in {"strong", "good"} else 1,
+            str(job.title or ""),
+        )
+
+    def _priority_cap(
+        jobs: list[tuple[dict[str, Any], Job]], cap: int
+    ) -> list[tuple[dict[str, Any], Job]]:
+        jobs = sorted(jobs, key=_salary_fetch_sort_key)
+        priority: list[tuple[dict[str, Any], Job]] = []
+        rest: list[tuple[dict[str, Any], Job]] = []
+        for item in jobs:
+            job = item[1]
+            loc_ok = str(job.loc or "") in {"remote", "remote-intl", "local"}
+            match_ok = job.match in {"strong", "good"}
+            if loc_ok and match_ok:
+                priority.append(item)
+            else:
+                rest.append(item)
+        return priority + rest[:cap]
+
+    ashby_to_fetch = _priority_cap(ashby_fetch_jobs, _ASHBY_REBUILD_SALARY_FETCH_MAX)
+    gh_to_fetch = _priority_cap(greenhouse_fetch_jobs, _GREENHOUSE_REBUILD_SALARY_FETCH_MAX)
     ashby_fetched = 0
     ashby_filled = 0
-    for company, job in to_fetch:
+    for company, job in ashby_to_fetch:
         salary, label = ashby_salary_from_job_url(job, cfg)
         ashby_fetched += 1
         if label and (job.salary != salary or job.salary_label != label):
@@ -39500,6 +39886,20 @@ def recompute_results_salaries(
         print(
             f"Fetched {ashby_fetched} Ashby posting page(s) for missing salary badges"
             + (f" ({ashby_filled} updated)" if ashby_filled else "")
+        )
+    gh_fetched = 0
+    gh_filled = 0
+    for company, job in gh_to_fetch:
+        salary, label = greenhouse_salary_from_job_url(job, company, cfg)
+        gh_fetched += 1
+        if label and (job.salary != salary or job.salary_label != label):
+            job.salary = salary
+            job.salary_label = label
+            gh_filled += 1
+    if gh_fetched:
+        print(
+            f"Fetched {gh_fetched} Greenhouse posting page(s) for missing salary badges"
+            + (f" ({gh_filled} updated)" if gh_filled else "")
         )
     updated = 0
     newly_low = 0
@@ -39531,7 +39931,7 @@ def recompute_results_salaries(
             f"Hidden {newly_low} listing(s) with posted pay below {floor} "
             f"(still on the board under Show Hidden)"
         )
-    return updated + ashby_filled
+    return updated + ashby_filled + gh_filled
 
 
 def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:

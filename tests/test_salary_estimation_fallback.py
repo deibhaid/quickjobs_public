@@ -60,11 +60,63 @@ class EstimatedCompanySalaryTests(unittest.TestCase):
 
     def test_mozilla_weave_guidepoint_have_est_labels(self) -> None:
         by_id = {c["id"]: c for c in self.cfg["companies"] if c.get("id")}
-        for cid in ("mozilla", "weave", "guidepoint-security", "keeper-security", "yipitdata", "axs"):
+        for cid in (
+            "mozilla",
+            "weave",
+            "guidepoint-security",
+            "keeper-security",
+            "yipitdata",
+            "axs",
+            "alpaca",
+            "cerebras",
+            "clickhouse",
+            "cresta",
+        ):
             co = by_id[cid]
             label = self.qj.company_salary_label_for_title(co, "Senior Software Engineer")
             self.assertTrue(label, msg=cid)
             self.assertIn("· est.", label, msg=f"{cid}: {label}")
+
+    def test_waterfall_jd_beats_company_est(self) -> None:
+        co = next(c for c in self.cfg["companies"] if c["id"] == "alpaca")
+        job = self.qj.Job(
+            title="Senior Fullstack Engineer - Operational Automations",
+            company_id="alpaca",
+            loc="remote",
+            salary="maybe",
+            salary_label="Base $155K-$180K",
+        )
+        self.qj.apply_company_salary_reference(job, co, self.cfg)
+        self.assertEqual(job.salary_label, "Base $155K-$180K")
+        self.assertNotIn("est.", job.salary_label.lower())
+
+    def test_waterfall_company_est_when_jd_empty(self) -> None:
+        co = next(c for c in self.cfg["companies"] if c["id"] == "alpaca")
+        job = self.qj.Job(
+            title="Senior Fullstack Engineer - Operational Automations",
+            company_id="alpaca",
+            loc="remote",
+            salary="maybe",
+            salary_label=None,
+        )
+        self.qj.apply_company_salary_reference(job, co, self.cfg)
+        self.assertIn("· est.", job.salary_label or "")
+        self.assertIn("130", job.salary_label or "")
+
+    def test_waterfall_market_est_last_resort(self) -> None:
+        co = {"id": "unknown-co", "name": "Unknown Co LLC", "type": "greenhouse"}
+        job = self.qj.Job(
+            title="Senior Platform Engineer",
+            company_id="unknown-co",
+            loc="remote",
+            salary="maybe",
+            salary_label=None,
+        )
+        # No company benchmark; LCA may or may not hit — force market by stubbing LCA.
+        self.qj.apply_market_salary_estimate(job, self.cfg)
+        self.assertIn("market est.", job.salary_label or "")
+        badge = self.qj.salary_badge_visible_label(job, self.cfg)
+        self.assertIn("market est.", badge)
 
     def test_weave_senior_platform_uses_tight_base_estimate(self) -> None:
         co = next(c for c in self.cfg["companies"] if c["id"] == "weave")

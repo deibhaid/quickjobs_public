@@ -1591,7 +1591,25 @@
       ],
       "discover": true,
       "browse_url": "https://boards.greenhouse.io/alpaca",
-      "board": "alpaca"
+      "board": "alpaca",
+      "company_salary": "low",
+      "company_salary_by_title": [
+        {
+          "contains": "staff",
+          "label": "$160K\u2013$200K \u00b7 est."
+        },
+        {
+          "contains": "principal",
+          "label": "$175K\u2013$220K \u00b7 est."
+        },
+        {
+          "contains": "senior",
+          "label": "$130K\u2013$175K \u00b7 est."
+        },
+        {
+          "label": "$120K\u2013$160K \u00b7 est."
+        }
+      ]
     },
     {
       "section": "matching",
@@ -6355,7 +6373,25 @@
       "watch_ids": [],
       "default_salary": "maybe",
       "cache_ttl_hours": 12,
-      "layoff_prone": false
+      "layoff_prone": false,
+      "company_salary": "ok",
+      "company_salary_by_title": [
+        {
+          "contains": "principal",
+          "label": "$210K\u2013$290K \u00b7 est."
+        },
+        {
+          "contains": "staff",
+          "label": "$190K\u2013$260K \u00b7 est."
+        },
+        {
+          "contains": "senior",
+          "label": "$170K\u2013$230K \u00b7 est."
+        },
+        {
+          "label": "$150K\u2013$210K \u00b7 est."
+        }
+      ]
     },
     {
       "id": "cf-industries",
@@ -7010,7 +7046,25 @@
       "watch_ids": [],
       "default_salary": "maybe",
       "cache_ttl_hours": 12,
-      "layoff_prone": false
+      "layoff_prone": false,
+      "company_salary": "maybe",
+      "company_salary_by_title": [
+        {
+          "contains": "staff",
+          "label": "$170K\u2013$230K \u00b7 est."
+        },
+        {
+          "contains": "principal",
+          "label": "$180K\u2013$240K \u00b7 est."
+        },
+        {
+          "contains": "senior",
+          "label": "$130K\u2013$208K \u00b7 est."
+        },
+        {
+          "label": "$120K\u2013$180K \u00b7 est."
+        }
+      ]
     },
     {
       "id": "clorox",
@@ -8290,7 +8344,25 @@
       ],
       "discover": true,
       "browse_url": "https://boards.greenhouse.io/cresta",
-      "board": "cresta"
+      "board": "cresta",
+      "company_salary": "ok",
+      "company_salary_by_title": [
+        {
+          "contains": "staff",
+          "label": "$220K\u2013$280K \u00b7 est."
+        },
+        {
+          "contains": "principal",
+          "label": "$230K\u2013$300K \u00b7 est."
+        },
+        {
+          "contains": "senior",
+          "label": "$205K\u2013$270K \u00b7 est."
+        },
+        {
+          "label": "$170K\u2013$230K \u00b7 est."
+        }
+      ]
     },
     {
       "id": "crh",
@@ -10652,7 +10724,21 @@
       ],
       "discover": true,
       "browse_url": "https://boards.greenhouse.io/empowerpharmacy",
-      "board": "empowerpharmacy"
+      "board": "empowerpharmacy",
+      "company_salary": "low",
+      "company_salary_by_title": [
+        {
+          "contains": "staff",
+          "label": "$150K\u2013$185K \u00b7 est."
+        },
+        {
+          "contains": "senior",
+          "label": "$130K\u2013$165K \u00b7 est."
+        },
+        {
+          "label": "$115K\u2013$150K \u00b7 est."
+        }
+      ]
     },
     {
       "id": "endeavor-air",
@@ -13556,6 +13642,24 @@
         8504232002,
         8337454002,
         8373553002
+      ],
+      "company_salary": "maybe",
+      "company_salary_by_title": [
+        {
+          "contains": "principal",
+          "label": "$250K\u2013$325K \u00b7 est."
+        },
+        {
+          "contains": "staff",
+          "label": "$200K\u2013$280K \u00b7 est."
+        },
+        {
+          "contains": "senior",
+          "label": "$160K\u2013$215K \u00b7 est."
+        },
+        {
+          "label": "$140K\u2013$190K \u00b7 est."
+        }
       ]
     },
     {
@@ -22929,7 +23033,33 @@
       "type": "greenhouse",
       "board": "pinterest",
       "browse_url": "https://boards.greenhouse.io/pinterest",
-      "sector": "tech"
+      "sector": "tech",
+      "company_salary": "maybe",
+      "company_salary_by_title": [
+        {
+          "contains": "sr. staff",
+          "label": "$170K\u2013$230K \u00b7 est."
+        },
+        {
+          "contains": "sr staff",
+          "label": "$170K\u2013$230K \u00b7 est."
+        },
+        {
+          "contains": "staff",
+          "label": "$170K\u2013$230K \u00b7 est."
+        },
+        {
+          "contains": "principal",
+          "label": "$200K\u2013$280K \u00b7 est."
+        },
+        {
+          "contains": "senior",
+          "label": "$150K\u2013$210K \u00b7 est."
+        },
+        {
+          "label": "$140K\u2013$190K \u00b7 est."
+        }
+      ]
     },
     {
       "section": "matching",
@@ -23025,7 +23155,21 @@
       "discover": true,
       "watch_ids": [],
       "default_salary": "maybe",
-      "cache_ttl_hours": 12
+      "cache_ttl_hours": 12,
+      "company_salary": "low",
+      "company_salary_by_title": [
+        {
+          "contains": "staff",
+          "label": "$160K\u2013$200K \u00b7 est."
+        },
+        {
+          "contains": "senior",
+          "label": "$142K\u2013$179K \u00b7 est."
+        },
+        {
+          "label": "$130K\u2013$165K \u00b7 est."
+        }
+      ]
     },
     {
       "section": "matching",
@@ -25284,7 +25428,21 @@
       ],
       "discover": true,
       "browse_url": "https://boards.greenhouse.io/robotsandpencils",
-      "board": "robotsandpencils"
+      "board": "robotsandpencils",
+      "company_salary": "low",
+      "company_salary_by_title": [
+        {
+          "contains": "architect",
+          "label": "$110K\u2013$152K \u00b7 est."
+        },
+        {
+          "contains": "senior",
+          "label": "$110K\u2013$152K \u00b7 est."
+        },
+        {
+          "label": "$100K\u2013$140K \u00b7 est."
+        }
+      ]
     },
     {
       "id": "rocket-lab",
