@@ -1828,6 +1828,12 @@ def job_search_files_for_remote_sync(out_path: Path) -> list[Path]:
                 compressed = Path(str(path) + suffix)
                 if compressed.is_file():
                     candidates.append(compressed)
+    # PWA icons + manifest (Chrome Mac Dock icon source)
+    out_dir = out_path.expanduser().resolve().parent
+    for name in (*BOARD_PWA_ICON_FILES, BOARD_PWA_MANIFEST_NAME, "quickjobs.webmanifest"):
+        path = out_dir / name
+        if path.is_file():
+            candidates.append(path)
     return [path for path in candidates if path.is_file()]
 
 
@@ -28979,19 +28985,125 @@ def _png_data_uri(path: Path) -> str:
     return f"data:image/png;base64,{encoded}"
 
 
-def favicon_head_tags() -> str:
-    """Favicon embedded in HTML (no separate PNG fetch; confirmed via headless network trace)."""
-    fav = _favicon_png_path("quickjobs-favicon.png")
-    if not fav:
-        return ""
-    lines = [
-        f'  <link rel="icon" href="{_png_data_uri(fav)}" type="image/png" sizes="32x32">',
-    ]
-    apple = _favicon_png_path("quickjobs-apple-touch-icon.png")
-    if apple:
-        lines.append(
-            f'  <link rel="apple-touch-icon" href="{_png_data_uri(apple)}" sizes="180x180">',
+BOARD_PWA_ICON_FILES = (
+    "quickjobs-favicon.png",
+    "quickjobs-apple-touch-icon.png",
+    "quickjobs-icon-192.png",
+    "quickjobs-icon-512.png",
+    "quickjobs-icon-maskable-192.png",
+    "quickjobs-icon-maskable-512.png",
+)
+
+# NAS Web Station serves .webmanifest as application/octet-stream, which
+# Chrome often ignores. .json is application/json and is accepted as a manifest.
+BOARD_PWA_MANIFEST_NAME = "manifest.json"
+
+
+def publish_board_pwa_assets(out_path: Path) -> list[Path]:
+    """Copy PWA icons + manifest next to the board HTML for Chrome install.
+
+    Chrome Mac DIY apps follow the \"any\" icons into app.icns. Transparent-corner
+    512s match working PWAs (Gmail/LinkedIn). Opaque maskable icons cover
+    adaptive / Android-style masks. Manifest is written as manifest.json because
+    NAS maps .webmanifest to octet-stream.
+    """
+    out_dir = out_path.expanduser().resolve().parent
+    written: list[Path] = []
+    any_icons: list[tuple[str, str]] = []
+    maskable_icons: list[tuple[str, str]] = []
+    for name in BOARD_PWA_ICON_FILES:
+        src = _favicon_png_path(name)
+        if not src:
+            continue
+        dest = out_dir / name
+        # copyfile (not copy2): NAS /html files may be owned by another user;
+        # preserving mtime via utime then raises PermissionError.
+        shutil.copyfile(src, dest)
+        written.append(dest)
+        if "maskable-192" in name:
+            maskable_icons.append((name, "192x192"))
+        elif "maskable-512" in name:
+            maskable_icons.append((name, "512x512"))
+        elif name.endswith("-192.png"):
+            any_icons.append((name, "192x192"))
+        elif name.endswith("-512.png"):
+            any_icons.append((name, "512x512"))
+    if not any_icons and not maskable_icons:
+        return written
+    # Prefer jobs.html when that symlink is the public URL.
+    start = "jobs.html" if (out_dir / "jobs.html").exists() else out_path.name
+    icons: list[dict[str, str]] = []
+    for name, sizes in sorted(any_icons, key=lambda row: 0 if "512" in row[1] else 1):
+        icons.append(
+            {"src": name, "sizes": sizes, "type": "image/png", "purpose": "any"}
         )
+    for name, sizes in sorted(maskable_icons, key=lambda row: 0 if "512" in row[1] else 1):
+        icons.append(
+            {
+                "src": name,
+                "sizes": sizes,
+                "type": "image/png",
+                "purpose": "maskable",
+            }
+        )
+    manifest = {
+        "name": "QuickJobs",
+        "short_name": "QuickJobs",
+        "description": "The job board",
+        "display": "standalone",
+        "start_url": start,
+        "scope": "./",
+        "background_color": "#dadada",
+        "theme_color": "#2a6fc9",
+        "icons": icons,
+    }
+    payload = json.dumps(manifest, indent=2) + "\n"
+    # Primary: .json (correct MIME on NAS). Keep .webmanifest as a mirror.
+    for man_name in (BOARD_PWA_MANIFEST_NAME, "quickjobs.webmanifest"):
+        man_path = out_dir / man_name
+        man_path.write_text(payload, encoding="utf-8")
+        written.append(man_path)
+    return written
+
+
+def favicon_head_tags() -> str:
+    """Favicon / PWA icons for the board (data URIs + relative manifest).
+
+    Large transparent \"any\" icons (192/512) match working Chrome Mac PWAs so
+    Dock/Cmd-Tab get a squircle instead of a hard square. Opaque apple-touch /
+    maskable assets stay available via the manifest for other surfaces.
+    """
+    lines: list[str] = []
+    fav = _favicon_png_path("quickjobs-favicon.png")
+    if fav:
+        lines.append(
+            f'  <link rel="icon" href="{_png_data_uri(fav)}" type="image/png" sizes="32x32">'
+        )
+    icon192 = _favicon_png_path("quickjobs-icon-192.png")
+    if icon192:
+        lines.append(
+            f'  <link rel="icon" href="{_png_data_uri(icon192)}" type="image/png" sizes="192x192">'
+        )
+    icon512 = _favicon_png_path("quickjobs-icon-512.png")
+    if icon512:
+        lines.append(
+            f'  <link rel="icon" href="{_png_data_uri(icon512)}" type="image/png" sizes="512x512">'
+        )
+    # Opaque apple-touch (home screen); prefer maskable-512 then apple-touch.
+    apple = (
+        _favicon_png_path("quickjobs-icon-maskable-512.png")
+        or _favicon_png_path("quickjobs-apple-touch-icon.png")
+        or icon512
+    )
+    if apple:
+        size = "512x512" if "512" in apple.name else "180x180"
+        lines.append(
+            f'  <link rel="apple-touch-icon" href="{_png_data_uri(apple)}" sizes="{size}">'
+        )
+    # Prefer manifest.json — NAS serves .webmanifest as octet-stream.
+    lines.append(f'  <link rel="manifest" href="{BOARD_PWA_MANIFEST_NAME}">')
+    if not lines:
+        return ""
     return "\n".join(lines) + "\n"
 
 
@@ -40098,6 +40210,7 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
     min_bytes = max(50_000, len(html.encode("utf-8")) // 2)
     atomic_write_text(out_path, html)
     verify_written_file(out_path, min_bytes, out_path.name)
+    publish_board_pwa_assets(out_path)
     persist_pipeline_store(out_path, pipeline, patch_html=False)
     structure_issues = validate_html_structure(
         html,
@@ -40951,6 +41064,7 @@ def _run_board_scrape_phase4_body(
     _run_step(f"Writing board HTML to {out_path.name} …", quiet=args.quiet)
     atomic_write_text(out_path, html_text)
     verify_written_file(out_path, min_html_bytes, out_path.name)
+    publish_board_pwa_assets(out_path)
     log_run_phase("write")
     persist_pipeline_store(out_path, pipeline, patch_html=False)
     save_run_state(out_path, all_urls, run_time)

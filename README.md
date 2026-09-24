@@ -499,6 +499,31 @@ Open-file limit on Linux hosts: `quickjobs-raise-nofile` /
 
 ---
 
+## Chrome / Dock app icon (Command-Tab)
+
+Chrome rebuilds `Chrome Apps.localized/QuickJobs.app` `app.icns` from the board's
+icons on launch. Fix the board assets (not only the local icns):
+
+| File | Role |
+|------|------|
+| `portable/quickjobs-icon-512.png` | Opaque full-bleed grey QJ (fills Dock squircle) |
+| `portable/quickjobs-icon-192.png` | Same at 192 |
+| `portable/quickjobs-icon-maskable-512.png` | Opaque maskable variant (`purpose: maskable`) |
+| `manifest.json` | Written next to the board on publish (preferred MIME on NAS) |
+| `quickjobs.webmanifest` | Mirror of `manifest.json` (NAS serves as octet-stream) |
+
+```bash
+```
+
+Then in Chrome: remove the old QuickJobs app and Install page as app again from
+`https://remote.example/html/jobs.html` (or open that URL once so Chrome
+regenerates the shortcut).
+
+Optional local restore if Chrome still remangles: `quickjobs icon` (LaunchAgent
+guard copies `app-quickjobs.icns` back over a rewritten `app.icns`).
+
+---
+
 ## Scrape progress and logging
 
 - Status: `N/M sources - (X jobs live) - MM/DD/YYYY HH:MM:SS`

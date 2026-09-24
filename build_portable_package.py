@@ -428,6 +428,13 @@ def write_package() -> Path:
         "fetch_glassdoor.py",
         "quickjobs-favicon.png",
         "quickjobs-apple-touch-icon.png",
+        "quickjobs-icon-source.png",
+        "quickjobs-icon-192.png",
+        "quickjobs-icon-512.png",
+        "quickjobs-icon-maskable-192.png",
+        "quickjobs-icon-maskable-512.png",
+        "manifest.json",
+        "quickjobs.webmanifest",
     ]
     fetch_h1b = SCRIPT_DIR / "scripts" / "maintenance" / "fetch_h1b_employer_index.py"
     if fetch_h1b.is_file():
