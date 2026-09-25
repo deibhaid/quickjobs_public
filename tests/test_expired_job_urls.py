@@ -7,6 +7,7 @@ import importlib.util
 import json
 import sys
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 
@@ -76,7 +77,7 @@ class TestExpiredJobUrls(unittest.TestCase):
             out = Path(tmp) / "job-search-quickjobs.html"
             out.write_text("<html></html>", encoding="utf-8")
 
-            def fake_live(u: str) -> bool:
+            def fake_live(u: str, force: bool = False) -> bool:
                 return False
 
             orig = mod.url_is_live
@@ -272,6 +273,61 @@ class TestExpiredJobUrls(unittest.TestCase):
                 self.assertEqual(removed, [])
             finally:
                 mod.http_verify_get = orig  # type: ignore[method-assign]
+
+    def test_concurrent_atomic_write_does_not_raise(self) -> None:
+        mod = self.qj
+        errors: list[BaseException] = []
+
+        def write_one(i: int, path: Path) -> None:
+            try:
+                mod.atomic_write_text(path, json.dumps({"n": i}) + "\n")
+            except BaseException as exc:
+                errors.append(exc)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "expired-job-urls.json"
+            threads = [
+                threading.Thread(target=write_one, args=(i, path)) for i in range(8)
+            ]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+            self.assertEqual(errors, [])
+            self.assertTrue(path.is_file())
+            self.assertIn("n", json.loads(path.read_text(encoding="utf-8")))
+
+    def test_concurrent_greenhouse_purge_keeps_other_urls(self) -> None:
+        mod = self.qj
+        gh = "https://boards.greenhouse.io/acme/jobs/1"
+        keep = "https://example.com/keep"
+        errors: list[BaseException] = []
+
+        def purge(out: Path) -> None:
+            try:
+                mod.purge_greenhouse_expired_job_urls(out)
+            except BaseException as exc:
+                errors.append(exc)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "job-search-quickjobs.html"
+            out.write_text("<html></html>", encoding="utf-8")
+            denylist = mod.expired_job_urls_path(out)
+            denylist.parent.mkdir(parents=True, exist_ok=True)
+            denylist.write_text(
+                json.dumps({"urls": [gh, keep]}, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            mod._GREENHOUSE_EXPIRED_PURGED_PATHS.discard(str(denylist))
+            threads = [threading.Thread(target=purge, args=(out,)) for _ in range(8)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+            self.assertEqual(errors, [])
+            stored = mod.load_expired_job_urls(out)
+            self.assertIn(mod.normalize_expired_job_url(keep), stored)
+            self.assertNotIn(mod.normalize_expired_job_url(gh), stored)
 
 
 if __name__ == "__main__":

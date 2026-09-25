@@ -49,6 +49,11 @@ class TextFilterChipLabelTests(unittest.TestCase):
         self.assertIn("textFilterChipLabel(chip)", self.src)
         self.assertNotIn("Contains: ' + chip.text", self.src)
 
+    def test_add_chip_splits_comma_separated_terms(self) -> None:
+        self.assertIn("function addTextFilterChip", self.src)
+        self.assertIn("raw.split(',')", self.src)
+        self.assertIn("for (const text of parts)", self.src)
+
     def test_label_examples(self) -> None:
         self.assertEqual(
             text_filter_chip_label({"mode": "contains", "text": "principal", "scopeTitle": True, "scopeDesc": False}),

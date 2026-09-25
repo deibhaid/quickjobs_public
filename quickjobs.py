@@ -34,6 +34,7 @@ import subprocess
 import sys
 import threading
 import time
+import traceback
 import unicodedata
 import urllib.error
 import urllib.parse
@@ -1000,9 +1001,16 @@ def patch_pipeline_in_html(html_path: Path, store: dict[str, dict[str, str]]) ->
 
 
 def atomic_write_text(path: Path, content: str) -> None:
-    """Write via temp file + replace (avoids NFS stale read-after-write on in-place patch)."""
+    """Write via temp file + replace (avoids NFS stale read-after-write on in-place patch).
+
+    The temp name includes the thread id. A pid-only name is one path for every
+    worker in this process; concurrent replace/unlink then raises FileNotFoundError
+    and kills the thread.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f"{path.name}.tmp.{os.getpid()}")
+    tmp = path.with_name(
+        f"{path.name}.tmp.{os.getpid()}.{threading.get_ident()}.{time.monotonic_ns()}"
+    )
     try:
         tmp.write_text(content, encoding="utf-8")
         os.replace(tmp, path)
@@ -7346,6 +7354,10 @@ def load_expired_job_urls(out_path: Path | None = None) -> set[str]:
     return {normalize_expired_job_url(u) for u in urls if str(u or "").strip()}
 
 
+_GREENHOUSE_EXPIRED_PURGED_PATHS: set[str] = set()
+_EXPIRED_JOB_URLS_LOCK = threading.RLock()
+
+
 def remember_expired_job_urls(
     urls: list[str] | set[str],
     out_path: Path | None = None,
@@ -7359,55 +7371,68 @@ def remember_expired_job_urls(
     if not incoming:
         return 0
     path = expired_job_urls_path(out_path)
-    existing = load_expired_job_urls(out_path)
-    before = len(existing)
-    existing |= incoming
-    payload = {
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-        "urls": sorted(existing),
-    }
-    atomic_write_text(path, json.dumps(payload, indent=2) + "\n")
-    return len(existing) - before
+    with _EXPIRED_JOB_URLS_LOCK:
+        existing = load_expired_job_urls(out_path)
+        before = len(existing)
+        existing |= incoming
+        payload = {
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "urls": sorted(existing),
+        }
+        atomic_write_text(path, json.dumps(payload, indent=2) + "\n")
+        return len(existing) - before
 
 
 def purge_linkedin_expired_job_urls(out_path: Path | None = None) -> int:
     """Drop LinkedIn guest URLs from the expired denylist (unreliable verify)."""
     path = expired_job_urls_path(out_path)
-    existing = load_expired_job_urls(out_path)
-    if not existing:
-        return 0
-    kept = {u for u in existing if not url_is_linkedin_job_posting(u)}
-    removed = len(existing) - len(kept)
-    if removed <= 0:
-        return 0
-    payload = {
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-        "urls": sorted(kept),
-    }
-    atomic_write_text(path, json.dumps(payload, indent=2) + "\n")
-    return removed
+    with _EXPIRED_JOB_URLS_LOCK:
+        existing = load_expired_job_urls(out_path)
+        if not existing:
+            return 0
+        kept = {u for u in existing if not url_is_linkedin_job_posting(u)}
+        removed = len(existing) - len(kept)
+        if removed <= 0:
+            return 0
+        payload = {
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "urls": sorted(kept),
+        }
+        atomic_write_text(path, json.dumps(payload, indent=2) + "\n")
+        return removed
 
 
 def purge_greenhouse_expired_job_urls(out_path: Path | None = None) -> int:
-    """Drop Greenhouse board URLs from the expired denylist (406/nginx false positives)."""
+    """Drop Greenhouse board URLs from the expired denylist (406/nginx false positives).
+
+    Runs once per sidecar path per process. Parallel workers used to pass the
+    unlocked once-check together and rewrite the same pid-named temp file.
+    """
     path = expired_job_urls_path(out_path)
-    existing = load_expired_job_urls(out_path)
-    if not existing:
-        return 0
-    kept = {
-        u
-        for u in existing
-        if "greenhouse.io" not in str(u).lower()
-    }
-    removed = len(existing) - len(kept)
-    if removed <= 0:
-        return 0
-    payload = {
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-        "urls": sorted(kept),
-    }
-    atomic_write_text(path, json.dumps(payload, indent=2) + "\n")
-    return removed
+    key = str(path)
+    with _EXPIRED_JOB_URLS_LOCK:
+        if key in _GREENHOUSE_EXPIRED_PURGED_PATHS:
+            return 0
+        existing = load_expired_job_urls(out_path)
+        if not existing:
+            _GREENHOUSE_EXPIRED_PURGED_PATHS.add(key)
+            return 0
+        kept = {
+            u
+            for u in existing
+            if "greenhouse.io" not in str(u).lower()
+        }
+        removed = len(existing) - len(kept)
+        if removed <= 0:
+            _GREENHOUSE_EXPIRED_PURGED_PATHS.add(key)
+            return 0
+        payload = {
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "urls": sorted(kept),
+        }
+        atomic_write_text(path, json.dumps(payload, indent=2) + "\n")
+        _GREENHOUSE_EXPIRED_PURGED_PATHS.add(key)
+        return removed
 
 
 def greenhouse_url_verify_status_unreliable(code: int, final_url: str) -> bool:
@@ -16330,9 +16355,6 @@ def _job_skip_verify(job: Job) -> bool:
     return False
 
 
-_GREENHOUSE_EXPIRED_PURGED_PATHS: set[str] = set()
-
-
 def _job_url_verify_force(job: Job, *, ignore_skip: bool) -> bool:
     if getattr(job, "force_url_verify", False):
         return True
@@ -16361,10 +16383,9 @@ def verify_jobs(
     purge_linkedin_expired_job_urls(out_path)
     # Greenhouse 406 false positives: strip once per sidecar path so confirmed-dead
     # Greenhouse URLs remembered later in this process still denylist on later calls.
-    denylist_key = str(expired_job_urls_path(out_path))
-    if denylist_key not in _GREENHOUSE_EXPIRED_PURGED_PATHS:
-        purge_greenhouse_expired_job_urls(out_path)
-        _GREENHOUSE_EXPIRED_PURGED_PATHS.add(denylist_key)
+    # The once-guard lives inside the purge, under the denylist lock, so parallel
+    # workers cannot all write expired-job-urls.json on the first companies.
+    purge_greenhouse_expired_job_urls(out_path)
     expired = load_expired_job_urls(out_path)
     need_check: list[tuple[Job, bool]] = []
     live: list[Job] = []
@@ -28631,6 +28652,12 @@ def run_bucketed_http_company_pool(
             try:
                 co = runner(company, cfg, overrides, removed, removed_lock)
                 _record_result(company, co)
+            except Exception:
+                print(
+                    f"Worker {thread_name} failed on {company_id}; continuing",
+                    file=sys.stderr,
+                )
+                traceback.print_exc()
             finally:
                 _track_worker_company(thread_name, None)
 
@@ -32800,7 +32827,7 @@ def build_html(
             '              <option value="not">Doesn\'t Contain</option>\n'
             '            </select>\n'
             '            <input type="search" id="job-list-filter" '
-            'placeholder="Type to filter listings" autocomplete="off" spellcheck="false">\n'
+            'placeholder="Type terms (comma-separated OK)" autocomplete="off" spellcheck="false">\n'
             '          </div>\n'
             '          <div class="job-filter-scope">\n'
             '          <label class="job-filter-scope-check">'
@@ -37849,18 +37876,27 @@ def build_html(
     function addTextFilterChip() {{
       const filterInput = document.getElementById('job-list-filter');
       const modeSelect = document.getElementById('filter-text-mode');
-      const text = (filterInput?.value || '').trim();
-      if (!text) return;
+      const raw = (filterInput?.value || '').trim();
+      if (!raw) return;
+      // Comma-separated values → one chip each (Contains and Doesn't Contain).
+      const parts = raw.split(',').map(part => part.trim()).filter(Boolean);
+      if (!parts.length) return;
       const mode = modeSelect?.value === 'not' ? 'not' : 'contains';
       const {{ scopeTitle, scopeDesc }} = currentTextFilterScope();
-      const dup = textFilterChips.some(chip => (
-        chip.mode === mode
-        && chip.text.toLowerCase() === text.toLowerCase()
-        && chip.scopeTitle === scopeTitle
-        && chip.scopeDesc === scopeDesc
-      ));
-      if (!dup) textFilterChips.push({{ mode, text, scopeTitle, scopeDesc }});
+      let added = false;
+      for (const text of parts) {{
+        const dup = textFilterChips.some(chip => (
+          chip.mode === mode
+          && chip.text.toLowerCase() === text.toLowerCase()
+          && chip.scopeTitle === scopeTitle
+          && chip.scopeDesc === scopeDesc
+        ));
+        if (dup) continue;
+        textFilterChips.push({{ mode, text, scopeTitle, scopeDesc }});
+        added = true;
+      }}
       if (filterInput) filterInput.value = '';
+      if (!added) return;
       saveTextFilterChips();
       renderTextFilterChips();
       applyRoleFilter();
@@ -40794,6 +40830,13 @@ def _run_board_scrape_phase4_body(
                     try:
                         co = runner(company, cfg, overrides, removed, removed_lock)
                         _record_pool_result(company, co)
+                    except Exception:
+                        company_id = str(company.get("id") or "")
+                        print(
+                            f"Worker {thread_name} failed on {company_id}; continuing",
+                            file=sys.stderr,
+                        )
+                        traceback.print_exc()
                     finally:
                         _track_worker_company(thread_name, None)
 
