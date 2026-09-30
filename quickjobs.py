@@ -31480,7 +31480,93 @@ def format_job_card_meta_parts(job: Job) -> tuple[str, str]:
     return "", ""
 
 
-def render_job_description_block(description_text: str) -> str:
+# Hosts that send a frame block, or that are not the posting itself.
+# The card keeps the stored description for these.
+_LISTING_FRAME_BLOCK_HOSTS = (
+    "linkedin.com",
+    "myworkdayjobs.com",
+    "myworkdaysite.com",
+    "weworkremotely.com",
+)
+# Company career sites often refuse the frame or show a marketing page.
+# Only these applicant-tracking hosts get the live listing.
+_LISTING_FRAME_ATS_HOSTS = (
+    "greenhouse.io",
+    "ashbyhq.com",
+    "lever.co",
+    "smartrecruiters.com",
+)
+
+
+def _listing_frame_host(url: str) -> str:
+    host = urlparse(str(url or "")).netloc.lower()
+    if host.startswith("www."):
+        host = host[4:]
+    return host
+
+
+def _listing_frame_host_is(host: str, suffix: str) -> bool:
+    return host == suffix or host.endswith("." + suffix)
+
+
+def job_listing_frame_url(url: str) -> str:
+    """Job URL when the listing page can load in a card frame.
+
+    Workday, LinkedIn, and company career landings keep the stored description.
+    Direct Greenhouse, Ashby, Lever, and SmartRecruiters postings are framed.
+    """
+    raw = str(url or "").strip()
+    if not raw.startswith(("http://", "https://")):
+        return ""
+    host = _listing_frame_host(raw)
+    if any(_listing_frame_host_is(host, blocked) for blocked in _LISTING_FRAME_BLOCK_HOSTS):
+        return ""
+    # ?gh_jid= on a company domain is the careers index, not the posting.
+    if "greenhouse.io" not in host and re.search(r"[?&]gh_jid=\d+", raw, re.I):
+        return ""
+    if not any(_listing_frame_host_is(host, suffix) for suffix in _LISTING_FRAME_ATS_HOSTS):
+        return ""
+    return raw
+
+
+def _listing_frame_static(url: str) -> bool:
+    """Greenhouse paints the posting in the first HTML response, then its script can blank the frame."""
+    return _listing_frame_host_is(_listing_frame_host(url), "greenhouse.io")
+
+
+def render_show_listing_block(
+    listing_url: str,
+    apply_key: str = "",
+    description_html: str = "",
+) -> str:
+    sandbox_attr = ' data-listing-sandbox="static"' if _listing_frame_static(listing_url) else ""
+    key_attr = f' data-desc-key="{esc(apply_key)}"' if apply_key else ""
+    fallback = ""
+    if apply_key or description_html:
+        loaded = "1" if description_html else "0"
+        fallback = (
+            '            <button type="button" class="job-listing-fallback">Saved description</button>\n'
+            f'            <div class="job-description is-collapsed" data-desc-loaded="{loaded}">'
+            f"{description_html}</div>\n"
+        )
+    return (
+        '          <div class="job-description-wrap">\n'
+        '            <button type="button" class="job-description-toggle" '
+        f'data-listing-url="{esc(listing_url)}"{sandbox_attr}{key_attr} '
+        'aria-expanded="false">Show listing</button>\n'
+        '            <div class="job-listing-frame is-collapsed"></div>\n'
+        f"{fallback}"
+        "          </div>"
+    )
+
+
+def render_job_description_block(description_text: str, listing_url: str = "") -> str:
+    frame_url = job_listing_frame_url(listing_url)
+    if frame_url:
+        return render_show_listing_block(
+            frame_url,
+            description_html=format_job_description_html(description_text),
+        )
     body = format_job_description_html(description_text)
     if not body:
         return ""
@@ -31493,7 +31579,18 @@ def render_job_description_block(description_text: str) -> str:
     )
 
 
-def render_job_description_block_lazy(apply_key: str) -> str:
+def render_job_description_block_lazy(
+    apply_key: str,
+    listing_url: str = "",
+    *,
+    has_description: bool = False,
+) -> str:
+    frame_url = job_listing_frame_url(listing_url)
+    if frame_url:
+        return render_show_listing_block(
+            frame_url,
+            apply_key=apply_key if has_description else "",
+        )
     return (
         '          <div class="job-description-wrap">\n'
         '            <button type="button" class="job-description-toggle" '
@@ -31819,10 +31916,13 @@ def render_job(
     description_block = ""
     if lazy is not None and company is not None:
         lazy.register_job(job, company, pool=pool)
-        if apply_key in lazy.descriptions:
-            description_block = f"\n{render_job_description_block_lazy(apply_key)}"
+        frame_url = job_listing_frame_url(link_url)
+        if frame_url or apply_key in lazy.descriptions:
+            description_block = (
+                f"\n{render_job_description_block_lazy(apply_key, link_url, has_description=apply_key in lazy.descriptions)}"
+            )
     else:
-        description_html = render_job_description_block(job.description_text)
+        description_html = render_job_description_block(job.description_text, link_url)
         if description_html:
             description_block = f"\n{description_html}"
     remote_from_home_attr = ""
@@ -31860,9 +31960,10 @@ def render_job(
           {company_brand_slot_html}
           </div>
           <div class="job-body">
+            <div class="job-top">
             <div class="job-main">
               <div class="job-title">{title}{cover_link}</div>
-              <div class="meta">{meta_html}{pipeline_date}</div>{description_block}
+              <div class="meta">{meta_html}{pipeline_date}</div>
             </div>
             <div class="badges">
               <div class="badge-cell badge-col-loc">{"" if collapsed else badge_slot(badge_loc(job, local_badge))}</div>
@@ -31871,6 +31972,7 @@ def render_job(
               <div class="badge-cell badge-col-emp">{badge_slot(badge_employment(job))}</div>
               <div class="badge-cell badge-col-salary">{badge_slot(badge_salary(job, cfg))}</div>
             </div>
+            </div>{description_block}
           </div>
         </article>"""
     if collapsed:
@@ -33996,7 +34098,8 @@ def build_html(
       overflow-y: auto;
       padding-right: 0.25rem;
     }}
-    .job-body {{ flex: 1 1 auto; min-width: 0; display: flex; flex-flow: row nowrap; align-items: flex-start; gap: 2rem; }}
+    .job-body {{ flex: 1 1 auto; min-width: 0; display: flex; flex-flow: column nowrap; align-items: stretch; gap: 0; }}
+    .job-top {{ display: flex; flex-flow: row nowrap; align-items: flex-start; gap: 2rem; min-width: 0; width: 100%; }}
     .job-main {{ flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; align-items: stretch; }}
     .hub-list {{ margin: 0.45rem 0 0; font-size: 0.88rem; }}
     .hub-list-header {{
@@ -34137,6 +34240,7 @@ def build_html(
     .job:has(.badge-loc-wrap-collapsible) {{ padding-bottom: 1.85rem; overflow: visible; }}
     .job.job-applied:has(.badge-loc-wrap-collapsible) {{ padding-bottom: 1.65rem; }}
     .job:has(.badge-loc-wrap-collapsible) .job-body,
+    .job:has(.badge-loc-wrap-collapsible) .job-top,
     .job:has(.badge-loc-wrap-collapsible) .badges,
     .job:has(.badge-loc-wrap-collapsible) .badge-col-loc {{ overflow: visible; }}
     .badge-loc-toggle {{
@@ -34190,7 +34294,7 @@ def build_html(
     .meta a:visited, .company-empty a:visited, .digest-list a:visited, .cover-letter-link:visited {{
       color: var(--link-visited);
     }}
-    .job-description-wrap {{ margin-top: 0.45rem; }}
+    .job-description-wrap {{ width: 100%; min-width: 0; margin-top: 0.45rem; }}
     .job-description-toggle {{
       background: transparent;
       border: 0;
@@ -34202,6 +34306,22 @@ def build_html(
       padding: 0;
     }}
     .job-description-toggle:hover {{ color: var(--link-hover); text-decoration: underline; }}
+    .job-listing-fallback {{
+      display: none;
+      margin-left: 0.85rem;
+      background: transparent;
+      border: 0;
+      color: var(--accent);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0;
+    }}
+    .job-description-wrap:has(.job-listing-frame:not(.is-collapsed)) .job-listing-fallback {{
+      display: inline;
+    }}
+    .job-listing-fallback:hover {{ color: var(--link-hover); text-decoration: underline; }}
     .job-description {{
       font-size: 0.86rem;
       color: var(--muted);
@@ -34224,6 +34344,16 @@ def build_html(
     .job-description-list li {{ margin: 0.35rem 0; }}
     .job-description-label {{ color: var(--text); font-weight: 600; }}
     .job-description.is-collapsed {{ display: none; }}
+    .job-listing-frame.is-collapsed {{ display: none; }}
+    .job-listing-iframe {{
+      display: block;
+      width: 100%;
+      height: 70vh;
+      margin-top: 0.35rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+    }}
     .stats {{ font-size: 0.85rem; color: var(--muted); margin-bottom: 1rem; }}
     footer.board-footer {{ padding: 1rem 2rem; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); }}
     .board-footer-buttons {{
@@ -39360,9 +39490,47 @@ def build_html(
         toggleLocBadge(locBtn);
         return;
       }}
+      const savedBtn = event.target.closest('.job-listing-fallback');
+      if (savedBtn) {{
+        event.preventDefault();
+        event.stopPropagation();
+        const wrap = savedBtn.closest('.job-description-wrap');
+        const savedPanel = wrap?.querySelector('.job-description');
+        if (!savedPanel) return;
+        const toggle = wrap.querySelector('.job-description-toggle');
+        const savedKey = toggle?.dataset.descKey || savedBtn.closest('.job')?.dataset?.applyKey;
+        const finishSaved = () => {{
+          savedPanel.classList.toggle('is-collapsed');
+          const savedOpen = !savedPanel.classList.contains('is-collapsed');
+          savedBtn.textContent = savedOpen ? 'Hide saved description' : 'Saved description';
+        }};
+        if (savedPanel.classList.contains('is-collapsed') && savedPanel.dataset.descLoaded !== '1') {{
+          void loadJobDescription(savedKey, savedPanel).then(finishSaved);
+        }} else {{
+          finishSaved();
+        }}
+        return;
+      }}
       const btn = event.target.closest('.job-description-toggle');
       if (!btn) return;
       const panel = btn.nextElementSibling;
+      if (btn.dataset.listingUrl && panel?.classList.contains('job-listing-frame')) {{
+        if (panel.classList.contains('is-collapsed') && !panel.querySelector('iframe')) {{
+          const frame = document.createElement('iframe');
+          frame.className = 'job-listing-iframe';
+          frame.title = 'Job listing';
+          if (btn.dataset.listingSandbox === 'static') {{
+            frame.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox');
+          }}
+          frame.src = btn.dataset.listingUrl;
+          panel.appendChild(frame);
+        }}
+        panel.classList.toggle('is-collapsed');
+        const open = !panel.classList.contains('is-collapsed');
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        btn.textContent = open ? 'Hide listing' : 'Show listing';
+        return;
+      }}
       if (!panel?.classList.contains('job-description')) return;
       const applyKey = btn.dataset.descKey || btn.closest('.job')?.dataset?.applyKey;
       if (panel.classList.contains('is-collapsed')) {{
