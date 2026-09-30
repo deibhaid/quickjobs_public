@@ -4744,6 +4744,20 @@ def merge_prior_job_descriptions(
     return merged
 
 
+def reclassify_after_prior_jd_merge(
+    results: list[CompanyResult], cfg: dict[str, Any]
+) -> int:
+    """Reclassify from stored descriptions on a full scrape.
+
+    The list pass classifies from the API label (``Distributed``, ``United
+    States``) before a prior description is restored. The nightly run applies
+    the description after that: Cloudflare ``Available Locations``, a
+    ``Location: Houston TX`` line, and the same office rules as
+    ``--refresh-derived``.
+    """
+    return reclassify_results_locations(results, cfg)
+
+
 def greenhouse_list_only_scrape() -> bool:
     """True when Greenhouse board list is fetched without per-job JD content."""
     return not _env_flag("QUICKJOBS_GREENHOUSE_FETCH_CONTENT") and _env_flag(
@@ -8966,13 +8980,14 @@ def location_site_fragments(location_name: str) -> list[str]:
         for city, state in LOCATION_SITE_RE.findall(segment):
             city = city.strip()
             state = state.strip().upper()
-            if state not in US_STATE_CODES:
+            if state not in US_STATE_CODES and state not in {"US", "USA"}:
                 continue
             if city.upper() in US_STATE_CODES:
                 continue
             if city.upper().startswith("OR "):
                 city = city[3:].strip()
-            normalized = f"{city}, {state}"
+            # ``Atlanta, US`` is a named office, not a state code.
+            normalized = city if state in {"US", "USA"} else f"{city}, {state}"
             if normalized not in fragments:
                 fragments.append(normalized)
     if fragments:
@@ -9634,13 +9649,13 @@ def classify_city_state_site(
         for city, state in LOCATION_SITE_RE.findall(segment):
             city = city.strip()
             state = state.strip().upper()
-            if state not in US_STATE_CODES:
+            if state not in US_STATE_CODES and state not in {"US", "USA"}:
                 continue
             if city.upper() in US_STATE_CODES:
                 continue
             if city.upper().startswith("OR "):
                 city = city[3:].strip()
-            normalized = f"{city}, {state}"
+            normalized = city if state in {"US", "USA"} else f"{city}, {state}"
             if normalized not in fragments:
                 fragments.append(normalized)
     if fragments:
@@ -9794,6 +9809,53 @@ def strip_location_markup_prefix(location_name: str) -> str:
     return raw
 
 
+# ``Location: Houston TX`` / ``Location: Houston, Texas`` on its own field.
+# Country-wide API labels (``United States``) must not hide that office.
+_GH_LOCATION_FIELD_RE = re.compile(r"\bLocation[ \t]*:[ \t]*([^\n]{2,160})")
+_GH_LOCATION_CITY_TOKEN_RE = re.compile(r"^[A-Z][A-Za-z.'’\-]*$")
+
+
+def greenhouse_labeled_city_state(text: str) -> str:
+    """City, ST from a Greenhouse ``Location: Houston TX`` field.
+
+    Databricks sets the API location to United States, then names the office
+    on a Location line in the posting. That office is the worksite. A line
+    that is still country-wide (``Location: United States, Remote ...``)
+    does not match.
+    """
+    raw = html.unescape(str(text or ""))
+    if not raw.strip():
+        return ""
+    if "<" in raw:
+        raw = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", raw)
+        raw = re.sub(r"(?is)</p>|<br\s*/?>", "\n", raw)
+        raw = re.sub(r"<[^>]+>", " ", raw)
+    raw = re.sub(r"[ \t]+", " ", raw)
+    for match in _GH_LOCATION_FIELD_RE.finditer(raw):
+        tokens = [tok.strip(",") for tok in match.group(1).split() if tok.strip(",")]
+        # Leading tokens are the city; the next token or two are the state.
+        # Stop at the first pair that is a real US state so trailing JD prose
+        # (``Houston TX Mission``) is not part of the place.
+        for city_n in range(1, min(4, len(tokens))):
+            city_tokens = tokens[:city_n]
+            if not all(_GH_LOCATION_CITY_TOKEN_RE.match(tok) for tok in city_tokens):
+                break
+            city = " ".join(city_tokens)
+            if city.upper() in US_STATE_CODES:
+                continue
+            if city.lower() in {"united", "united states", "remote", "usa", "us", "u.s.", "u.s"}:
+                continue
+            if location_name_is_remoteish(city):
+                continue
+            for state_n in (1, 2, 3):
+                if city_n + state_n > len(tokens):
+                    break
+                state = _parse_us_state_token(" ".join(tokens[city_n : city_n + state_n]))
+                if state:
+                    return f"{city}, {state}"
+    return ""
+
+
 def classify_location_with_fallback(
     location_name: str,
     employer_region: str,
@@ -9807,6 +9869,10 @@ def classify_location_with_fallback(
     rejected_title = bool(original and location_text_looks_like_job_title(original))
     if rejected_title:
         location_name = ""
+    elif original and location_text_is_office_place_list(original):
+        # Cloudflare ``Available Locations`` is a city list. Keep every office.
+        # Collapsing it to the first city, or to Distributed, is not Remote US.
+        location_name = original
     elif original and location_text_looks_like_jd_prose(original):
         geo = extract_geographic_location_fragment(original)
         location_name = geo if geo else ""
@@ -9826,11 +9892,16 @@ def classify_location_with_fallback(
     if recovered:
         location_name = recovered
     # Country-wide US slots (Greenhouse/Lever/Ashby/Workday) often omit "Remote".
+    # A labeled office in the JD (``Location: Houston TX``) is the worksite.
     if location_text_is_us_country_wide(location_name):
-        return (
-            "remote-intl" if employer_region == "international" else "remote",
-            location_name,
-        )
+        office = greenhouse_labeled_city_state(description_text)
+        if office:
+            location_name = office
+        else:
+            return (
+                "remote-intl" if employer_region == "international" else "remote",
+                location_name,
+            )
     state_excluded, state_label = location_or_title_is_state_limited_remote(
         location_name,
         title=title,
@@ -14155,6 +14226,27 @@ def greenhouse_resolve_location(
     return strip_company_prefix_from_location(loc, company_name)
 
 
+_OFFICE_PLACE_TOKEN_RE = re.compile(
+    r"\b[A-Z][A-Za-z.'’-]+(?:\s+[A-Z][A-Za-z.'’-]+){0,3},\s*(?:US|USA|[A-Z]{2})\b"
+)
+
+
+def location_text_is_office_place_list(text: str) -> bool:
+    """True when text is mostly named offices (``Atlanta, US``), not JD prose.
+
+    Remote US means the role can be worked from home. A list of other cities
+    is a set of offices, even when the API label is only Distributed.
+    """
+    raw = re.sub(r"\s+", " ", str(text or "").strip())
+    if not raw:
+        return False
+    tokens = list(_OFFICE_PLACE_TOKEN_RE.finditer(raw))
+    if len(tokens) < 2:
+        return False
+    covered = sum(len(match.group(0)) for match in tokens)
+    return covered * 100 >= 55 * len(raw)
+
+
 def greenhouse_extract_locations_from_content(content: str) -> str:
     """Pull geographic places from Greenhouse JD ``Available Locations`` blocks.
 
@@ -14171,11 +14263,11 @@ def greenhouse_extract_locations_from_content(content: str) -> str:
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n{2,}", "\n", text)
     stop = (
-        r"Responsibilities|About the Role|About Us|About the Department|"
-        r"About the role|What You['’]?ll|What You Will|Requirements|"
+        r"Responsibilities|About the Role|About the Team|About Us|About the Department|"
+        r"About the role|Role Summary|What You['’]?ll|What You Will|Requirements|"
         r"Qualifications|Nice to Haves?|Benefits|Compensation|Equity|"
         r"Bonus|Equal Opportunity|Apply for this|The Customer Engineer|"
-        r"We are seeking|This role is"
+        r"We are seeking|We are only|This role is|Job Title"
     )
     patterns = (
         rf"Available Locations?\s*:\s*(.+?)(?=\s*(?:{stop})\b|$)",
@@ -14193,11 +14285,14 @@ def greenhouse_extract_locations_from_content(content: str) -> str:
         loc = _truncate_at_jd_boundary(loc)
         # Drop trailing prose if a stop word leaked into the capture.
         loc = re.split(rf"\s+(?:{stop})\b", loc, maxsplit=1, flags=re.I)[0].strip(" .,&;:")
-        if len(loc) > 120:
+        place_list = location_text_is_office_place_list(loc)
+        # Long city lists are still offices. The 80-character prose check must
+        # not drop them and leave the API label Distributed, which is Remote US.
+        if len(loc) > 400 or (len(loc) > 120 and not place_list):
             continue
         if not loc or location_text_is_work_model_only(loc):
             continue
-        if location_text_looks_like_jd_prose(loc):
+        if location_text_looks_like_jd_prose(loc) and not place_list:
             continue
         if location_text_looks_like_job_title(loc):
             continue
@@ -29096,9 +29191,9 @@ def publish_board_pwa_assets(out_path: Path) -> list[Path]:
 def favicon_head_tags() -> str:
     """Favicon / PWA icons for the board (data URIs + relative manifest).
 
-    Large transparent \"any\" icons (192/512) match working Chrome Mac PWAs so
-    Dock/Cmd-Tab get a squircle instead of a hard square. Opaque apple-touch /
-    maskable assets stay available via the manifest for other surfaces.
+    Large transparent \"any\" icons (192/512) are the Dock art. Command-Tab and
+    the Dock read these link icons while the app is open, so they must match
+    app.icns. Maskable files stay in the manifest only.
     """
     lines: list[str] = []
     fav = _favicon_png_path("quickjobs-favicon.png")
@@ -29116,12 +29211,10 @@ def favicon_head_tags() -> str:
         lines.append(
             f'  <link rel="icon" href="{_png_data_uri(icon512)}" type="image/png" sizes="512x512">'
         )
-    # Opaque apple-touch (home screen); prefer maskable-512 then apple-touch.
-    apple = (
-        _favicon_png_path("quickjobs-icon-maskable-512.png")
-        or _favicon_png_path("quickjobs-apple-touch-icon.png")
-        or icon512
-    )
+    # Command-Tab and the Dock use these link icons while the app is open.
+    # Point them at the same pre-masked dock art as icon-512. The full-bleed
+    # maskable file stays in the manifest only; using it here enlarges the QJ.
+    apple = icon512 or _favicon_png_path("quickjobs-apple-touch-icon.png")
     if apple:
         size = "512x512" if "512" in apple.name else "180x180"
         lines.append(
@@ -29235,6 +29328,15 @@ def _job_primary_location_text(job: Job) -> str:
         )
         and not location_is_multi_country_us_eligible(meta_loc)
         and not location_is_multi_remote_locale_with_us(meta_loc)
+    ):
+        return meta_loc
+    # Semicolon-separated slots are separate options. AMER-US-Remote or
+    # Remote U.S. beside office cities means remote anywhere in the US.
+    # The badge often keeps only the offices.
+    if (
+        meta_loc
+        and location_has_us_nationwide_remote_segment(meta_loc)
+        and not location_has_us_nationwide_remote_segment(label)
     ):
         return meta_loc
     if label:
@@ -31756,6 +31858,47 @@ def render_job(
     return article_html
 
 
+_JOB_ARTICLE_RE = re.compile(r"<article\b[^>]*>.*?</article>", re.S)
+_APPLY_KEY_RE = re.compile(r'data-apply-key="([^"]+)"')
+
+
+def _html_without_apply_keys(html: str, keys: set[str]) -> str:
+    """Drop job cards whose apply key is already represented in another block."""
+    if not html or not keys:
+        return (html or "").strip()
+
+    def _keep(match: re.Match[str]) -> str:
+        found = _APPLY_KEY_RE.search(match.group(0))
+        if found and found.group(1) in keys:
+            return ""
+        return match.group(0)
+
+    return _JOB_ARTICLE_RE.sub(_keep, html).strip()
+
+
+def _lazy_set_company_job_html(
+    lazy: LazyBoardCollector,
+    bucket_key: str,
+    html: str,
+) -> None:
+    """Store employer cards without erasing aggregator cards already under this key.
+
+    LinkedIn (and other job sites) append cards to the employer bucket first.
+    The first-party company render used to replace that HTML, so the index still
+    counted those roles while the board had no cards for them.
+    """
+    new = (html or "").strip()
+    existing = str(lazy.companies.get(bucket_key) or "").strip()
+    if not new:
+        return
+    if not existing:
+        lazy.companies[bucket_key] = new
+        return
+    new_keys = set(_APPLY_KEY_RE.findall(new))
+    kept = _html_without_apply_keys(existing, new_keys)
+    lazy.companies[bucket_key] = f"{kept}\n\n{new}".strip() if kept else new
+
+
 def _lazy_append_company_job_html(
     lazy: LazyBoardCollector,
     bucket_key: str,
@@ -31764,8 +31907,7 @@ def _lazy_append_company_job_html(
     text = "\n".join(chunks).strip()
     if not text:
         return
-    existing = str(lazy.companies.get(bucket_key) or "").strip()
-    lazy.companies[bucket_key] = f"{existing}\n\n{text}".strip() if existing else text
+    _lazy_set_company_job_html(lazy, bucket_key, text)
 
 
 def _render_company_jobs_by_match(
@@ -31871,7 +32013,7 @@ def render_company_block(
                 "",
                 "      </div>",
             ]
-        lazy.companies[filter_key] = "\n".join(inner)
+        _lazy_set_company_job_html(lazy, filter_key, "\n".join(inner))
         return [
             f'      <div class="company-group company-group-lazy" data-company="{esc(co.id)}"'
             f' data-lazy-loaded="0"{filter_attr}{sort_attr}{layoff_attr}>',
@@ -33294,7 +33436,19 @@ def build_html(
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 0.35rem 0.45rem;
+      gap: 0.35rem 0.55rem;
+    }}
+    .job-filter-chip-group {{
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem 0.4rem;
+      max-width: 100%;
+    }}
+    .job-filter-chip-prefix {{
+      color: var(--muted);
+      font-size: 0.78rem;
+      white-space: nowrap;
     }}
     .text-filter-combine-mode {{
       flex: 0 0 auto;
@@ -36030,9 +36184,33 @@ def build_html(
       return Boolean(el?.closest?.('#applied-section-panel, #sec-applied'));
     }}
 
+    function appliedJobPassesFilters(job) {{
+      // Same legend, title, salary, employment, and company filters as the
+      // "Showing N of M" count. Terminal pipeline status stays visible here.
+      if (!job) return false;
+      if (legendFiltersActive()) {{
+        if (!jobMatchesLegendFilters(job)) return false;
+      }} else {{
+        if (!jobMatchesRoleType(job)) return false;
+        if (!jobMatchesMatchLevel(job)) return false;
+      }}
+      if (!jobMatchesEmployment(job)) return false;
+      if (job.classList.contains('hidden-layoff')) return false;
+      if (!jobMatchesTextFilter(job)) return false;
+      if (!jobMatchesSalaryToolbarFilter(job)) return false;
+      const selected = selectedCompanies();
+      if (selected && !selected.has(jobCompanyFilterKey(job))) return false;
+      return true;
+    }}
+
     function applyFilterClassesToJobs(jobs) {{
       jobs.forEach(job => {{
-        if (isInAppliedSection(job)) return;
+        if (isInAppliedSection(job)) {{
+          const show = appliedJobPassesFilters(job);
+          job.classList.toggle('hidden', !show);
+          job.classList.toggle('hidden-text-filter', !jobMatchesTextFilter(job));
+          return;
+        }}
         const show = jobWouldBeVisible(job, {{ ignoreCompanySelect: false }});
         job.classList.toggle('hidden', !show);
         job.classList.toggle('hidden-text-filter', !jobMatchesTextFilter(job));
@@ -37517,7 +37695,7 @@ def build_html(
       }};
     }}
 
-    function textFilterChipLabel(chip) {{
+    function textFilterChipPrefix(chip) {{
       const titleOn = chip.scopeTitle !== false;
       const descOn = Boolean(chip.scopeDesc);
       let scopePart = 'Title';
@@ -37527,7 +37705,18 @@ def build_html(
       const modePart = chip.mode === 'not'
         ? (both ? "Don't Contain" : "Doesn't Contain")
         : (both ? 'Contain' : 'Contains');
-      return `${{scopePart}} ${{modePart}}: ${{chip.text}}`;
+      return `${{scopePart}} ${{modePart}}:`;
+    }}
+
+    function textFilterChipLabel(chip) {{
+      return `${{textFilterChipPrefix(chip)}} ${{chip.text}}`;
+    }}
+
+    function textFilterGroupKey(chip) {{
+      const titleOn = chip.scopeTitle !== false ? '1' : '0';
+      const descOn = chip.scopeDesc ? '1' : '0';
+      const mode = chip.mode === 'not' ? 'not' : 'contains';
+      return `${{titleOn}}${{descOn}}|${{mode}}`;
     }}
 
     function normalizeTextFilterChip(chip, fallbackScope = null) {{
@@ -37856,20 +38045,41 @@ def build_html(
         applyRoleFilter();
       }});
       container.appendChild(combineSelect);
+      const groups = [];
+      const groupsByKey = new Map();
       textFilterChips.forEach((chip, idx) => {{
-        const el = document.createElement('span');
-        el.className = 'job-filter-chip';
-        const removeBtn = document.createElement('button');
-        removeBtn.type = 'button';
-        removeBtn.className = 'job-filter-chip-remove';
-        removeBtn.dataset.chipIndex = String(idx);
-        removeBtn.setAttribute('aria-label', 'Remove filter');
-        removeBtn.textContent = '×';
-        const label = document.createElement('span');
-        label.className = 'job-filter-chip-label';
-        label.textContent = textFilterChipLabel(chip);
-        el.append(removeBtn, label);
-        container.appendChild(el);
+        const key = textFilterGroupKey(chip);
+        let group = groupsByKey.get(key);
+        if (!group) {{
+          group = {{ key, chip, items: [] }};
+          groupsByKey.set(key, group);
+          groups.push(group);
+        }}
+        group.items.push({{ chip, idx }});
+      }});
+      groups.forEach(group => {{
+        const wrap = document.createElement('span');
+        wrap.className = 'job-filter-chip-group';
+        const prefix = document.createElement('span');
+        prefix.className = 'job-filter-chip-prefix';
+        prefix.textContent = textFilterChipPrefix(group.chip);
+        wrap.appendChild(prefix);
+        group.items.forEach(({{ chip, idx }}) => {{
+          const el = document.createElement('span');
+          el.className = 'job-filter-chip';
+          const removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.className = 'job-filter-chip-remove';
+          removeBtn.dataset.chipIndex = String(idx);
+          removeBtn.setAttribute('aria-label', 'Remove ' + textFilterChipLabel(chip));
+          removeBtn.textContent = '×';
+          const label = document.createElement('span');
+          label.className = 'job-filter-chip-label';
+          label.textContent = chip.text;
+          el.append(removeBtn, label);
+          wrap.appendChild(el);
+        }});
+        container.appendChild(wrap);
       }});
     }}
 
@@ -38885,6 +39095,10 @@ def build_html(
         job.classList.toggle('hidden', !show);
         job.classList.toggle('hidden-text-filter', !jobMatchesTextFilter(job));
       }});
+      applyFilterClassesToJobs(
+        document.querySelectorAll('#applied-section-panel .job, #sec-applied .job')
+      );
+      applyAppliedSectionLimit();
       // Always recompute from the same visibility rules as cards (not static HTML dots).
       const countsByCompany = boardJobMatchCountsByCompany();
       await applyCompanyGroupSort();
@@ -38905,17 +39119,39 @@ def build_html(
         .length;
     }}
 
+    function entryCardIsRendered(entry) {{
+      // Index rows with no card (aggregator HTML overwritten by the company
+      // block) must not be counted. Before the payload loads, keep the index
+      // count so the line does not flash 0.
+      if (!lazyBoardPayloadFetchDone || !lazyBoardPayload || !entry?.k || !entry?.c) {{
+        return true;
+      }}
+      const board = lazyBoardPayload;
+      const chunks = [
+        board.companies?.[entry.c],
+        board.companiesApplied?.[entry.c],
+        board.companiesExcluded?.[entry.c],
+      ];
+      const key = String(entry.k);
+      const escaped = key.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+      return chunks.some(html =>
+        typeof html === 'string' && (html.includes(key) || html.includes(escaped))
+      );
+    }}
+
     function countVisibleBoardJobs() {{
-      // Index-based so lazy-unmounted companies still count — same rules as sidebar dots.
+      // Same filters as the cards. Skip index rows that have no card to show.
       return getJobBoardIndex().filter(entry =>
         entryWouldBeVisible(entry, {{ ignoreCompanySelect: false }})
+        && entryCardIsRendered(entry)
       ).length;
     }}
 
     function countPoolBoardJobs() {{
-      // Same visibility as sidebar badge sum (ignore company checkboxes).
+      // Same visibility as the cards, ignoring company checkboxes.
       return getJobBoardIndex().filter(entry =>
         entryWouldBeVisible(entry, {{ ignoreCompanySelect: true }})
+        && entryCardIsRendered(entry)
       ).length;
     }}
 
@@ -40083,16 +40319,26 @@ def recompute_results_salaries(
 
 
 def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
-    """Regenerate HTML from last run snapshot without scraping."""
+    """Regenerate HTML from last run snapshot without scraping.
+
+    A plain rebuild loads the snapshot, writes HTML, and copies icons. Salary,
+    location, title, and match catch-up run only with --refresh-derived. The
+    nightly scrape does not use this command.
+    """
+    # Shell [step]/[ok] lines are stamped locally. This command returns before
+    # main() installs the stdout wrapper, so its prints would otherwise be bare.
+    install_run_log_stream(enable_timing=False)
     _argv = list(argv if argv is not None else [])
     recompute_matches = False
     verify_urls = False
+    refresh_derived = False
     while _argv:
         arg = _argv.pop(0)
         if arg in ("-h", "--help"):
             print(
-                "Usage: rebuild-snapshot [--recompute-matches] [--verify-urls]\n"
-                "  (always refreshes salary badges from stored JDs)\n"
+                "Usage: rebuild-snapshot [--refresh-derived] [--recompute-matches] [--verify-urls]\n"
+                "  Default: load snapshot, write HTML, copy icons.\n"
+                "  --refresh-derived    Re-read stored JDs for salary, location, and Talentbrew titles\n"
                 "  --recompute-matches  Re-infer match tiers from snapshot JDs, save snapshot, rebuild HTML\n"
                 "  --verify-urls        GET-check posting URLs (incl. Greenhouse); drop expired; remember denylist"
             )
@@ -40102,6 +40348,9 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
             continue
         if arg == "--verify-urls":
             verify_urls = True
+            continue
+        if arg == "--refresh-derived":
+            refresh_derived = True
             continue
         print(f"Unknown rebuild-snapshot flag: {arg}", file=sys.stderr)
         return 1
@@ -40168,32 +40417,38 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
                 )
     if recompute_matches:
         recompute_results_matches(results, cfg)
-    # Always refresh salary badges from stored JDs so extractor fixes (Docker typo
-    # repair, Mozilla tiers, etc.) apply without requiring --recompute-matches.
-    salary_n = recompute_results_salaries(
-        results, cfg, cfg.get("companies") or [], only_missing=False
-    )
-    if salary_n:
-        print(f"Refreshed {salary_n} salary badge(s) from stored JDs")
     results = reconcile_cfg_hub_results(results, cfg.get("companies") or [])
     results = reconcile_cfg_company_display(results, cfg.get("companies") or [])
-    loc_n = reclassify_results_locations(results, cfg)
-    if loc_n:
-        print(f"Reclassified {loc_n} job location(s) from stored labels")
-    title_n = reconcile_talentbrew_job_titles(results, cfg.get("companies") or [])
-    if title_n:
-        print(f"Corrected {title_n} Talentbrew title(s) from stored JD/URL")
-        # Title text feeds match heuristics and client title filters (e.g. -manager).
-        recompute_results_matches(results, cfg)
-    url_n = rewrite_greenhouse_embed_job_urls(results, cfg)
-    if url_n:
-        print(f"Rewrote {url_n} Greenhouse career-index URL(s) to job-boards.greenhouse.io")
-    company_list = cfg.get("companies") or []
-    dedupe_jobs_across_companies(results, company_list)
-    consolidate_nike_family_jobs(results, company_list)
-    consolidate_cisco_family_jobs(results, company_list)
+    salary_n = 0
+    loc_n = 0
+    title_n = 0
+    url_n = 0
+    # Catch-up is opt-in. The nightly scrape refreshes these on its own path.
+    if refresh_derived:
+        salary_n = recompute_results_salaries(
+            results, cfg, cfg.get("companies") or [], only_missing=False
+        )
+        if salary_n:
+            print(f"Refreshed {salary_n} salary badge(s) from stored JDs")
+        loc_n = reclassify_results_locations(results, cfg)
+        if loc_n:
+            print(f"Reclassified {loc_n} job location(s) from stored labels")
+        title_n = reconcile_talentbrew_job_titles(results, cfg.get("companies") or [])
+        if title_n:
+            print(f"Corrected {title_n} Talentbrew title(s) from stored JD/URL")
+            # Title text feeds match heuristics and client title filters (e.g. -manager).
+            recompute_results_matches(results, cfg)
+        url_n = rewrite_greenhouse_embed_job_urls(results, cfg)
+        if url_n:
+            print(f"Rewrote {url_n} Greenhouse career-index URL(s) to job-boards.greenhouse.io")
+        company_list = cfg.get("companies") or []
+        dedupe_jobs_across_companies(results, company_list)
+        consolidate_nike_family_jobs(results, company_list)
+        consolidate_cisco_family_jobs(results, company_list)
     run_time = datetime.now(timezone.utc)
-    if recompute_matches or verify_urls or exclude_dropped or loc_n or salary_n or url_n or title_n:
+    # exclude_dropped is applied in memory for this HTML. Do not rewrite the
+    # snapshot for that alone; the nightly scrape applies the exclude list itself.
+    if recompute_matches or verify_urls or loc_n or salary_n or url_n or title_n:
         run_at_raw = snapshot.get("run_at")
         if run_at_raw:
             try:
@@ -41047,6 +41302,13 @@ def _run_board_scrape_phase4_body(
                     f"recomputed match tiers{extra}",
                     file=sys.stderr,
                 )
+
+    # Every full scrape, including the midnight cron. List labels such as
+    # Distributed are replaced from the stored description here, so a separate
+    # rebuild --refresh-derived is not required.
+    loc_n = reclassify_after_prior_jd_merge(results, cfg)
+    if loc_n and not args.quiet:
+        print(f"Reclassified {loc_n} job location(s) from stored labels")
 
     results = reconcile_cfg_hub_results(results, company_list)
     salary_filled = recompute_results_salaries(

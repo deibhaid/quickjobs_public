@@ -829,6 +829,59 @@ class LinkedInJobsTests(unittest.TestCase):
         )
         self.assertEqual(dup, [])
 
+    def test_first_party_render_keeps_aggregator_cards(self) -> None:
+        """Employer HTML must keep LinkedIn cards already stored under that key."""
+        qj = self.qj
+        cfg = {
+            "companies": [
+                {"id": "autodesk", "name": "Autodesk", "source_group": "company"},
+                {"id": "linkedin", "name": "LinkedIn", "type": "linkedin", "source_group": "job_sites"},
+            ]
+        }
+        linkedin_job = qj.Job(
+            title="Principal AI Software Developer",
+            company_id="linkedin",
+            url="https://www.linkedin.com/jobs/view/principal-ai-software-developer-at-autodesk-4469676700",
+            loc="local",
+            match="good",
+            salary="maybe",
+            company_name="Autodesk",
+        )
+        linkedin = qj.CompanyResult(
+            id="linkedin",
+            name="LinkedIn",
+            label="LinkedIn",
+            section="aggregated",
+            source_group="job_sites",
+            jobs=[linkedin_job],
+        )
+        workday_job = qj.Job(
+            title="Senior Principal AI/ML Developer",
+            company_id="autodesk",
+            url="https://autodesk.wd1.myworkdayjobs.com/Ext/job/Senior-Principal",
+            loc="remote",
+            match="stretch",
+            salary="maybe",
+            company_name="Autodesk",
+        )
+        autodesk = qj.CompanyResult(
+            id="autodesk",
+            name="Autodesk",
+            label="Autodesk",
+            section="matching",
+            jobs=[workday_job],
+        )
+        lazy = qj.LazyBoardCollector(cfg)
+        qj.render_primary_section_body(
+            "aggregated", [linkedin], [linkedin, autodesk], "ok", "local", cfg, lazy
+        )
+        self.assertIn("4469676700", lazy.companies.get("autodesk", ""))
+        qj.render_company_block(autodesk, "ok", "local", cfg, lazy=lazy)
+        html = lazy.companies.get("autodesk", "")
+        self.assertIn("4469676700", html)
+        self.assertIn("Senior-Principal", html)
+        self.assertEqual(html.count("<article"), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

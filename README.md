@@ -385,7 +385,7 @@ CLI install: `~/local/bin/quickjobs` (not in this repo).
 |---------|--------------|
 | `quickjobs portable` | Build portable zip → scriptdir output |
 | `quickjobs run [args…]` | Sync then full scrape on remote |
-| `quickjobs rebuild [args…]` | Sync then regenerate HTML from snapshot (no scrape) |
+| `quickjobs rebuild [args…]` | Sync then regenerate HTML from snapshot (no scrape). Add `--refresh-derived` to re-read stored JDs for salary, location, and titles |
 | `quickjobs rebuild --local` | Rebuild HTML on Mac from local snapshot |
 | `quickjobs stop` / `resume` / `restart` | Mid-run control via checkpoint |
 | `quickjobs results` / `status` | Tail in-progress or last cron summary |
@@ -513,14 +513,16 @@ icons on launch. Fix the board assets (not only the local icns):
 | `quickjobs.webmanifest` | Mirror of `manifest.json` (NAS serves as octet-stream) |
 
 ```bash
+quickjobs icon
 ```
 
-Then in Chrome: remove the old QuickJobs app and Install page as app again from
-`https://remote.example/html/jobs.html` (or open that URL once so Chrome
-regenerates the shortcut).
+That builds the Dock icon, installs it into the Chrome app, and copies the PNGs
+it writes HTML. It does not re-read stored job descriptions; pass
+`--refresh-derived` for that.
 
-Optional local restore if Chrome still remangles: `quickjobs icon` (LaunchAgent
-guard copies `app-quickjobs.icns` back over a rewritten `app.icns`).
+Then relaunch the QuickJobs Chrome app so Command-Tab reads the new icon.
+Chrome rewrites `app.icns` on launch; the LaunchAgent
+`com.exampleuser.quickjobs-icon-guard` copies `portable/quickjobs-app.icns` back.
 
 ---
 

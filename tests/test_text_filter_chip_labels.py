@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Text filter chips show scope + mode in the label (Title Contains: …)."""
+"""Text filter chips: one grey scope prefix per group, term only in the bubble."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ def _load_qj():
     return mod
 
 
-def text_filter_chip_label(chip: dict) -> str:
+def text_filter_chip_prefix(chip: dict) -> str:
     title_on = chip.get("scopeTitle", True) is not False
     desc_on = bool(chip.get("scopeDesc"))
     if title_on and desc_on:
@@ -35,7 +35,7 @@ def text_filter_chip_label(chip: dict) -> str:
         mode_part = "Don't Contain" if both else "Doesn't Contain"
     else:
         mode_part = "Contain" if both else "Contains"
-    return f"{scope_part} {mode_part}: {chip['text']}"
+    return f"{scope_part} {mode_part}:"
 
 
 class TextFilterChipLabelTests(unittest.TestCase):
@@ -45,8 +45,12 @@ class TextFilterChipLabelTests(unittest.TestCase):
         cls.src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
 
     def test_board_js_has_chip_label_helper(self) -> None:
+        self.assertIn("function textFilterChipPrefix", self.src)
         self.assertIn("function textFilterChipLabel", self.src)
-        self.assertIn("textFilterChipLabel(chip)", self.src)
+        self.assertIn("textFilterChipPrefix(group.chip)", self.src)
+        self.assertIn("label.textContent = chip.text", self.src)
+        self.assertIn("job-filter-chip-prefix", self.src)
+        self.assertIn("job-filter-chip-group", self.src)
         self.assertNotIn("Contains: ' + chip.text", self.src)
 
     def test_add_chip_splits_comma_separated_terms(self) -> None:
@@ -56,20 +60,28 @@ class TextFilterChipLabelTests(unittest.TestCase):
 
     def test_label_examples(self) -> None:
         self.assertEqual(
-            text_filter_chip_label({"mode": "contains", "text": "principal", "scopeTitle": True, "scopeDesc": False}),
-            "Title Contains: principal",
+            text_filter_chip_prefix({"mode": "contains", "text": "principal", "scopeTitle": True, "scopeDesc": False}),
+            "Title Contains:",
         )
         self.assertEqual(
-            text_filter_chip_label({"mode": "not", "text": "principal", "scopeTitle": True, "scopeDesc": False}),
-            "Title Doesn't Contain: principal",
+            text_filter_chip_prefix({"mode": "not", "text": "principal", "scopeTitle": True, "scopeDesc": False}),
+            "Title Doesn't Contain:",
         )
         self.assertEqual(
-            text_filter_chip_label({"mode": "contains", "text": "principal", "scopeTitle": True, "scopeDesc": True}),
-            "Title/Description Contain: principal",
+            text_filter_chip_prefix({"mode": "contains", "text": "principal", "scopeTitle": False, "scopeDesc": True}),
+            "Description Contains:",
         )
         self.assertEqual(
-            text_filter_chip_label({"mode": "not", "text": "principal", "scopeTitle": True, "scopeDesc": True}),
-            "Title/Description Don't Contain: principal",
+            text_filter_chip_prefix({"mode": "not", "text": "principal", "scopeTitle": False, "scopeDesc": True}),
+            "Description Doesn't Contain:",
+        )
+        self.assertEqual(
+            text_filter_chip_prefix({"mode": "contains", "text": "principal", "scopeTitle": True, "scopeDesc": True}),
+            "Title/Description Contain:",
+        )
+        self.assertEqual(
+            text_filter_chip_prefix({"mode": "not", "text": "principal", "scopeTitle": True, "scopeDesc": True}),
+            "Title/Description Don't Contain:",
         )
 
 

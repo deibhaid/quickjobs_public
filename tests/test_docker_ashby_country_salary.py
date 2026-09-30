@@ -102,19 +102,17 @@ class DockerAshbySalaryTests(unittest.TestCase):
         self.assertIn("171.5K", job.salary_label or "")
         self.assertIn("245K", job.salary_label or "")
 
-    def test_rebuild_snapshot_always_recomputes_salaries(self) -> None:
+    def test_rebuild_snapshot_salaries_are_opt_in(self) -> None:
         src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
         start = src.index("def cmd_rebuild_snapshot")
-        chunk = src[start : start + 4500]
-        self.assertIn("Always refresh salary badges from stored JDs", chunk)
-        # salary recompute must not be gated solely on --recompute-matches
+        chunk = src[start : start + 5500]
+        self.assertIn("--refresh-derived", chunk)
+        self.assertIn("if refresh_derived:", chunk)
         salary_idx = chunk.index("salary_n = recompute_results_salaries")
-        # Find the nearest preceding 'if recompute_matches:' that still owns this call.
-        # The salary call should sit at the same indent as that if (module body of the fn).
-        salary_line = [
-            line for line in chunk.splitlines() if "salary_n = recompute_results_salaries" in line
-        ][0]
-        self.assertTrue(salary_line.startswith("    salary_n ="))
+        gate = chunk.rfind("if refresh_derived:", 0, salary_idx)
+        self.assertGreater(gate, 0)
+        # Not tied to --recompute-matches, and not on the plain rebuild path.
+        self.assertNotIn("if recompute_matches:\n        salary_n", chunk)
 
 
 if __name__ == "__main__":

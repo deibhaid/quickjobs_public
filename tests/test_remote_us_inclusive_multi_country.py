@@ -343,6 +343,77 @@ class RemoteUsInclusiveMultiCountryTests(unittest.TestCase):
         )
         self.assertEqual(loc, "remote")
 
+    def test_office_badge_keeps_amer_us_remote_from_meta(self) -> None:
+        raw = (
+            "AMER-US-Remote; Austin, Texas, United States; Dallas, Texas, United States; "
+            "Denver, Colorado, United States; Miami, Florida, United States; "
+            "Office - Chicago; San Francisco, California, United States; "
+            "Seattle, Washington, United States"
+        )
+        job = self.qj.Job(
+            title="Principal Software Development Engineer, Execution Services",
+            company_id="drivewealth",
+            url="https://boards.greenhouse.io/drivewealth/jobs/6024935003",
+            loc="remote",
+            loc_label="Austin, TX\nDallas, TX\nDenver, CO\nMiami, FL\nOffice - Chicago\nSan Francisco, CA\nSeattle, WA",
+            meta=raw + " · Posted 09/16/2026",
+        )
+        self.assertIn("AMER-US-Remote", self.qj._job_primary_location_text(job))
+        co = self.qj.CompanyResult(
+            id="drivewealth",
+            name="DriveWealth",
+            label="DriveWealth",
+            section="matching",
+            jobs=[job],
+        )
+        self.qj.reclassify_results_locations([co], {"profile": self.cfg["profile"], "companies": []})
+        self.assertEqual(job.loc, "remote")
+
+    def test_databricks_location_line_overrides_united_states(self) -> None:
+        """API ``United States`` plus ``Location: Houston TX`` is the Houston office."""
+        houston_plain = "REQ ID - FEQ227R360\nLocation: Houston TX\nMission\nWe are looking for experienced pre-sales professionals."
+        houston_html = (
+            "&lt;p&gt;REQ ID - FEQ227R360&lt;/p&gt;"
+            "&lt;p&gt;Location: Houston TX&lt;/p&gt;"
+            "&lt;p&gt;Mission&lt;/p&gt;"
+        )
+        for body in (houston_plain, houston_html):
+            self.assertEqual(self.qj.greenhouse_labeled_city_state(body), "Houston, TX")
+            loc, label = self.qj.classify_location_with_fallback(
+                "United States",
+                "us",
+                cfg=self.cfg,
+                title="Sr. Solutions Architect - Oil, Gas, and Energy",
+                description_text=body,
+            )
+            self.assertEqual(loc, "excluded", body[:40])
+            self.assertEqual(label, "Houston, TX")
+        # Country-wide Location line stays Remote US (SF is a preference, not the only office).
+        remote_body = "Location: United States, Remote [San Francisco Bay Area Preferred]"
+        self.assertEqual(self.qj.greenhouse_labeled_city_state(remote_body), "")
+        loc, label = self.qj.classify_location_with_fallback(
+            "United States",
+            "us",
+            cfg=self.cfg,
+            title="Director, Marketing Strategy and AI Transformation",
+            description_text=remote_body,
+        )
+        self.assertEqual(loc, "remote")
+        self.assertEqual(label, "United States")
+        # Comma form and a Portland office are local.
+        self.assertEqual(
+            self.qj.greenhouse_labeled_city_state("Location: Portland, OR"),
+            "Portland, OR",
+        )
+        loc, _ = self.qj.classify_location_with_fallback(
+            "United States",
+            "us",
+            cfg=self.cfg,
+            title="Staff Software Engineer",
+            description_text="Location: Portland, Oregon",
+        )
+        self.assertEqual(loc, "local")
+
     def test_exiger_united_states_remote_segment_is_remote_us(self) -> None:
         raw = (
             "Jersey City, New Jersey, United States; McLean, Virginia, United States; "
