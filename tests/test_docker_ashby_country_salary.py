@@ -102,6 +102,42 @@ class DockerAshbySalaryTests(unittest.TestCase):
         self.assertIn("171.5K", job.salary_label or "")
         self.assertIn("245K", job.salary_label or "")
 
+    def test_apply_labels_false_leaves_badge_unset(self) -> None:
+        job = self.qj.Job(
+            title="Principal Solutions Architect, Professional Services (West Coast Preferred)",
+            company_id="docker",
+            url="https://jobs.ashbyhq.com/docker/5119e349-09a6-43fd-91de-db7decfa5ff9",
+            loc="remote",
+            loc_label="CAN\nUS",
+            match="good",
+            salary="maybe",
+            salary_label=None,
+            description_text=DOCKER_COMP,
+        )
+        co = self.qj.CompanyResult(
+            id="docker",
+            name="Docker",
+            label="Docker",
+            section="matching",
+            jobs=[job],
+        )
+        company = {"id": "docker", "type": "ashby", "name": "Docker"}
+        n = self.qj.recompute_results_salaries(
+            [co], self.cfg, [company], only_missing=True, apply_labels=False
+        )
+        self.assertEqual(n, 0)
+        self.assertFalse(job.salary_label)
+
+    def test_nightly_salary_labels_follow_location_reclassify(self) -> None:
+        src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
+        start = src.index("def main(")
+        chunk = src[start:]
+        prefetch = chunk.index("only_missing=True, apply_labels=False")
+        reclass = chunk.index("reclassify_after_prior_jd_merge", prefetch)
+        labeled = chunk.index("salary_filled = recompute_results_salaries", reclass)
+        self.assertLess(prefetch, reclass)
+        self.assertLess(reclass, labeled)
+
     def test_rebuild_snapshot_salaries_are_opt_in(self) -> None:
         src = (REPO_ROOT / "quickjobs.py").read_text(encoding="utf-8")
         start = src.index("def cmd_rebuild_snapshot")

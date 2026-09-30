@@ -26229,6 +26229,25 @@ _GLASSDOOR_PARALLEL_DELAY_SEC: float = 0.08
 _GLASSDOOR_DEFAULT_WORKERS: int = 4
 
 
+_GLASSDOOR_CURL_WARNED = False
+
+
+def _warn_if_glassdoor_curl_missing() -> None:
+    """The cron host was missing curl_cffi, so every search fell through to urllib and cached nothing."""
+    global _GLASSDOOR_CURL_WARNED
+    if _GLASSDOOR_CURL_WARNED or _run_quiet():
+        return
+    try:
+        import curl_cffi  # noqa: F401
+    except ImportError:
+        _GLASSDOOR_CURL_WARNED = True
+        print(
+            "Glassdoor prefetch: curl_cffi is not installed; "
+            "search falls back to urllib",
+            flush=True,
+        )
+
+
 def _glassdoor_fetch_enabled() -> bool:
     if os.environ.get("QUICKJOBS_GLASSDOOR_NO_FETCH") == "1":
         return False
@@ -26315,11 +26334,14 @@ def prefetch_glassdoor_ratings(
     workers = max(1, min(workers or _glassdoor_configured_workers(), len(todo)))
     delay = _glassdoor_fetch_delay_sec(workers=workers)
     ok = 0
+    _warn_if_glassdoor_curl_missing()
     if workers == 1:
         for cid, name in todo:
             _glassdoor_throttle_before_fetch()
             if _fetch_and_cache_glassdoor_rating(cid, name, cfg=cfg):
                 ok += 1
+        if not _run_quiet():
+            print(f"{label} prefetch: {ok}/{len(todo)} cached", flush=True)
         return ok
 
     if not _run_quiet():
@@ -40207,6 +40229,7 @@ def recompute_results_salaries(
     company_list: list[dict[str, Any]] | None = None,
     *,
     only_missing: bool = False,
+    apply_labels: bool = True,
 ) -> int:
     """Refresh salary badges from stored JD text (e.g. after prior-JD merge).
 
@@ -40214,6 +40237,11 @@ def recompute_results_salaries(
     blocks are often missing when the scrape stayed list-only. Rebuild fetches a
     capped set of missing Ashby/Greenhouse URLs so posted bands appear without a
     full scrape.
+
+    apply_labels=False still fetches those pages and appends the posting text
+    onto the job. It does not write a salary badge. The nightly scrape uses
+    that before location reclassify, then calls again with labels after the
+    city is known. The pay band uses the location label.
     """
     companies = company_list if company_list is not None else (cfg.get("companies") or [])
     by_id = {
@@ -40262,7 +40290,7 @@ def recompute_results_salaries(
     for company, job in ashby_to_fetch:
         salary, label = ashby_salary_from_job_url(job, cfg)
         ashby_fetched += 1
-        if label and (job.salary != salary or job.salary_label != label):
+        if apply_labels and label and (job.salary != salary or job.salary_label != label):
             job.salary = salary
             job.salary_label = label
             ashby_filled += 1
@@ -40276,7 +40304,7 @@ def recompute_results_salaries(
     for company, job in gh_to_fetch:
         salary, label = greenhouse_salary_from_job_url(job, company, cfg)
         gh_fetched += 1
-        if label and (job.salary != salary or job.salary_label != label):
+        if apply_labels and label and (job.salary != salary or job.salary_label != label):
             job.salary = salary
             job.salary_label = label
             gh_filled += 1
@@ -40285,6 +40313,8 @@ def recompute_results_salaries(
             f"Fetched {gh_fetched} Greenhouse posting page(s) for missing salary badges"
             + (f" ({gh_filled} updated)" if gh_filled else "")
         )
+    if not apply_labels:
+        return 0
     updated = 0
     newly_low = 0
     for co in results:
@@ -40425,11 +40455,15 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
     url_n = 0
     # Catch-up is opt-in. The nightly scrape refreshes these on its own path.
     if refresh_derived:
-        salary_n = recompute_results_salaries(
-            results, cfg, cfg.get("companies") or [], only_missing=False
+        # Pull missing posting text first. Salary labels are applied after
+        # location reclassify so a corrected city selects the pay band.
+        recompute_results_salaries(
+            results,
+            cfg,
+            cfg.get("companies") or [],
+            only_missing=False,
+            apply_labels=False,
         )
-        if salary_n:
-            print(f"Refreshed {salary_n} salary badge(s) from stored JDs")
         loc_n = reclassify_results_locations(results, cfg)
         if loc_n:
             print(f"Reclassified {loc_n} job location(s) from stored labels")
@@ -40438,6 +40472,11 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
             print(f"Corrected {title_n} Talentbrew title(s) from stored JD/URL")
             # Title text feeds match heuristics and client title filters (e.g. -manager).
             recompute_results_matches(results, cfg)
+        salary_n = recompute_results_salaries(
+            results, cfg, cfg.get("companies") or [], only_missing=False
+        )
+        if salary_n:
+            print(f"Refreshed {salary_n} salary badge(s) from stored JDs")
         url_n = rewrite_greenhouse_embed_job_urls(results, cfg)
         if url_n:
             print(f"Rewrote {url_n} Greenhouse career-index URL(s) to job-boards.greenhouse.io")
@@ -41292,16 +41331,19 @@ def _run_board_scrape_phase4_body(
         merged_jds = merge_prior_job_descriptions(results, prior_for_list_only)
         if merged_jds:
             recompute_results_matches(results, cfg)
-            salary_n = recompute_results_salaries(
-                results, cfg, company_list, only_missing=True
-            )
             if not args.quiet:
-                extra = f", refreshed {salary_n} salary badge(s)" if salary_n else ""
                 print(
                     f"Prior JD merge: restored {merged_jds} description(s), "
-                    f"recomputed match tiers{extra}",
+                    "recomputed match tiers",
                     file=sys.stderr,
                 )
+
+    # List-only Ashby/Greenhouse pages often hold the JD. Fetch that text
+    # before location reclassify reads it, and leave the salary badge unset
+    # until the city is known.
+    recompute_results_salaries(
+        results, cfg, company_list, only_missing=True, apply_labels=False
+    )
 
     # Every full scrape, including the midnight cron. List labels such as
     # Distributed are replaced from the stored description here, so a separate
