@@ -23,6 +23,7 @@ import codecs
 import email.utils
 import fcntl
 import html
+import html.parser
 import json
 import os
 import queue
@@ -31526,7 +31527,821 @@ def job_listing_frame_url(url: str) -> str:
         return ""
     if not any(_listing_frame_host_is(host, suffix) for suffix in _LISTING_FRAME_ATS_HOSTS):
         return ""
-    return raw
+    # job-boards.greenhouse.io/{board}/jobs/{id} often redirects to the company
+    # careers site, which then refuses the frame. The embed URL stays on Greenhouse.
+    embed = greenhouse_embed_frame_url(raw)
+    return embed or raw
+
+
+def greenhouse_listing_html_from_parts(
+    page_html: str,
+    description_html: str = "",
+    title: str = "",
+) -> str:
+    """Listing document with the job title and text, and page scripts removed."""
+    page = str(page_html or "")
+    heading = str(title or "").strip()
+    if heading and not re.search(r"<h1\b", page, re.I):
+        h1 = (
+            '<h1 class="job-listing-title" style="font-size:2rem;font-weight:700;'
+            'line-height:1.2;margin:0 0 1.25rem;color:#111;">'
+            f"{html.escape(heading)}</h1>"
+        )
+        main = re.search(r"<main\b[^>]*>", page, re.I)
+        if main:
+            page = page[: main.end()] + h1 + page[main.end() :]
+        else:
+            page = h1 + page
+    description = str(description_html or "").strip()
+    if description and "job__description" not in page:
+        block = f'<div class="job__description body">{description}</div>'
+        marker = page.find("Apply for this job")
+        if marker >= 0:
+            page = page[:marker] + block + page[marker:]
+        elif "</main>" in page:
+            page = page.replace("</main>", block + "</main>", 1)
+        else:
+            page += block
+    page = re.sub(r"<script\b[^>]*>.*?</script>", "", page, flags=re.I | re.S)
+    page = re.sub(r"<noscript\b[^>]*>.*?</noscript>", "", page, flags=re.I | re.S)
+    return page.replace("</template", "<\\/template")
+
+
+def greenhouse_embed_frame_url(url: str) -> str:
+    """Iframe URL for a Greenhouse posting. Empty when the URL is not a /jobs/{id} page."""
+    match = _GH_BOARD_JOBS_RE.search(str(url or "").strip())
+    if not match:
+        return ""
+    board = match.group("board")
+    jid = match.group("jid")
+    return f"https://job-boards.greenhouse.io/embed/job_app?for={board}&token={jid}"
+
+
+# Ashby sends X-Frame-Options: DENY. Chrome still frames the page when
+# Content-Security-Policy includes frame-ancestors *. Cached per company slug.
+_ASHBY_FRAME_OK: dict[str, bool] = {}
+
+
+def _header_value(headers: Any, name: str) -> str:
+    if headers is None or not hasattr(headers, "get"):
+        return ""
+    value = headers.get(name)
+    if not value:
+        value = headers.get(name.lower())
+    return str(value or "")
+
+
+def ashby_headers_allow_frame(headers: Any) -> bool:
+    """True when Ashby sent frame-ancestors * (that overrides X-Frame-Options)."""
+    csp = _header_value(headers, "Content-Security-Policy")
+    for part in csp.split(";"):
+        piece = part.strip()
+        if piece.lower().startswith("frame-ancestors"):
+            return "*" in piece.split()[1:]
+    if _header_value(headers, "X-Frame-Options"):
+        return False
+    return True
+
+
+def _ashby_org_slug(url: str) -> str:
+    parts = [part for part in urlparse(str(url or "")).path.split("/") if part]
+    return parts[0].lower() if parts else ""
+
+
+def ashby_posting_allows_frame(url: str) -> bool:
+    """One HEAD per Ashby company. A timeout or a frame block keeps the saved description."""
+    slug = _ashby_org_slug(url)
+    if not slug:
+        return False
+    cached = _ASHBY_FRAME_OK.get(slug)
+    if cached is not None:
+        return cached
+    allowed = False
+    req = urllib.request.Request(
+        str(url),
+        method="HEAD",
+        headers={"User-Agent": "Mozilla/5.0"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            allowed = ashby_headers_allow_frame(resp.headers)
+    except urllib.error.HTTPError as exc:
+        allowed = ashby_headers_allow_frame(exc.headers)
+    except (urllib.error.URLError, TimeoutError, OSError):
+        allowed = False
+    _ASHBY_FRAME_OK[slug] = allowed
+    return allowed
+
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ARG002
+        return None
+
+
+_GH_EMBED_OPENER = urllib.request.build_opener(_NoRedirectHandler)
+_GH_EMBED_OK: dict[str, bool] = {}
+
+
+def greenhouse_embed_shows_posting(url: str) -> bool:
+    """False when the embed redirects to the full Greenhouse job board."""
+    raw = str(url or "").strip()
+    if not raw:
+        return False
+    cached = _GH_EMBED_OK.get(raw)
+    if cached is not None:
+        return cached
+    shows = True
+    req = urllib.request.Request(
+        raw,
+        method="HEAD",
+        headers={"User-Agent": "Mozilla/5.0"},
+    )
+    try:
+        with _GH_EMBED_OPENER.open(req, timeout=6) as resp:
+            shows = int(getattr(resp, "status", 200) or 200) < 400
+    except urllib.error.HTTPError as exc:
+        location = ""
+        if exc.headers is not None:
+            location = str(exc.headers.get("Location") or "")
+        if exc.code in (301, 302, 303, 307, 308) and (
+            "job_board" in location or "error=true" in location
+        ):
+            shows = False
+    except (urllib.error.URLError, TimeoutError, OSError):
+        shows = True
+    _GH_EMBED_OK[raw] = shows
+    return shows
+
+
+def greenhouse_company_embed_url(url: str, company: dict[str, Any] | None) -> str:
+    """Greenhouse embed for a company careers URL that only carries ?gh_jid=."""
+    if not isinstance(company, dict):
+        return ""
+    if str(company.get("type") or "").strip().lower() != "greenhouse":
+        return ""
+    board = str(company.get("board") or "").strip().strip("/")
+    jid = greenhouse_job_id_from_url(url)
+    if not board or not jid:
+        return ""
+    if not re.search(r"[?&]gh_jid=\d+", str(url or ""), re.I):
+        return ""
+    if "greenhouse.io" in _listing_frame_host(url):
+        return ""
+    return f"https://job-boards.greenhouse.io/embed/job_app?for={board}&token={jid}"
+
+
+def listing_frame_url_for_job(url: str, company: dict[str, Any] | None = None) -> str:
+    """Frame URL for a card, including Greenhouse embeds hidden behind ?gh_jid=."""
+    frame = listing_frame_url_for_card(url)
+    if frame:
+        return frame
+    embed = greenhouse_company_embed_url(url, company)
+    if embed and greenhouse_embed_shows_posting(embed):
+        return embed
+    return ""
+
+
+def listing_frame_url_for_card(url: str) -> str:
+    """Frame URL for a card. Ashby companies that refuse the frame get no URL."""
+    frame = job_listing_frame_url(url)
+    if not frame:
+        return ""
+    host = _listing_frame_host(frame)
+    if _listing_frame_host_is(host, "ashbyhq.com") and not ashby_posting_allows_frame(frame):
+        return ""
+    if (
+        _listing_frame_host_is(host, "greenhouse.io")
+        and "/embed/job_app" in frame
+        and not greenhouse_embed_shows_posting(frame)
+    ):
+        return ""
+    return frame
+
+
+_LISTING_SNAPSHOTS: dict[str, str] = {}
+_SNAPSHOT_PLAYWRIGHT: Any = None
+_SNAPSHOT_BROWSER: Any = None
+
+_LISTING_SNAPSHOT_JS = r"""
+() => {
+  const abs = (value) => {
+    if (!value || value.startsWith('data:') || value.startsWith('blob:') || value.startsWith('javascript:')) return value;
+    try { return new URL(value, location.href).href; } catch (e) { return value; }
+  };
+  const rewrite = (el) => {
+    if (!el.getAttribute) return;
+    for (const attr of ['href', 'src', 'poster']) {
+      const raw = el.getAttribute(attr);
+      if (raw) el.setAttribute(attr, abs(raw));
+    }
+    const srcset = el.getAttribute('srcset');
+    if (srcset) {
+      el.setAttribute('srcset', srcset.split(',').map((part) => {
+        const bits = part.trim().split(/\s+/);
+        if (!bits[0]) return part;
+        bits[0] = abs(bits[0]);
+        return bits.join(' ');
+      }).join(', '));
+    }
+    if (el.tagName === 'A') {
+      const href = el.getAttribute('href') || '';
+      if (href.startsWith('http')) el.setAttribute('target', '_top');
+    }
+  };
+  const sheetText = (root) => {
+    const chunks = [];
+    for (const sheet of (root.adoptedStyleSheets || [])) {
+      try { chunks.push([...sheet.cssRules].map((rule) => rule.cssText).join('\n')); } catch (e) {}
+    }
+    return chunks.filter(Boolean).join('\n');
+  };
+  const flatten = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) return node.cloneNode(true);
+    if (node.nodeType !== Node.ELEMENT_NODE) return null;
+    const tag = node.tagName.toLowerCase();
+    if (tag === 'script' || tag === 'noscript') return null;
+    if (tag === 'meta' && (node.getAttribute('http-equiv') || '').toLowerCase() === 'content-security-policy') return null;
+    if (tag === 'link') {
+      const rel = (node.getAttribute('rel') || '').toLowerCase();
+      const asType = (node.getAttribute('as') || '').toLowerCase();
+      if (rel.includes('modulepreload') || (rel === 'preload' && asType === 'script')) return null;
+    }
+    const copy = node.cloneNode(false);
+    rewrite(copy);
+    const extraCss = node.shadowRoot ? sheetText(node.shadowRoot) : '';
+    if (extraCss) {
+      const style = document.createElement('style');
+      style.textContent = extraCss;
+      copy.appendChild(style);
+    }
+    const kids = node.shadowRoot ? [...node.shadowRoot.childNodes, ...node.childNodes] : [...node.childNodes];
+    for (const kid of kids) {
+      const flat = flatten(kid);
+      if (flat) copy.appendChild(flat);
+    }
+    return copy;
+  };
+  const html = flatten(document.documentElement);
+  const rootCss = sheetText(document);
+  if (rootCss) {
+    const style = document.createElement('style');
+    style.textContent = rootCss;
+    html.querySelector('head')?.appendChild(style);
+  }
+  const base = document.createElement('base');
+  base.setAttribute('href', location.href);
+  html.querySelector('head')?.prepend(base);
+  return '<!DOCTYPE html>\n' + html.outerHTML;
+}
+"""
+
+
+def _close_listing_snapshot_browser() -> None:
+    global _SNAPSHOT_BROWSER, _SNAPSHOT_PLAYWRIGHT
+    browser = _SNAPSHOT_BROWSER
+    playwright = _SNAPSHOT_PLAYWRIGHT
+    _SNAPSHOT_BROWSER = None
+    _SNAPSHOT_PLAYWRIGHT = None
+    if browser is not None:
+        try:
+            browser.close()
+        except Exception:
+            pass
+    if playwright is not None:
+        try:
+            playwright.stop()
+        except Exception:
+            pass
+
+
+atexit.register(_close_listing_snapshot_browser)
+
+
+def _snapshot_browser() -> Any:
+    global _SNAPSHOT_BROWSER, _SNAPSHOT_PLAYWRIGHT
+    if _SNAPSHOT_BROWSER is not None:
+        return _SNAPSHOT_BROWSER
+    from playwright.sync_api import sync_playwright
+
+    _SNAPSHOT_PLAYWRIGHT = sync_playwright().start()
+    _SNAPSHOT_BROWSER = _SNAPSHOT_PLAYWRIGHT.chromium.launch(headless=True)
+    return _SNAPSHOT_BROWSER
+
+
+def _capture_listing_snapshot(url: str) -> str:
+    """Drawn listing with scripts removed, so it can be shown from the board files."""
+    page = None
+    try:
+        page = _snapshot_browser().new_page(viewport={"width": 1100, "height": 1400})
+        page.goto(url, wait_until="domcontentloaded", timeout=18000)
+        try:
+            page.wait_for_function(
+                "() => (document.body && document.body.innerText || '').trim().length > 200",
+                timeout=8000,
+            )
+        except Exception:
+            pass
+        page.wait_for_timeout(400)
+        html = str(page.evaluate(_LISTING_SNAPSHOT_JS) or "")
+    except Exception:
+        return ""
+    finally:
+        if page is not None:
+            try:
+                page.close()
+            except Exception:
+                pass
+    if len(html) < 500 or "<script" in html.lower():
+        return ""
+    if listing_snapshot_is_loading_shell(html):
+        return ""
+    return html.replace("</template", "<\\/template")
+
+
+_BOT_WALL_MARKERS = (
+    "performing security verification",
+    "verifies you are not a bot",
+    "verify you are not a bot",
+    "security service to protect against malicious bots",
+    "max challenge attempts exceeded",
+    "cf-browser-verification",
+    "checking your browser before accessing",
+    "enable javascript and cookies to continue",
+)
+
+_BOT_WALL_BLOCK_TAIL = re.compile(
+    r"</template></div>\s*"
+    r"(?:<button type=\"button\" class=\"job-listing-fallback\">Saved description</button>\s*)?"
+    r"(?:<div class=\"job-description is-collapsed\"(?: data-desc-loaded=\"[01]\")?>"
+    r"(.*?)</div>\s*)?</div>",
+    re.S,
+)
+
+
+def listing_snapshot_is_bot_wall(html: str) -> bool:
+    """True when a capture is a host bot check, not the posting."""
+    text = str(html or "").lower()
+    return any(marker in text for marker in _BOT_WALL_MARKERS)
+
+
+def listing_snapshot_is_loading_shell(html: str) -> bool:
+    """True when the capture is still the host's loading screen."""
+    return bool(re.search(r"<body\b[^>]*\bapp-loading\b", str(html or ""), re.I))
+
+
+_LINKEDIN_JOB_ID_RE = re.compile(r"/jobs/view/(?:[^/?#]*-)?(\d+)(?:[/?#]|$)", re.I)
+_LINKEDIN_TITLE_RE = re.compile(
+    r"top-card-layout__title[^>]*>(.*?)</",
+    re.S,
+)
+_LINKEDIN_DESC_RE = re.compile(
+    r'<div class="show-more-less-html__markup[^"]*"[^>]*>(.*?)</div>\s*</section>',
+    re.S,
+)
+
+
+def linkedin_listing_document_from_fragment(fragment: str, page_url: str) -> str:
+    """Title and posting text from LinkedIn's guest job fragment."""
+    title_match = _LINKEDIN_TITLE_RE.search(fragment or "")
+    desc_match = _LINKEDIN_DESC_RE.search(fragment or "")
+    if not title_match or not desc_match:
+        return ""
+    title = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", title_match.group(1))).strip()
+    title = html.unescape(title)
+    description = desc_match.group(1).strip()
+    if len(title) < 3 or len(re.sub(r"<[^>]+>", "", description).strip()) < 80:
+        return ""
+    description = re.sub(
+        r"<a\b(?![^>]*\btarget=)",
+        '<a target="_top"',
+        description,
+        flags=re.I,
+    )
+    return _styled_listing_document(title, description, page_url)
+
+
+def _styled_listing_document(title: str, description: str, page_url: str) -> str:
+    """Local posting page: title, body, and links that leave the card."""
+    page = (
+        "<!DOCTYPE html><html><head><meta charset=\"utf-8\">"
+        f"<base href=\"{html.escape(page_url, quote=True)}\">"
+        "<style>"
+        "body{margin:0;padding:28px 32px 48px;background:#fff;color:#1d2226;"
+        "font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;"
+        "line-height:1.5;}"
+        "h1{font-size:2rem;font-weight:700;line-height:1.2;margin:0 0 1.25rem;color:#111;}"
+        ".job-listing-body{font-size:1rem;}"
+        ".job-listing-body p{margin:0 0 1rem;}"
+        ".job-listing-body ul,.job-listing-body ol{margin:0 0 1rem;padding-left:1.25rem;}"
+        ".job-listing-body li{margin:0.25rem 0;}"
+        ".job-listing-body a{color:#0a66c2;}"
+        "</style></head><body>"
+        f"{'<h1>' + html.escape(title) + '</h1>' if title else ''}"
+        f"<div class=\"job-listing-body\">{description}</div>"
+        "</body></html>"
+    )
+    return page.replace("</template", "<\\/template")
+
+
+def saved_listing_snapshot(title: str, description_html: str, page_url: str) -> str:
+    """Listing page built from the stored posting when the job page cannot be copied."""
+    body = re.sub(r"<script\b[^>]*>.*?</script>", "", str(description_html or ""), flags=re.I | re.S)
+    body = re.sub(r"<noscript\b[^>]*>.*?</noscript>", "", body, flags=re.I | re.S).strip()
+    heading = re.sub(r"\s+", " ", str(title or "")).strip()
+    plain = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", body)).strip()
+    if len(plain) < 20:
+        return ""
+    if "<" not in body:
+        body = f"<p>{html.escape(body)}</p>"
+    return _styled_listing_document(heading, body, page_url or "about:blank")
+
+
+def linkedin_guest_listing_document(url: str) -> str:
+    """Local listing built from LinkedIn's public guest posting."""
+    match = _LINKEDIN_JOB_ID_RE.search(str(url or ""))
+    if not match:
+        return ""
+    api = LINKEDIN_GUEST_JOB_POSTING.format(job_id=match.group(1))
+    try:
+        req = urllib.request.Request(api, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            fragment = resp.read().decode("utf-8", "replace")
+    except Exception:
+        return ""
+    return linkedin_listing_document_from_fragment(fragment, str(url))
+
+
+_WORKDAY_JOB_RE = re.compile(
+    r"^https://(?P<tenant>[^.]+)\.(?P<shard>[^.]+)\.myworkdayjobs\.com/"
+    r"(?P<site>[^/]+)/job/(?P<job_path>.+?)/?(?:\?.*)?$",
+    re.I,
+)
+
+
+def workday_cxs_url(url: str) -> str:
+    """Workday's public posting JSON for a myworkdayjobs job URL."""
+    match = _WORKDAY_JOB_RE.match(str(url or "").strip())
+    if not match:
+        return ""
+    tenant = match.group("tenant")
+    shard = match.group("shard")
+    site = match.group("site")
+    job_path = match.group("job_path").strip("/")
+    return (
+        f"https://{tenant}.{shard}.myworkdayjobs.com/wday/cxs/"
+        f"{tenant}/{site}/job/{job_path}"
+    )
+
+
+def workday_listing_document_from_posting(info: dict, page_url: str) -> str:
+    """Title and posting text from a Workday jobPostingInfo object."""
+    title = re.sub(r"\s+", " ", str((info or {}).get("title") or "")).strip()
+    description = str((info or {}).get("jobDescription") or "").strip()
+    if len(title) < 3 or len(re.sub(r"<[^>]+>", "", description).strip()) < 80:
+        return ""
+    description = re.sub(
+        r"<a\b(?![^>]*\btarget=)",
+        '<a target="_top"',
+        description,
+        flags=re.I,
+    )
+    return _styled_listing_document(title, description, page_url)
+
+
+def workday_guest_listing_document(url: str) -> str:
+    """Local listing built from Workday's public posting JSON."""
+    api = workday_cxs_url(url)
+    if not api:
+        return ""
+    try:
+        req = urllib.request.Request(
+            api,
+            headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            payload = json.loads(resp.read().decode("utf-8", "replace"))
+    except Exception:
+        return ""
+    info = payload.get("jobPostingInfo") if isinstance(payload, dict) else None
+    if not isinstance(info, dict):
+        return ""
+    return workday_listing_document_from_posting(info, str(url))
+
+
+_ORACLE_JOB_ID_RE = re.compile(r"/job/(\d+)(?:[/?#]|$)", re.I)
+_ORACLE_SITE_RE = re.compile(r"siteNumber(?:=|\"\s*:\s*\")(CX_\d+)", re.I)
+
+
+class _OraclePostingParser(html.parser.HTMLParser):
+    """Pulls Oracle's Word-exported posting into heading and paragraph blocks."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.blocks: list[tuple[bool, str]] = []
+        self._strong = 0
+        self._buf: list[str] = []
+
+    def _flush(self) -> None:
+        text = re.sub(r"\s+", " ", "".join(self._buf)).replace("\xa0", " ").strip()
+        self._buf = []
+        if text:
+            self.blocks.append((self._strong > 0, text))
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in ("p", "div", "li", "br", "h1", "h2", "h3", "tr"):
+            self._flush()
+        if tag in ("strong", "b"):
+            self._flush()
+            self._strong += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in ("strong", "b") and self._strong:
+            self._flush()
+            self._strong -= 1
+        if tag in ("p", "div", "li", "h1", "h2", "h3", "tr"):
+            self._flush()
+
+    def handle_data(self, data: str) -> None:
+        self._buf.append(data)
+
+    def close(self) -> None:
+        self._flush()
+        super().close()
+
+
+def oracle_posting_blocks_html(fragment: str) -> str:
+    """Headings and paragraphs from an Oracle HCM description field."""
+    parser = _OraclePostingParser()
+    parser.feed(str(fragment or ""))
+    parser.close()
+    parts: list[str] = []
+    for strong, text in parser.blocks:
+        safe = html.escape(text)
+        if strong and len(text) <= 80 and not text.endswith("."):
+            parts.append(f"<h2>{safe}</h2>")
+        elif strong:
+            parts.append(f"<p><strong>{safe}</strong></p>")
+        else:
+            parts.append(f"<p>{safe}</p>")
+    return "\n".join(parts)
+
+
+def oracle_listing_document_from_detail(detail: dict, page_url: str) -> str:
+    """Listing that keeps the headings and line breaks from Oracle's posting."""
+    title = re.sub(r"\s+", " ", str((detail or {}).get("Title") or "")).strip()
+    sections = [
+        oracle_posting_blocks_html(str((detail or {}).get(key) or ""))
+        for key in (
+            "ExternalDescriptionStr",
+            "ExternalResponsibilitiesStr",
+            "ExternalQualificationsStr",
+        )
+    ]
+    body = "\n".join(section for section in sections if section)
+    plain = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", body)).strip()
+    if len(plain) < 80:
+        return ""
+    heading = f"<h1>{html.escape(title)}</h1>" if title else ""
+    page = (
+        "<!DOCTYPE html><html><head><meta charset=\"utf-8\">"
+        f"<base href=\"{html.escape(page_url, quote=True)}\">"
+        "<style>"
+        "body{margin:0;padding:28px 36px 48px;background:#fff;color:#222;"
+        "font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.45;}"
+        "h1{font-size:2rem;font-weight:700;line-height:1.2;margin:0 0 1.25rem;color:#111;}"
+        "h2{font-size:1.35rem;font-weight:700;color:#1f4d78;margin:1.35rem 0 0.45rem;}"
+        "p{margin:0 0 0.55rem;}"
+        "</style></head><body>"
+        f"{heading}{body}</body></html>"
+    )
+    return page.replace("</template", "<\\/template")
+
+
+def oracle_guest_listing_document(url: str) -> str:
+    """Local listing built from Oracle's public job requisition."""
+    match = _ORACLE_JOB_ID_RE.search(str(url or ""))
+    if not match or "oracle" not in str(url or "").lower():
+        return ""
+    req_id = match.group(1)
+    sites: list[str] = []
+    try:
+        req = urllib.request.Request(str(url), headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            page_html = resp.read().decode("utf-8", "replace")
+        site_match = _ORACLE_SITE_RE.search(page_html)
+        if site_match:
+            sites.append(site_match.group(1))
+    except Exception:
+        pass
+    for extra in ("CX_45001", "CX_1001"):
+        if extra not in sites:
+            sites.append(extra)
+    api_base = "https://eeho.fa.us2.oraclecloud.com/hcmRestApi/resources/latest"
+    for site_number in sites:
+        api = (
+            f"{api_base}/recruitingCEJobRequisitionDetails?onlyData=true&expand=all"
+            f"&finder=ById;Id={urllib.parse.quote(req_id)},siteNumber={site_number}"
+        )
+        try:
+            req = urllib.request.Request(
+                api,
+                headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                payload = json.loads(resp.read().decode("utf-8", "replace"))
+        except Exception:
+            continue
+        items = payload.get("items") if isinstance(payload, dict) else None
+        if not items or not isinstance(items[0], dict):
+            continue
+        document = oracle_listing_document_from_detail(items[0], str(url))
+        if document:
+            return document
+    return ""
+
+
+_html_unescape = html.unescape
+
+_LIVE_FRAME_BLOCK_RE = re.compile(
+    r'<div class="job-description-wrap">\s*'
+    r'<button type="button" class="job-description-toggle"\s+'
+    r'data-listing-url="([^"]+)"([^>]*)>Show listing</button>\s*'
+    r'<div class="job-listing-frame is-collapsed"></div>\s*'
+    r'(?:<button type="button" class="job-listing-fallback">Saved description</button>\s*)?'
+    r'(?:<div class="job-description is-collapsed"(?: data-desc-loaded="[01]")?>(.*?)</div>\s*)?'
+    r"</div>",
+    re.S,
+)
+
+
+def replace_refused_listing_frames(html: str, refuse) -> tuple[str, int]:
+    """Turn live frames that open the wrong page into Expand description."""
+    replaced = 0
+
+    def sub(match: re.Match[str]) -> str:
+        nonlocal replaced
+        url = _html_unescape(match.group(1))
+        if not refuse(url):
+            return match.group(0)
+        key_match = re.search(r'data-desc-key="([^"]*)"', match.group(2))
+        desc_key = key_match.group(1) if key_match else ""
+        replaced += 1
+        return _expand_description_block(desc_key, match.group(3) or "")
+
+    return _LIVE_FRAME_BLOCK_RE.sub(sub, html), replaced
+
+
+def replace_gh_jid_snapshot_frames(html: str, board: str) -> tuple[str, int]:
+    """Replace a careers-index snapshot with the Greenhouse embed for that gh_jid."""
+    slug = str(board or "").strip().strip("/")
+    if not slug:
+        return html, 0
+    start = '<template class="job-listing-snapshot">'
+    end_tag = "</template>"
+    wrap = '<div class="job-description-wrap">'
+    parts: list[str] = []
+    cursor = 0
+    replaced = 0
+    while True:
+        template_at = html.find(start, cursor)
+        if template_at < 0:
+            parts.append(html[cursor:])
+            break
+        wrap_at = html.rfind(wrap, cursor, template_at)
+        end_at = html.find(end_tag, template_at)
+        if wrap_at < 0 or end_at < 0:
+            parts.append(html[cursor : template_at + len(start)])
+            cursor = template_at + len(start)
+            continue
+        tail = _BOT_WALL_BLOCK_TAIL.match(html, end_at)
+        key_match = re.search(r'data-desc-key="([^"]*)"', html[wrap_at:template_at])
+        desc_key = _html_unescape(key_match.group(1)) if key_match else ""
+        jid_match = _GH_JID_RE.search(desc_key)
+        if tail is None or not jid_match or 'data-listing-snapshot="1"' not in html[wrap_at:template_at]:
+            parts.append(html[cursor : end_at + len(end_tag)])
+            cursor = end_at + len(end_tag)
+            continue
+        embed = (
+            "https://job-boards.greenhouse.io/embed/job_app"
+            f"?for={slug}&token={jid_match.group(1)}"
+        )
+        parts.append(html[cursor:wrap_at])
+        parts.append(
+            render_show_listing_block(
+                embed,
+                apply_key=desc_key,
+                description_html=tail.group(1) or "",
+            )
+        )
+        cursor = tail.end()
+        replaced += 1
+    return "".join(parts), replaced
+
+
+def _expand_description_block(desc_key: str, body: str) -> str:
+    key_attr = f' data-desc-key="{desc_key}"' if desc_key else ""
+    loaded_attr = ""
+    if desc_key or body:
+        loaded_attr = f' data-desc-loaded="{"1" if body else "0"}"'
+    return (
+        '          <div class="job-description-wrap">\n'
+        '            <button type="button" class="job-description-toggle"'
+        f'{key_attr} aria-expanded="false">Expand description</button>\n'
+        f'            <div class="job-description is-collapsed"{loaded_attr}>{body}</div>\n'
+        "          </div>"
+    )
+
+
+def replace_bot_wall_listing_blocks(html: str) -> tuple[str, int]:
+    """Replace captured bot-check listings with Expand description."""
+    start = '<template class="job-listing-snapshot">'
+    end_tag = "</template>"
+    wrap = '<div class="job-description-wrap">'
+    parts: list[str] = []
+    cursor = 0
+    replaced = 0
+    while True:
+        template_at = html.find(start, cursor)
+        if template_at < 0:
+            parts.append(html[cursor:])
+            break
+        wrap_at = html.rfind(wrap, cursor, template_at)
+        end_at = html.find(end_tag, template_at)
+        if wrap_at < 0 or end_at < 0:
+            parts.append(html[cursor : template_at + len(start)])
+            cursor = template_at + len(start)
+            continue
+        inner = html[template_at + len(start) : end_at]
+        if not listing_snapshot_is_bot_wall(inner):
+            parts.append(html[cursor : end_at + len(end_tag)])
+            cursor = end_at + len(end_tag)
+            continue
+        tail = _BOT_WALL_BLOCK_TAIL.match(html, end_at)
+        if tail is None:
+            parts.append(html[cursor : end_at + len(end_tag)])
+            cursor = end_at + len(end_tag)
+            continue
+        key_match = re.search(r'data-desc-key="([^"]*)"', html[wrap_at:template_at])
+        desc_key = key_match.group(1) if key_match else ""
+        parts.append(html[cursor:wrap_at])
+        parts.append(_expand_description_block(desc_key, tail.group(1) or ""))
+        cursor = tail.end()
+        replaced += 1
+    return "".join(parts), replaced
+
+
+def listing_snapshot_html(url: str) -> str:
+    """Local copy of a posting that cannot be framed. Empty when the live frame is used."""
+    raw = str(url or "").strip()
+    if not raw.startswith(("http://", "https://")):
+        return ""
+    if listing_frame_url_for_card(raw):
+        return ""
+    host = _listing_frame_host(raw)
+    if _listing_frame_host_is(host, "myworkdaysite.com"):
+        _LISTING_SNAPSHOTS[raw] = ""
+        return ""
+    if _listing_frame_host_is(host, "myworkdayjobs.com"):
+        cached = _LISTING_SNAPSHOTS.get(raw)
+        if cached is not None:
+            return cached
+        print(f"Listing snapshot: {raw}", file=sys.stderr)
+        html = workday_guest_listing_document(raw)
+        _LISTING_SNAPSHOTS[raw] = html
+        return html
+    embed = greenhouse_embed_frame_url(raw)
+    if embed and not greenhouse_embed_shows_posting(embed):
+        _LISTING_SNAPSHOTS[raw] = ""
+        return ""
+    if "careers.oracle.com" in raw.lower():
+        cached = _LISTING_SNAPSHOTS.get(raw)
+        if cached is not None:
+            return cached
+        print(f"Listing snapshot: {raw}", file=sys.stderr)
+        html = oracle_guest_listing_document(raw)
+        if html:
+            _LISTING_SNAPSHOTS[raw] = html
+            return html
+        _LISTING_SNAPSHOTS[raw] = ""
+        return ""
+    if _listing_frame_host_is(host, "linkedin.com"):
+        cached = _LISTING_SNAPSHOTS.get(raw)
+        if cached is not None:
+            return cached
+        print(f"Listing snapshot: {raw}", file=sys.stderr)
+        html = linkedin_guest_listing_document(raw)
+        _LISTING_SNAPSHOTS[raw] = html
+        return html
+    cached = _LISTING_SNAPSHOTS.get(raw)
+    if cached is not None:
+        return cached
+    print(f"Listing snapshot: {raw}", file=sys.stderr)
+    html = _capture_listing_snapshot(raw)
+    if listing_snapshot_is_bot_wall(html):
+        print(f"Listing snapshot skipped bot wall: {raw}", file=sys.stderr)
+        html = ""
+    _LISTING_SNAPSHOTS[raw] = html
+    return html
 
 
 def _listing_frame_static(url: str) -> bool:
@@ -31538,45 +32353,49 @@ def render_show_listing_block(
     listing_url: str,
     apply_key: str = "",
     description_html: str = "",
+    snapshot_html: str = "",
 ) -> str:
-    sandbox_attr = ' data-listing-sandbox="static"' if _listing_frame_static(listing_url) else ""
+    sandbox_attr = (
+        ' data-listing-sandbox="static"'
+        if listing_url and _listing_frame_static(listing_url)
+        else ""
+    )
     key_attr = f' data-desc-key="{esc(apply_key)}"' if apply_key else ""
-    fallback = ""
-    if apply_key or description_html:
-        loaded = "1" if description_html else "0"
-        fallback = (
-            '            <button type="button" class="job-listing-fallback">Saved description</button>\n'
-            f'            <div class="job-description is-collapsed" data-desc-loaded="{loaded}">'
-            f"{description_html}</div>\n"
-        )
+    if snapshot_html:
+        url_attr = ' data-listing-snapshot="1"'
+        frame_body = f'<template class="job-listing-snapshot">{snapshot_html}</template>'
+    else:
+        url_attr = f' data-listing-url="{esc(listing_url)}"'
+        frame_body = ""
     return (
         '          <div class="job-description-wrap">\n'
         '            <button type="button" class="job-description-toggle" '
-        f'data-listing-url="{esc(listing_url)}"{sandbox_attr}{key_attr} '
+        f'{url_attr}{sandbox_attr}{key_attr} '
         'aria-expanded="false">Show listing</button>\n'
-        '            <div class="job-listing-frame is-collapsed"></div>\n'
-        f"{fallback}"
+        f'            <div class="job-listing-frame is-collapsed">{frame_body}</div>\n'
         "          </div>"
     )
 
 
-def render_job_description_block(description_text: str, listing_url: str = "") -> str:
-    frame_url = job_listing_frame_url(listing_url)
-    if frame_url:
-        return render_show_listing_block(
-            frame_url,
-            description_html=format_job_description_html(description_text),
+def render_job_description_block(
+    description_text: str,
+    listing_url: str = "",
+    frame_url: str = "",
+    title: str = "",
+) -> str:
+    resolved = frame_url or listing_frame_url_for_card(listing_url)
+    if resolved:
+        return render_show_listing_block(resolved)
+    snapshot = listing_snapshot_html(listing_url)
+    if not snapshot:
+        snapshot = saved_listing_snapshot(
+            title,
+            format_job_description_html(description_text),
+            listing_url,
         )
-    body = format_job_description_html(description_text)
-    if not body:
-        return ""
-    return (
-        '          <div class="job-description-wrap">\n'
-        '            <button type="button" class="job-description-toggle" '
-        'aria-expanded="false">Expand description</button>\n'
-        f'            <div class="job-description is-collapsed">{body}</div>\n'
-        "          </div>"
-    )
+    if snapshot:
+        return render_show_listing_block("", snapshot_html=snapshot)
+    return ""
 
 
 def render_job_description_block_lazy(
@@ -31584,13 +32403,20 @@ def render_job_description_block_lazy(
     listing_url: str = "",
     *,
     has_description: bool = False,
+    frame_url: str = "",
+    title: str = "",
+    description_html: str = "",
 ) -> str:
-    frame_url = job_listing_frame_url(listing_url)
-    if frame_url:
-        return render_show_listing_block(
-            frame_url,
-            apply_key=apply_key if has_description else "",
-        )
+    resolved = frame_url or listing_frame_url_for_card(listing_url)
+    if resolved:
+        return render_show_listing_block(resolved, apply_key=apply_key)
+    snapshot = listing_snapshot_html(listing_url)
+    if not snapshot and description_html:
+        snapshot = saved_listing_snapshot(title, description_html, listing_url or apply_key)
+    if snapshot:
+        return render_show_listing_block("", apply_key=apply_key, snapshot_html=snapshot)
+    if not has_description:
+        return ""
     return (
         '          <div class="job-description-wrap">\n'
         '            <button type="button" class="job-description-toggle" '
@@ -31916,10 +32742,22 @@ def render_job(
     description_block = ""
     if lazy is not None and company is not None:
         lazy.register_job(job, company, pool=pool)
-        frame_url = job_listing_frame_url(link_url)
-        if frame_url or apply_key in lazy.descriptions:
+        frame_url = listing_frame_url_for_job(
+            link_url, co_cfg if isinstance(co_cfg, dict) else None
+        )
+        desc_record = lazy.descriptions.get(apply_key)
+        desc_html = desc_record.get("h") if isinstance(desc_record, dict) else ""
+        if frame_url or desc_html:
             description_block = (
-                f"\n{render_job_description_block_lazy(apply_key, link_url, has_description=apply_key in lazy.descriptions)}"
+                "\n"
+                + render_job_description_block_lazy(
+                    apply_key,
+                    link_url,
+                    has_description=bool(desc_html),
+                    frame_url=frame_url,
+                    title=job.title,
+                    description_html=str(desc_html or ""),
+                )
             )
     else:
         description_html = render_job_description_block(job.description_text, link_url)
@@ -39514,15 +40352,20 @@ def build_html(
       const btn = event.target.closest('.job-description-toggle');
       if (!btn) return;
       const panel = btn.nextElementSibling;
-      if (btn.dataset.listingUrl && panel?.classList.contains('job-listing-frame')) {{
+      if ((btn.dataset.listingUrl || btn.dataset.listingSnapshot) && panel?.classList.contains('job-listing-frame')) {{
         if (panel.classList.contains('is-collapsed') && !panel.querySelector('iframe')) {{
           const frame = document.createElement('iframe');
           frame.className = 'job-listing-iframe';
           frame.title = 'Job listing';
-          if (btn.dataset.listingSandbox === 'static') {{
-            frame.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox');
+          const snap = panel.querySelector('template.job-listing-snapshot');
+          if (snap) {{
+            frame.srcdoc = snap.innerHTML + '<script>document.addEventListener("click",function(event){{var btn=event.target.closest("button");if(!btn)return;var label=((btn.innerText||btn.getAttribute("aria-label")||"")+"").replace(/\\s+/g," ").trim().toLowerCase();if(!/^(accept all|accept|reject all|reject|allow all|agree|i agree|got it)$/.test(label))return;var banner=document.getElementById("versionized-cookie-banner");if(!banner){{var node=btn.parentElement;while(node&&node!==document.documentElement){{var mark=typeof node.className==="string"?node.className:"";if(/cookie-banner|cookie-notice/i.test(mark)){{banner=node;break;}}node=node.parentElement;}}}}if(banner&&banner!==btn)banner.remove();}});' + '<' + '/script>';
+          }} else if (btn.dataset.listingUrl) {{
+            if (btn.dataset.listingSandbox === 'static') {{
+              frame.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox');
+            }}
+            frame.src = btn.dataset.listingUrl;
           }}
-          frame.src = btn.dataset.listingUrl;
           panel.appendChild(frame);
         }}
         panel.classList.toggle('is-collapsed');
