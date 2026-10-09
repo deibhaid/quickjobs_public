@@ -847,6 +847,7 @@ def merge_runtime_documents_for_sync(
     remote_doc: dict[str, Any] | None,
     *,
     also_pipeline_docs: list[dict[str, Any]] | None = None,
+    jobs_from: str = "merge",
 ) -> dict[str, Any]:
     """Merge Mac pipeline edits with remote scrape novelty state.
 
@@ -858,12 +859,36 @@ def merge_runtime_documents_for_sync(
     ``~/Downloads/jobs/job-board-pipeline.json`` written by the board autosave)
     so Applied history is not dropped when ``~/.job_search/.../runtime.json``
     lags behind the Downloads mirror.
+
+    ``jobs_from="remote"`` keeps the NAS pipeline rows and ignores Mac rows.
+    Scrape state is still chosen by which copy is newer. Use that once browsers
+    save status on the NAS. The default ``merge`` keeps today's sync behavior.
     """
+    if jobs_from not in ("merge", "remote"):
+        raise ValueError(f"jobs_from must be merge or remote, not {jobs_from!r}")
     local = _normalize_runtime_document(local_doc if isinstance(local_doc, dict) else {})
     local_jobs = dict(local.get("jobs") or {})
     for extra in also_pipeline_docs or []:
         local_jobs = merge_pipeline_stores(local_jobs, _jobs_dict_from_pipeline_doc(extra))
     local["jobs"] = local_jobs
+    if jobs_from == "remote":
+        if not isinstance(remote_doc, dict):
+            raise ValueError("remote runtime is required when jobs_from is remote")
+        remote = _normalize_runtime_document(remote_doc)
+        jobs = dict(remote.get("jobs") or {})
+        ui = dict(remote.get("ui") or {})
+        ui.update(local.get("ui") or {})
+        state = prefer_runtime_scrape_state(local.get("state"), remote.get("state"))
+        return _normalize_runtime_document(
+            {
+                "version": RUNTIME_JSON_VERSION,
+                "updated_at": utc_now().isoformat(),
+                "jobs": jobs,
+                "applied": applied_history_records(jobs),
+                "state": state,
+                "ui": ui,
+            }
+        )
     if not isinstance(remote_doc, dict):
         local["applied"] = applied_history_records(local_jobs)
         return _normalize_runtime_document(local)
@@ -884,23 +909,410 @@ def merge_runtime_documents_for_sync(
     )
 
 
+class PipelineRowConflict(Exception):
+    """The browser's copy of a pipeline row is older than the file."""
+
+    def __init__(self, current: dict[str, str] | None) -> None:
+        self.current = dict(current or {})
+        super().__init__("pipeline row was updated elsewhere")
+
+
+def apply_pipeline_status_row(
+    doc: dict[str, Any],
+    key: str,
+    status: str,
+    base_updated: str | None,
+    meta: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """Update one pipeline row. Reject a write whose base copy is stale.
+
+    ``base_updated`` is the ``updated`` value the client loaded. An empty
+    base is accepted only when the key is not already in the file. Scrape
+    ``state`` is left unchanged. The server stamps ``updated``.
+    """
+    job_key = str(key or "").strip()
+    if not job_key:
+        raise ValueError("pipeline key is required")
+    current = _normalize_runtime_document(doc if isinstance(doc, dict) else {})
+    jobs = dict(current.get("jobs") or {})
+    prev = jobs.get(job_key)
+    loaded = str(base_updated or "").strip()
+    stored = str((prev or {}).get("updated") or "").strip()
+    if prev is not None and loaded != stored:
+        raise PipelineRowConflict(prev)
+    if prev is None and loaded:
+        raise PipelineRowConflict(None)
+    stamp = utc_now().isoformat()
+    entry = update_pipeline_entry(prev, str(status or ""), meta)
+    if entry is None:
+        jobs.pop(job_key, None)
+    else:
+        entry["at"] = stamp
+        entry["updated"] = stamp
+        jobs[job_key] = entry
+    current["jobs"] = jobs
+    current["applied"] = applied_history_records(jobs)
+    current["updated_at"] = stamp
+    return _normalize_runtime_document(current)
+
+
+def _load_pipeline_nas():
+    if str(SCRIPT_DIR) not in sys.path:
+        sys.path.insert(0, str(SCRIPT_DIR))
+    import pipeline_nas
+
+    return pipeline_nas
+
+
+def pipeline_nas_private_dir() -> Path:
+    """Token and row backups. This is outside the published HTML tree."""
+    override = os.environ.get("QUICKJOBS_PIPELINE_NAS_DIR", "").strip()
+    path = (
+        Path(override).expanduser()
+        if override
+        else Path.home() / ".job_search" / "quickjobs" / BOARD_SUFFIX / "pipeline-nas"
+    )
+    path.mkdir(parents=True, mode=0o700, exist_ok=True)
+    return path
+
+
+def pipeline_nas_runtime_path() -> Path:
+    return job_search_data_dir(Path(f"job-search-{BOARD_SUFFIX}.html")) / "job-board-runtime.json"
+
+
+def _read_runtime_file(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return _normalize_runtime_document({})
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"cannot read runtime {path}: {exc}") from exc
+    if not isinstance(raw, dict):
+        raise ValueError(f"runtime {path} is not an object")
+    return _normalize_runtime_document(raw)
+
+
+def _write_runtime_file(path: Path, doc: dict[str, Any]) -> None:
+    normalized = _normalize_runtime_document(doc)
+    atomic_write_text(path, json.dumps(normalized, indent=2) + "\n")
+
+
+def _pipeline_jobs_response(doc: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "ok": True,
+        "updated_at": str(doc.get("updated_at") or ""),
+        "jobs": doc.get("jobs") or {},
+    }
+
+
+def apply_nas_pipeline_post(
+    runtime_path: Path,
+    backup_dir: Path,
+    request: Any,
+) -> tuple[int, dict[str, Any]]:
+    """Apply one row under a file lock. Scrape state is not part of the request."""
+    nas = _load_pipeline_nas()
+    lock_path = runtime_path.with_name(runtime_path.name + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock_path, "a+", encoding="utf-8") as lock_fh:
+        fcntl.flock(lock_fh.fileno(), fcntl.LOCK_EX)
+        doc = _read_runtime_file(runtime_path)
+        before = len(doc.get("jobs") or {})
+        try:
+            updated = apply_pipeline_status_row(
+                doc,
+                request.key,
+                request.row_status,
+                request.base_updated,
+                request.meta or None,
+            )
+        except PipelineRowConflict as exc:
+            return 409, {"ok": False, "error": "conflict", "current": exc.current}
+        after = len(updated.get("jobs") or {})
+        if nas.pipeline_job_drop_is_too_large(before, after):
+            return 409, {"ok": False, "error": "refusing to delete many rows"}
+        nas.snapshot_pipeline_jobs(updated, backup_dir)
+        _write_runtime_file(runtime_path, updated)
+        entry = (updated.get("jobs") or {}).get(request.key)
+        return 200, {
+            "ok": True,
+            "key": request.key,
+            "updated": str((entry or {}).get("updated") or ""),
+            "entry": entry,
+        }
+
+
+def _make_nas_pipeline_handler(
+    runtime_path: Path,
+    token_record: dict[str, Any],
+    backup_dir: Path,
+    trusted_proxies: tuple[str, ...] = ("127.0.0.1",),
+):
+    from http.server import BaseHTTPRequestHandler
+
+    nas = _load_pipeline_nas()
+
+    class Handler(BaseHTTPRequestHandler):
+        def _send(self, status: int, payload: dict[str, Any]) -> None:
+            body = json.dumps(payload).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, format: str, *args: object) -> None:
+            return
+
+        def _dispatch(self) -> None:
+            length = int(self.headers.get("Content-Length") or "0")
+            raw = self.rfile.read(length) if length else b""
+            decision = nas.classify_pipeline_request(
+                self.command,
+                self.path,
+                self.headers,
+                raw,
+                token_record=token_record,
+                client_ip=self.client_address[0],
+                trusted_proxies=trusted_proxies,
+            )
+            if decision.action == "health":
+                self._send(200, {"ok": True})
+                return
+            if decision.action == "get":
+                try:
+                    doc = _read_runtime_file(runtime_path)
+                except ValueError as exc:
+                    self._send(500, {"ok": False, "error": str(exc)})
+                    return
+                self._send(200, _pipeline_jobs_response(doc))
+                return
+            if decision.action == "post":
+                status, payload = apply_nas_pipeline_post(runtime_path, backup_dir, decision)
+                self._send(status, payload)
+                return
+            self._send(decision.http_status, {"ok": False, "error": decision.error})
+
+        def do_GET(self) -> None:
+            self._dispatch()
+
+        def do_POST(self) -> None:
+            self._dispatch()
+
+        def do_OPTIONS(self) -> None:
+            self._dispatch()
+
+    return Handler
+
+
+def cmd_pipeline_token(argv: list[str] | None = None) -> int:
+    """Print a new sentence token once and store only its slow hash."""
+    nas = _load_pipeline_nas()
+    rotate = "--rotate" in (argv or [])
+    path = pipeline_nas_private_dir() / "token.json"
+    if path.is_file() and not rotate:
+        print(
+            f"pipeline-token: {path} already exists. Pass --rotate to replace it.",
+            file=sys.stderr,
+        )
+        return 1
+    token = nas.generate_pipeline_token()
+    nas.write_token_record(path, nas.hash_pipeline_token(token))
+    print(token)
+    print(f"Stored the hash in {path}. The sentence is not saved.", file=sys.stderr)
+    return 0
+
+
+def cmd_pipeline_serve(argv: list[str] | None = None) -> int:
+    """Serve one-row pipeline saves. HTTPS is required via X-Forwarded-Proto from a trusted proxy."""
+    from http.server import ThreadingHTTPServer
+
+    _argv = list(argv or [])
+    runtime = pipeline_nas_runtime_path()
+    port = 8766
+    bind = "127.0.0.1"
+    trusted: list[str] = []
+    i = 0
+    while i < len(_argv):
+        arg = _argv[i]
+        if arg == "--runtime":
+            i += 1
+            if i >= len(_argv):
+                print("pipeline-serve: --runtime needs a path", file=sys.stderr)
+                return 1
+            runtime = Path(_argv[i]).expanduser()
+        elif arg == "--port":
+            i += 1
+            if i >= len(_argv) or not _argv[i].isdigit():
+                print("pipeline-serve: --port needs a number", file=sys.stderr)
+                return 1
+            port = int(_argv[i])
+        elif arg == "--bind":
+            i += 1
+            if i >= len(_argv):
+                print("pipeline-serve: --bind needs an address", file=sys.stderr)
+                return 1
+            bind = _argv[i]
+        elif arg == "--trust-proxy":
+            i += 1
+            if i >= len(_argv):
+                print("pipeline-serve: --trust-proxy needs an address", file=sys.stderr)
+                return 1
+            trusted.append(_argv[i])
+        elif arg in ("-h", "--help"):
+            print(
+                "Usage: pipeline-serve [--runtime path] [--bind 127.0.0.1] [--port 8766]\n"
+                "       [--trust-proxy ADDRESS]\n"
+                "  A trusted proxy must send X-Forwarded-Proto: https.",
+                file=sys.stderr,
+            )
+            return 0
+        else:
+            print(f"pipeline-serve: unknown argument {arg}", file=sys.stderr)
+            return 1
+        i += 1
+    if bind != "127.0.0.1" and not trusted:
+        print(
+            "pipeline-serve: --bind other than 127.0.0.1 needs --trust-proxy",
+            file=sys.stderr,
+        )
+        return 1
+    trusted_proxies = tuple(dict.fromkeys([*trusted, "127.0.0.1"]))
+    token_path = pipeline_nas_private_dir() / "token.json"
+    if not token_path.is_file():
+        print(f"pipeline-serve: missing {token_path}. Run pipeline-token first.", file=sys.stderr)
+        return 1
+    record = json.loads(token_path.read_text(encoding="utf-8"))
+    backup_dir = pipeline_nas_private_dir() / "row-backups"
+    handler = _make_nas_pipeline_handler(runtime, record, backup_dir, trusted_proxies)
+    try:
+        server = ThreadingHTTPServer((bind, port), handler)
+    except OSError as exc:
+        print(f"pipeline-serve: {exc}", file=sys.stderr)
+        return 1
+    print(
+        f"pipeline row server on {bind}:{port} for {runtime}",
+        file=sys.stderr,
+    )
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        server.shutdown()
+    return 0
+
+
+def _load_jobs_source(path: Path) -> dict[str, Any]:
+    nas = _load_pipeline_nas()
+    raw = path.read_bytes()
+    if path.suffix == ".gz" or raw[:2] == b"\x1f\x8b":
+        import gzip
+
+        raw = gzip.decompress(raw)
+    loaded = json.loads(raw.decode("utf-8"))
+    if not isinstance(loaded, dict):
+        raise ValueError(f"{path} is not an object")
+    return nas.replace_pipeline_jobs({"jobs": {}, "state": {}, "ui": {}}, loaded)
+
+
+def cmd_restore_pipeline(argv: list[str] | None = None) -> int:
+    """Replace pipeline rows from a file. Scrape state stays. Requires --yes."""
+    nas = _load_pipeline_nas()
+    _argv = list(argv or [])
+    source: Path | None = None
+    runtime = pipeline_nas_runtime_path()
+    yes = False
+    i = 0
+    while i < len(_argv):
+        arg = _argv[i]
+        if arg == "--from":
+            i += 1
+            if i >= len(_argv):
+                print("restore: --from needs a path", file=sys.stderr)
+                return 1
+            source = Path(_argv[i]).expanduser()
+        elif arg == "--runtime":
+            i += 1
+            if i >= len(_argv):
+                print("restore: --runtime needs a path", file=sys.stderr)
+                return 1
+            runtime = Path(_argv[i]).expanduser()
+        elif arg == "--yes":
+            yes = True
+        elif arg in ("-h", "--help"):
+            print(
+                "Usage: restore --from PATH [--runtime PATH] --yes\n"
+                "  Copies pipeline rows onto the live runtime. Scrape state is left as it is.\n"
+                "  Without --yes, prints the paths and does not write.",
+                file=sys.stderr,
+            )
+            return 0
+        else:
+            print(f"restore: unknown argument {arg}", file=sys.stderr)
+            return 1
+        i += 1
+    if source is None:
+        print("restore: --from is required", file=sys.stderr)
+        return 1
+    print(
+        f"restore pipeline rows\n  from {source}\n  into {runtime}\n"
+        "Scrape state in the live file is left as it is. A gzipped snapshot of the live rows is written first.",
+        file=sys.stderr,
+    )
+    if not yes:
+        print("restore: pass --yes to write.", file=sys.stderr)
+        return 2
+    if not source.is_file():
+        print(f"restore: source not found: {source}", file=sys.stderr)
+        return 1
+    try:
+        incoming = _load_jobs_source(source)
+        live = _read_runtime_file(runtime)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"restore: {exc}", file=sys.stderr)
+        return 1
+    merged = nas.replace_pipeline_jobs(live, incoming)
+    merged["applied"] = applied_history_records(
+        {str(k): normalize_pipeline_entry(v) for k, v in (merged.get("jobs") or {}).items()}
+    )
+    merged = _normalize_runtime_document(merged)
+    backup_dir = pipeline_nas_private_dir() / "row-backups"
+    nas.snapshot_pipeline_jobs(live, backup_dir)
+    _write_runtime_file(runtime, merged)
+    print(
+        f"restore: wrote {len(merged.get('jobs') or {})} pipeline rows to {runtime}",
+        file=sys.stderr,
+    )
+    return 0
+
+
 def cmd_merge_runtime_sync(argv: list[str] | None = None) -> int:
     """Merge local + remote runtime JSON for sync (stdout path written in place)."""
     _argv = list(argv if argv is not None else [])
     also_paths: list[Path] = []
     positional: list[str] = []
+    jobs_from = "merge"
     i = 0
     while i < len(_argv):
         arg = _argv[i]
         if arg in ("-h", "--help"):
             print(
                 "Usage: merge-runtime-sync <local.json> <remote.json|-> <out.json> "
-                "[--also-pipeline path ...]\n"
+                "[--also-pipeline path ...] [--jobs-from merge|remote]\n"
                 "  remote.json may be '-' when remote file is missing.\n"
-                "  --also-pipeline merges Downloads/board pipeline mirrors into local jobs.",
+                "  --also-pipeline merges Downloads/board pipeline mirrors into local jobs.\n"
+                "  --jobs-from remote keeps NAS pipeline rows and still picks the newer scrape state.",
                 file=sys.stderr,
             )
             return 0
+        if arg == "--jobs-from":
+            i += 1
+            if i >= len(_argv) or _argv[i] not in ("merge", "remote"):
+                print("merge-runtime-sync: --jobs-from needs merge or remote", file=sys.stderr)
+                return 1
+            jobs_from = _argv[i]
+            i += 1
+            continue
         if arg == "--also-pipeline":
             i += 1
             if i >= len(_argv):
@@ -956,9 +1368,16 @@ def cmd_merge_runtime_sync(argv: list[str] | None = None) -> int:
             return 1
         if isinstance(loaded, dict):
             also_docs.append(loaded)
-    merged = merge_runtime_documents_for_sync(
-        local_doc, remote_doc, also_pipeline_docs=also_docs or None
-    )
+    try:
+        merged = merge_runtime_documents_for_sync(
+            local_doc,
+            remote_doc,
+            also_pipeline_docs=also_docs or None,
+            jobs_from=jobs_from,
+        )
+    except ValueError as exc:
+        print(f"merge-runtime-sync: {exc}", file=sys.stderr)
+        return 1
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(merged, indent=2) + "\n", encoding="utf-8")
     local_state = local_doc.get("state") if isinstance(local_doc.get("state"), dict) else {}
@@ -35356,6 +35775,10 @@ def build_html(
         <button type="button" class="excluded-toggle" id="link-runtime-file" hidden>Link runtime file</button>
         <button type="button" class="excluded-toggle" id="link-pipeline-file" hidden style="margin-left:0.35rem;opacity:0.75;font-size:0.8rem">Link HTML file (legacy)</button>
         <span id="pipeline-save-status"></span>
+        <label id="pipeline-token-label" hidden style="margin-left:0.6rem">Pipeline token
+          <input id="pipeline-token-input" type="password" autocomplete="off" spellcheck="false" style="margin-left:0.35rem">
+          <span id="pipeline-token-mark" hidden aria-live="polite" style="margin-left:0.4rem"></span>
+        </label>
       </p>
     </div>
   </header>
@@ -35419,6 +35842,12 @@ def build_html(
     const pipelineEl = document.getElementById('pipeline-data');
     const pipelineConfigEl = document.getElementById('pipeline-config');
     const PIPELINE_STORAGE_KEY = 'job-board-pipeline-{BOARD_SUFFIX}';
+    const PIPELINE_TOKEN_STORAGE_KEY = 'job-board-pipeline-token-{BOARD_SUFFIX}';
+    const PIPELINE_PENDING_STORAGE_KEY = 'job-board-pipeline-pending-{BOARD_SUFFIX}';
+    const PIPELINE_ROW_URL = '/pipeline';
+    let nasPipelineStale = false;
+    let nasServerBases = {{}};
+    const nasRowGeneration = {{}};
     const TEXT_FILTER_STORAGE_KEY = 'job-board-text-filters-{BOARD_SUFFIX}';
     const TEXT_FILTER_COMBINE_STORAGE_KEY = 'job-board-text-filter-combine-{BOARD_SUFFIX}';
     const BOARD_UI_STORAGE_KEY = 'job-board-ui-{BOARD_SUFFIX}';
@@ -36449,6 +36878,227 @@ def build_html(
       try {{ localStorage.setItem(PIPELINE_STORAGE_KEY, JSON.stringify(store)); }} catch (_) {{}}
     }}
 
+    function pipelineTokenValue() {{
+      const input = document.getElementById('pipeline-token-input');
+      const typed = (input && input.value || '').trim();
+      if (typed) return typed;
+      try {{
+        return (localStorage.getItem(PIPELINE_TOKEN_STORAGE_KEY) || '').trim();
+      }} catch (_) {{
+        return '';
+      }}
+    }}
+
+    function readNasPending() {{
+      try {{
+        const raw = JSON.parse(localStorage.getItem(PIPELINE_PENDING_STORAGE_KEY) || '{{}}');
+        return raw && typeof raw === 'object' ? raw : {{}};
+      }} catch (_) {{
+        return {{}};
+      }}
+    }}
+
+    function writeNasPending(pending) {{
+      try {{
+        localStorage.setItem(PIPELINE_PENDING_STORAGE_KEY, JSON.stringify(pending));
+      }} catch (_) {{}}
+    }}
+
+    function rememberNasPending(key, status, baseUpdated, meta) {{
+      const pending = readNasPending();
+      pending[key] = {{
+        status: status || '',
+        base_updated: baseUpdated || '',
+        meta: meta || {{}},
+      }};
+      writeNasPending(pending);
+    }}
+
+    function forgetNasPending(key) {{
+      const pending = readNasPending();
+      delete pending[key];
+      writeNasPending(pending);
+    }}
+
+    function applyJobsToPipelineControls(jobs) {{
+      document.querySelectorAll('.pipeline-status').forEach(sel => {{
+        const key = sel.dataset.applyKey;
+        const entry = jobs[key];
+        const status = entry && entry.status ? entry.status : '';
+        sel.value = status;
+        syncJobPipelineUi(sel.closest('.job'), status);
+      }});
+    }}
+
+    function setPipelineTokenMark(state) {{
+      const mark = document.getElementById('pipeline-token-mark');
+      if (!mark) return;
+      if (state === 'valid') {{
+        mark.hidden = false;
+        mark.textContent = '✓';
+        mark.style.color = 'var(--strong)';
+        mark.title = 'Valid token';
+        mark.setAttribute('aria-label', 'Valid token');
+        return;
+      }}
+      if (state === 'invalid') {{
+        mark.hidden = false;
+        mark.textContent = '✕';
+        mark.style.color = 'var(--warn)';
+        mark.title = 'Invalid token';
+        mark.setAttribute('aria-label', 'Invalid token');
+        return;
+      }}
+      mark.hidden = true;
+      mark.textContent = '';
+      mark.style.color = '';
+      mark.title = '';
+      mark.removeAttribute('aria-label');
+    }}
+
+    async function refreshNasPipeline() {{
+      const label = document.getElementById('pipeline-token-label');
+      const input = document.getElementById('pipeline-token-input');
+      if (location.protocol !== 'https:') {{
+        if (label) label.hidden = true;
+        setPipelineTokenMark('');
+        return;
+      }}
+      if (label) label.hidden = false;
+      if (input && input.dataset.wired !== '1') {{
+        input.dataset.wired = '1';
+        try {{
+          input.value = localStorage.getItem(PIPELINE_TOKEN_STORAGE_KEY) || '';
+        }} catch (_) {{}}
+        input.addEventListener('change', () => {{
+          try {{
+            localStorage.setItem(PIPELINE_TOKEN_STORAGE_KEY, input.value.trim());
+          }} catch (_) {{}}
+          void refreshNasPipeline();
+        }});
+      }}
+      const token = pipelineTokenValue();
+      if (!token) {{
+        nasPipelineStale = true;
+        setPipelineTokenMark('');
+        setPipelineSaveStatus('Enter the pipeline token to load and save status.');
+        return;
+      }}
+      try {{
+        const resp = await fetch(PIPELINE_ROW_URL, {{
+          method: 'GET',
+          cache: 'no-store',
+          headers: {{ 'X-Quickjobs-Token': token }},
+        }});
+        if (resp.status === 401) {{
+          nasPipelineStale = true;
+          setPipelineTokenMark('invalid');
+          setPipelineSaveStatus('Invalid token. Status changes stay in this browser.');
+          return;
+        }}
+        if (!resp.ok) throw new Error(String(resp.status));
+        const data = await resp.json();
+        const jobs = data.jobs && typeof data.jobs === 'object' ? data.jobs : {{}};
+        nasPipelineStale = false;
+        nasServerBases = {{}};
+        Object.keys(jobs).forEach(key => {{
+          nasServerBases[key] = String((jobs[key] && jobs[key].updated) || '');
+        }});
+        writePipeline(jobs);
+        applyJobsToPipelineControls(jobs);
+        const pending = readNasPending();
+        Object.keys(pending).forEach(key => {{
+          const row = pending[key];
+          const serverUpdated = nasServerBases[key] || '';
+          if ((row.base_updated || '') !== serverUpdated) {{
+            const store = readPipeline();
+            if (row.status) store[key] = {{ ...(store[key] || {{}}), ...(row.meta || {{}}), status: row.status }};
+            else delete store[key];
+            writePipeline(store);
+            applyJobsToPipelineControls(store);
+            return;
+          }}
+          void persistNasPipelineRow(key, row.status || '', {{ updated: row.base_updated }}, row.meta || {{}});
+        }});
+        setPipelineTokenMark('valid');
+        setPipelineSaveStatus('Loaded pipeline status from the NAS.');
+      }} catch (_) {{
+        nasPipelineStale = true;
+        setPipelineTokenMark('');
+        setPipelineSaveStatus('Showing the last copy on this browser. The NAS copy could not be loaded, so changes stay here.');
+      }}
+    }}
+
+    async function persistNasPipelineRow(key, status, prev, meta, attempt) {{
+      if (location.protocol !== 'https:') return;
+      const tryNumber = attempt || 0;
+      nasRowGeneration[key] = (nasRowGeneration[key] || 0) + (tryNumber === 0 ? 1 : 0);
+      const generation = nasRowGeneration[key];
+      const baseUpdated = Object.prototype.hasOwnProperty.call(nasServerBases, key)
+        ? (nasServerBases[key] || '')
+        : '';
+      if (nasPipelineStale || !pipelineTokenValue()) {{
+        rememberNasPending(key, status, baseUpdated, meta);
+        setPipelineSaveStatus(
+          pipelineTokenValue()
+            ? 'Unsaved. The NAS copy is not loaded, so this change stays in this browser.'
+            : 'Unsaved. Enter the pipeline token to save to the NAS.'
+        );
+        return;
+      }}
+      try {{
+        const resp = await fetch(PIPELINE_ROW_URL, {{
+          method: 'POST',
+          headers: {{
+            'Content-Type': 'application/json',
+            'X-Quickjobs-Token': pipelineTokenValue(),
+          }},
+          body: JSON.stringify({{
+            key,
+            status: status || '',
+            base_updated: baseUpdated,
+            meta: meta || {{}},
+          }}),
+        }});
+        if (nasRowGeneration[key] !== generation) return;
+        if (resp.status === 401) {{
+          rememberNasPending(key, status, baseUpdated, meta);
+          setPipelineTokenMark('invalid');
+          setPipelineSaveStatus('Unsaved. Invalid token.');
+          return;
+        }}
+        if (resp.status === 409) {{
+          rememberNasPending(key, status, baseUpdated, meta);
+          setPipelineSaveStatus('Unsaved. This job was saved somewhere else. Reload to see that copy.');
+          return;
+        }}
+        if (!resp.ok) throw new Error(String(resp.status));
+        const data = await resp.json();
+        const store = readPipeline();
+        if (data.entry) {{
+          store[key] = data.entry;
+          nasServerBases[key] = String(data.updated || data.entry.updated || '');
+        }} else {{
+          delete store[key];
+          delete nasServerBases[key];
+        }}
+        writePipeline(store);
+        forgetNasPending(key);
+        setPipelineTokenMark('valid');
+        setPipelineSaveStatus('Saved to the NAS.');
+      }} catch (_) {{
+        if (nasRowGeneration[key] !== generation) return;
+        rememberNasPending(key, status, baseUpdated, meta);
+        setPipelineSaveStatus('Unsaved. The NAS did not take this change. Retrying.');
+        const delays = [15000, 30000, 60000, 120000];
+        if (tryNumber >= delays.length) return;
+        window.setTimeout(() => {{
+          if (nasRowGeneration[key] !== generation) return;
+          void persistNasPipelineRow(key, status, {{ updated: baseUpdated }}, meta, tryNumber + 1);
+        }}, delays[tryNumber]);
+      }}
+    }}
+
     async function persistPipeline(store) {{
       if (pipelineSaveMode === 'server') {{
         try {{
@@ -36690,6 +37340,10 @@ def build_html(
       applyRoleFilter();
       updateStats();
 
+      if (location.protocol === 'https:') {{
+        await persistNasPipelineRow(key, status, prev, meta);
+        return;
+      }}
       await ensureRuntimeFileLinked();
       await persistPipeline(store);
     }}
@@ -40357,13 +41011,11 @@ def build_html(
           const frame = document.createElement('iframe');
           frame.className = 'job-listing-iframe';
           frame.title = 'Job listing';
+          frame.setAttribute('sandbox', 'allow-scripts allow-popups allow-popups-to-escape-sandbox');
           const snap = panel.querySelector('template.job-listing-snapshot');
           if (snap) {{
             frame.srcdoc = snap.innerHTML + '<script>document.addEventListener("click",function(event){{var btn=event.target.closest("button");if(!btn)return;var label=((btn.innerText||btn.getAttribute("aria-label")||"")+"").replace(/\\s+/g," ").trim().toLowerCase();if(!/^(accept all|accept|reject all|reject|allow all|agree|i agree|got it)$/.test(label))return;var banner=document.getElementById("versionized-cookie-banner");if(!banner){{var node=btn.parentElement;while(node&&node!==document.documentElement){{var mark=typeof node.className==="string"?node.className:"";if(/cookie-banner|cookie-notice/i.test(mark)){{banner=node;break;}}node=node.parentElement;}}}}if(banner&&banner!==btn)banner.remove();}});' + '<' + '/script>';
           }} else if (btn.dataset.listingUrl) {{
-            if (btn.dataset.listingSandbox === 'static') {{
-              frame.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox');
-            }}
             frame.src = btn.dataset.listingUrl;
           }}
           panel.appendChild(frame);
@@ -40434,21 +41086,28 @@ def build_html(
       initSearchKeywordEditors();
       initProfileEditors();
       restorePipelineFromStorage();
-      const savedHandle = await loadSavedRuntimeHandle();
-      if (savedHandle) {{
-        const reconnected = await tryReconnectRuntimeFile(true);
-        if (reconnected) await mergePipelineFromRuntimeFile();
-      }} else if (window.showOpenFilePicker) {{
-        const promptedKey = `quickjobs-runtime-prompted-${{runtimeFilePickerId()}}`;
-        if (!localStorage.getItem(promptedKey)) {{
-          localStorage.setItem(promptedKey, '1');
-          const linked = await linkRuntimeFile({{ prompt: true }});
-          if (linked) await mergePipelineFromRuntimeFile();
+      await refreshNasPipeline();
+      if (location.protocol === 'https:') {{
+        if (linkRuntimeFileBtn) linkRuntimeFileBtn.hidden = true;
+        if (linkPipelineFileBtn) linkPipelineFileBtn.hidden = true;
+      }} else {{
+        const savedHandle = await loadSavedRuntimeHandle();
+        if (savedHandle) {{
+          const reconnected = await tryReconnectRuntimeFile(true);
+          if (reconnected) await mergePipelineFromRuntimeFile();
+        }} else if (window.showOpenFilePicker) {{
+          const promptedKey = `quickjobs-runtime-prompted-${{runtimeFilePickerId()}}`;
+          if (!localStorage.getItem(promptedKey)) {{
+            localStorage.setItem(promptedKey, '1');
+            const linked = await linkRuntimeFile({{ prompt: true }});
+            if (linked) await mergePipelineFromRuntimeFile();
+          }}
         }}
+        const uiFromRuntime = await mergeBoardUiFromRuntimeFile();
+        if (!uiFromRuntime) initBoardUiStateSync();
+        else renderTextFilterChips();
+        await refreshPipelineSaveMode();
       }}
-      const uiFromRuntime = await mergeBoardUiFromRuntimeFile();
-      if (!uiFromRuntime) initBoardUiStateSync();
-      else renderTextFilterChips();
       mountExpandedLazySections();
       relocateAllPipelineJobs();
       observeLazyCompanyGroups(document.getElementById('job-listings-body'));
@@ -40459,7 +41118,6 @@ def build_html(
       applyCompanyFilter();
       markTruncatedLocBadges(document);
       applyRoleFilter();
-      await refreshPipelineSaveMode();
     }}
 
     void (async () => {{
@@ -41631,6 +42289,12 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_rebuild_snapshot(cli_argv[1:])
     if cli_argv and cli_argv[0] == "merge-runtime-sync":
         return cmd_merge_runtime_sync(cli_argv[1:])
+    if cli_argv and cli_argv[0] == "pipeline-token":
+        return cmd_pipeline_token(cli_argv[1:])
+    if cli_argv and cli_argv[0] == "pipeline-serve":
+        return cmd_pipeline_serve(cli_argv[1:])
+    if cli_argv and cli_argv[0] == "restore":
+        return cmd_restore_pipeline(cli_argv[1:])
     if cli_argv and cli_argv[0] == "audit-favicon-domains":
         return cmd_audit_favicon_domains(cli_argv[1:])
     if cli_argv and cli_argv[0] == "resolve-favicons":

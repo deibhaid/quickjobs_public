@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -156,6 +157,94 @@ class MergeRuntimeSyncTests(unittest.TestCase):
             self.assertEqual(rc, 0)
             doc = json.loads(out_p.read_text(encoding="utf-8"))
             self.assertIn("https://example.com/ford", doc["jobs"])
+
+    def test_jobs_from_remote_keeps_nas_rows(self) -> None:
+        qj = self.qj
+        local = {
+            "jobs": {"https://example.com/mac": {"status": "applied", "updated": "2026-10-08"}},
+            "state": {"urls": ["https://old.example/1"], "run_at": "2026-07-02T13:50:37+00:00"},
+        }
+        remote = {
+            "jobs": {"https://example.com/nas": {"status": "screen", "updated": "2026-10-08T12:00:00+00:00"}},
+            "state": {
+                "urls": ["https://new.example/1"],
+                "run_at": "2026-08-04T22:35:40+00:00",
+            },
+        }
+        downloads = {"jobs": {"https://example.com/downloads": {"status": "pass", "updated": "2026-10-01"}}}
+        merged = qj.merge_runtime_documents_for_sync(
+            local, remote, also_pipeline_docs=[downloads], jobs_from="remote"
+        )
+        self.assertEqual(set(merged["jobs"]), {"https://example.com/nas"})
+        self.assertEqual(merged["state"]["run_at"], remote["state"]["run_at"])
+        with self.assertRaises(ValueError):
+            qj.merge_runtime_documents_for_sync(local, None, jobs_from="remote")
+
+    def test_status_row_rejects_a_stale_base(self) -> None:
+        qj = self.qj
+        doc = {
+            "jobs": {
+                "https://example.com/a": {
+                    "status": "active",
+                    "at": "2026-10-01",
+                    "updated": "2026-10-01T00:00:00+00:00",
+                }
+            },
+            "state": {"urls": ["https://example.com/new"], "run_at": "2026-10-08T00:00:00+00:00"},
+        }
+        with self.assertRaises(qj.PipelineRowConflict):
+            qj.apply_pipeline_status_row(doc, "https://example.com/a", "applied", "2026-09-01")
+        updated = qj.apply_pipeline_status_row(
+            doc, "https://example.com/a", "applied", "2026-10-01T00:00:00+00:00"
+        )
+        self.assertEqual(updated["jobs"]["https://example.com/a"]["status"], "applied")
+        self.assertNotEqual(
+            updated["jobs"]["https://example.com/a"]["updated"],
+            "2026-10-01T00:00:00+00:00",
+        )
+        self.assertEqual(updated["state"]["urls"], ["https://example.com/new"])
+        self.assertEqual(doc["jobs"]["https://example.com/a"]["status"], "active")
+
+    def test_restore_requires_yes_and_keeps_scrape_state(self) -> None:
+        qj = self.qj
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            os.environ["QUICKJOBS_PIPELINE_NAS_DIR"] = str(root / "private")
+            self.addCleanup(os.environ.pop, "QUICKJOBS_PIPELINE_NAS_DIR", None)
+            runtime = root / "job-board-runtime.json"
+            source = root / "source.json"
+            runtime.write_text(
+                json.dumps(
+                    {
+                        "version": 1,
+                        "jobs": {"https://example.com/live": {"status": "pass", "updated": "2026-10-01"}},
+                        "state": {"urls": ["https://example.com/new"], "run_at": "2026-10-08T00:00:00+00:00"},
+                        "ui": {},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            source.write_text(
+                json.dumps(
+                    {
+                        "jobs": {"https://example.com/restored": {"status": "applied", "updated": "2026-10-02"}},
+                        "state": {"urls": ["https://stale"], "run_at": "2020-01-01T00:00:00+00:00"},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            rc = qj.cmd_restore_pipeline(["--from", str(source), "--runtime", str(runtime)])
+            self.assertEqual(rc, 2)
+            self.assertIn("https://example.com/live", json.loads(runtime.read_text())["jobs"])
+            rc = qj.cmd_restore_pipeline(
+                ["--from", str(source), "--runtime", str(runtime), "--yes"]
+            )
+            self.assertEqual(rc, 0)
+            doc = json.loads(runtime.read_text(encoding="utf-8"))
+            self.assertEqual(set(doc["jobs"]), {"https://example.com/restored"})
+            self.assertEqual(doc["state"]["urls"], ["https://example.com/new"])
 
 
 if __name__ == "__main__":
