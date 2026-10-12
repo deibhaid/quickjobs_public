@@ -9,6 +9,7 @@ import os
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -177,8 +178,76 @@ class MergeRuntimeSyncTests(unittest.TestCase):
         )
         self.assertEqual(set(merged["jobs"]), {"https://example.com/nas"})
         self.assertEqual(merged["state"]["run_at"], remote["state"]["run_at"])
+        local["ui"] = {"theme": "light", "greenhouse_detail_offsets": {"acme": 1}}
+        remote["ui"] = {"theme": "dark", "greenhouse_detail_offsets": {"acme": 9}}
+        kept = qj.merge_runtime_documents_for_sync(
+            local, remote, also_pipeline_docs=[downloads], jobs_from="remote"
+        )
+        self.assertEqual(kept["ui"]["theme"], "dark")
+        self.assertEqual(kept["ui"]["greenhouse_detail_offsets"]["acme"], 9)
         with self.assertRaises(ValueError):
             qj.merge_runtime_documents_for_sync(local, None, jobs_from="remote")
+
+    def test_board_ui_save_keeps_scrape_fields(self) -> None:
+        qj = self.qj
+        doc = {
+            "jobs": {"https://example.com/a": {"status": "pass", "updated": "2026-10-01"}},
+            "state": {"urls": ["https://example.com/new"], "run_at": "2026-10-08T00:00:00+00:00"},
+            "ui": {
+                "theme": "dark",
+                "greenhouse_detail_offsets": {"acme": 4},
+            },
+        }
+        updated = qj.apply_pipeline_board_ui(
+            doc,
+            {
+                "theme": "light",
+                "profileFields": {"skills": ["kubernetes"], "salary_floor": 200000},
+                "searchKeywordLists": {"keywords_include_tier1": ["platform"]},
+                "greenhouse_detail_offsets": {"acme": 0},
+            },
+        )
+        self.assertEqual(updated["ui"]["theme"], "light")
+        self.assertEqual(updated["ui"]["profileFields"]["skills"], ["kubernetes"])
+        self.assertEqual(updated["ui"]["greenhouse_detail_offsets"]["acme"], 4)
+        self.assertEqual(updated["jobs"]["https://example.com/a"]["status"], "pass")
+        self.assertEqual(updated["state"]["urls"], ["https://example.com/new"])
+        self.assertEqual(doc["ui"]["theme"], "dark")
+
+    def test_save_run_state_keeps_saved_rows_and_settings(self) -> None:
+        qj = self.qj
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            os.environ["JOB_SEARCH_DIR"] = str(root)
+            self.addCleanup(os.environ.pop, "JOB_SEARCH_DIR", None)
+            html = root / "job-search-quickjobs.html"
+            html.write_text("<html></html>", encoding="utf-8")
+            runtime = root / "quickjobs" / "job-board-runtime.json"
+            runtime.parent.mkdir(parents=True, exist_ok=True)
+            runtime.write_text(
+                json.dumps(
+                    {
+                        "version": 1,
+                        "jobs": {
+                            "https://example.com/a": {
+                                "status": "applied",
+                                "updated": "2026-10-11T00:00:00+00:00",
+                            }
+                        },
+                        "state": {"urls": ["https://old"], "run_at": "2026-10-01T00:00:00+00:00"},
+                        "ui": {"theme": "dark", "textFilters": [{"text": "sre", "mode": "contains"}]},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            when = datetime(2026, 10, 12, 7, 0, tzinfo=timezone.utc)
+            qj.save_run_state(html, {"https://new"}, when)
+            saved = json.loads(runtime.read_text(encoding="utf-8"))
+            self.assertEqual(saved["jobs"]["https://example.com/a"]["status"], "applied")
+            self.assertEqual(saved["ui"]["theme"], "dark")
+            self.assertEqual(saved["ui"]["textFilters"][0]["text"], "sre")
+            self.assertEqual(saved["state"]["urls"], ["https://new"])
 
     def test_status_row_rejects_a_stale_base(self) -> None:
         qj = self.qj
@@ -245,6 +314,88 @@ class MergeRuntimeSyncTests(unittest.TestCase):
             doc = json.loads(runtime.read_text(encoding="utf-8"))
             self.assertEqual(set(doc["jobs"]), {"https://example.com/restored"})
             self.assertEqual(doc["state"]["urls"], ["https://example.com/new"])
+
+    def test_board_ui_updates_scrape_configs(self) -> None:
+        qj = self.qj
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            profile = root / "profile.json"
+            base = root / "base.json"
+            profile.write_text(
+                json.dumps(
+                    {
+                        "profile": {
+                            "name": "User",
+                            "skills": ["old"],
+                            "salary_floor": 1,
+                            "resident_status": "citizen",
+                            "domain_years": {"linux": 10},
+                        },
+                        "company_ids_exclude": ["keep", "drop"],
+                        "company_ids_exclude_notes": {
+                            "keep": "still out",
+                            "drop": "gone",
+                        },
+                        "overrides": {"acme": {}},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            base.write_text(
+                json.dumps(
+                    {
+                        "keywords_include_tier1": ["old"],
+                        "keywords_include_tier2": ["old2"],
+                        "search_keywords_extra": [],
+                        "keywords_exclude": ["intern"],
+                        "other": True,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            qj.apply_board_ui_to_scrape_configs(
+                {
+                    "profileFields": {
+                        "skills": ["kubernetes", ""],
+                        "salary_floor": 200000,
+                        "resident_status": "green_card",
+                        "company_ids_exclude": ["keep", "newco"],
+                    },
+                    "searchKeywordLists": {
+                        "keywords_include_tier1": ["platform"],
+                        "keywords_exclude": ["intern", "junior"],
+                    },
+                },
+                profile_path=profile,
+                base_path=base,
+            )
+            saved_profile = json.loads(profile.read_text(encoding="utf-8"))
+            saved_base = json.loads(base.read_text(encoding="utf-8"))
+            self.assertEqual(saved_profile["profile"]["skills"], ["kubernetes"])
+            self.assertEqual(saved_profile["profile"]["salary_floor"], 200000)
+            self.assertEqual(saved_profile["profile"]["resident_status"], "green_card")
+            self.assertEqual(saved_profile["profile"]["domain_years"]["linux"], 10)
+            self.assertEqual(saved_profile["profile"]["name"], "User")
+            self.assertEqual(saved_profile["company_ids_exclude"], ["keep", "newco"])
+            self.assertEqual(saved_profile["company_ids_exclude_notes"], {"keep": "still out"})
+            self.assertIn("acme", saved_profile["overrides"])
+            self.assertEqual(saved_base["keywords_include_tier1"], ["platform"])
+            self.assertEqual(saved_base["keywords_include_tier2"], ["old2"])
+            self.assertEqual(saved_base["keywords_exclude"], ["intern", "junior"])
+            self.assertIs(saved_base["other"], True)
+            missing = root / "missing.json"
+            qj.apply_board_ui_to_scrape_configs(
+                {"profileFields": {"skills": ["x"]}},
+                profile_path=missing,
+                base_path=missing,
+            )
+            self.assertFalse(missing.exists())
+            with self.assertRaises(ValueError):
+                qj.apply_board_ui_to_scrape_configs(
+                    {"profileFields": {"resident_status": "nope"}},
+                    profile_path=profile,
+                    base_path=base,
+                )
 
 
 if __name__ == "__main__":

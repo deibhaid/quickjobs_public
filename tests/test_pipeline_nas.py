@@ -139,6 +139,22 @@ class PipelineNasTests(unittest.TestCase):
         )
         self.assertEqual(accepted.action, "post")
         self.assertEqual(accepted.meta["title"], "Role")
+        settings = nas.classify_pipeline_request(
+            "POST",
+            "/pipeline",
+            headers,
+            b'{"ui":{"theme":"dark","profileFields":{"skills":["kubernetes"]}}}',
+            token_record=record,
+        )
+        self.assertEqual(settings.action, "post_ui")
+        mixed = nas.classify_pipeline_request(
+            "POST",
+            "/pipeline",
+            headers,
+            b'{"ui":{},"key":"https://example.com/a"}',
+            token_record=record,
+        )
+        self.assertEqual(mixed.http_status, 400)
 
     def test_drop_guard_allows_one_row(self) -> None:
         self.assertFalse(nas.pipeline_job_drop_is_too_large(100, 99))

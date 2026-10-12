@@ -860,9 +860,10 @@ def merge_runtime_documents_for_sync(
     so Applied history is not dropped when ``~/.job_search/.../runtime.json``
     lags behind the Downloads mirror.
 
-    ``jobs_from="remote"`` keeps the NAS pipeline rows and ignores Mac rows.
-    Scrape state is still chosen by which copy is newer. Use that once browsers
-    save status on the NAS. The default ``merge`` keeps today's sync behavior.
+    ``jobs_from="remote"`` keeps the NAS pipeline rows and the NAS board
+    settings, and ignores Mac rows and Mac board settings. Scrape state is
+    still chosen by which copy is newer. The default ``merge`` keeps today's
+    sync behavior.
     """
     if jobs_from not in ("merge", "remote"):
         raise ValueError(f"jobs_from must be merge or remote, not {jobs_from!r}")
@@ -876,8 +877,8 @@ def merge_runtime_documents_for_sync(
             raise ValueError("remote runtime is required when jobs_from is remote")
         remote = _normalize_runtime_document(remote_doc)
         jobs = dict(remote.get("jobs") or {})
+        # Board settings are saved on the NAS with the token. A Mac copy must not cover them.
         ui = dict(remote.get("ui") or {})
-        ui.update(local.get("ui") or {})
         state = prefer_runtime_scrape_state(local.get("state"), remote.get("state"))
         return _normalize_runtime_document(
             {
@@ -956,6 +957,125 @@ def apply_pipeline_status_row(
     return _normalize_runtime_document(current)
 
 
+def _plain_json_value(value: Any, depth: int = 0) -> Any:
+    """Copy a JSON value. Reject anything the board settings object should not hold."""
+    if depth > 8:
+        raise ValueError("ui is too deep")
+    if isinstance(value, bool) or value is None or isinstance(value, (str, int, float)):
+        if isinstance(value, float) and value != value:
+            raise ValueError("ui has an invalid number")
+        return value
+    if isinstance(value, list):
+        return [_plain_json_value(item, depth + 1) for item in value]
+    if isinstance(value, dict):
+        out: dict[str, Any] = {}
+        for key, item in value.items():
+            name = str(key).strip()
+            if not name:
+                continue
+            out[name] = _plain_json_value(item, depth + 1)
+        return out
+    raise ValueError("ui has an unsupported value")
+
+
+def apply_pipeline_board_ui(doc: dict[str, Any], ui: dict[str, Any]) -> dict[str, Any]:
+    """Merge board settings into the runtime document.
+
+    Scrape rotation offsets stored in ``ui`` stay as they are. Job rows and
+    scrape ``state`` are not part of this write.
+    """
+    current = _normalize_runtime_document(doc if isinstance(doc, dict) else {})
+    incoming = _plain_json_value(ui)
+    if not isinstance(incoming, dict):
+        raise ValueError("ui must be an object")
+    for key in _DETAIL_ROTATION_UI_KEYS:
+        incoming.pop(key, None)
+    stored = dict(current.get("ui") or {})
+    stored.update(incoming)
+    current["ui"] = stored
+    current["updated_at"] = utc_now().isoformat()
+    return _normalize_runtime_document(current)
+
+
+_SCRAPE_KEYWORD_KEYS = (
+    "keywords_include_tier1",
+    "keywords_include_tier2",
+    "search_keywords_extra",
+    "keywords_exclude",
+)
+_SCRAPE_RESIDENT_CHOICES = frozenset({"citizen", "green_card", "h1b"})
+
+
+def _string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        raise ValueError("expected a list of strings")
+    out: list[str] = []
+    for item in value:
+        text = str(item).strip()
+        if text:
+            out.append(text)
+    return out
+
+
+def apply_board_ui_to_scrape_configs(
+    ui: dict[str, Any],
+    *,
+    profile_path: Path | None = None,
+    base_path: Path | None = None,
+) -> None:
+    """Copy board skills, excludes, and title keywords into the files the scrape reads.
+
+    Other fields in those files stay, including exclude notes for companies that
+    are still excluded. A missing file is left missing.
+    """
+    profile_fields = ui.get("profileFields")
+    if isinstance(profile_fields, dict):
+        path = profile_path or quickjobs_profile_config_path()
+        if path.is_file():
+            doc = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(doc, dict):
+                raise ValueError("profile config is not an object")
+            profile = doc.get("profile")
+            if not isinstance(profile, dict):
+                profile = {}
+                doc["profile"] = profile
+            if "skills" in profile_fields:
+                profile["skills"] = _string_list(profile_fields.get("skills"))
+            if "salary_floor" in profile_fields:
+                floor = int(profile_fields.get("salary_floor"))
+                if floor < 0:
+                    raise ValueError("salary floor cannot be negative")
+                profile["salary_floor"] = floor
+            if "resident_status" in profile_fields:
+                resident = str(profile_fields.get("resident_status") or "").strip().lower()
+                if resident not in _SCRAPE_RESIDENT_CHOICES:
+                    raise ValueError("resident status is not recognized")
+                profile["resident_status"] = resident
+            if "company_ids_exclude" in profile_fields:
+                excluded = _string_list(profile_fields.get("company_ids_exclude"))
+                doc["company_ids_exclude"] = excluded
+                notes = doc.get("company_ids_exclude_notes")
+                if not isinstance(notes, dict):
+                    notes = {}
+                doc["company_ids_exclude_notes"] = {
+                    cid: str(notes[cid]).strip()
+                    for cid in excluded
+                    if str(notes.get(cid) or "").strip()
+                }
+            atomic_write_text(path, json.dumps(doc, indent=2) + "\n")
+    keyword_lists = ui.get("searchKeywordLists")
+    if isinstance(keyword_lists, dict):
+        path = base_path or quickjobs_base_config_path()
+        if path.is_file():
+            doc = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(doc, dict):
+                raise ValueError("base config is not an object")
+            for key in _SCRAPE_KEYWORD_KEYS:
+                if key in keyword_lists:
+                    doc[key] = _string_list(keyword_lists.get(key))
+            atomic_write_text(path, json.dumps(doc, indent=2) + "\n")
+
+
 def _load_pipeline_nas():
     if str(SCRIPT_DIR) not in sys.path:
         sys.path.insert(0, str(SCRIPT_DIR))
@@ -998,11 +1118,43 @@ def _write_runtime_file(path: Path, doc: dict[str, Any]) -> None:
 
 
 def _pipeline_jobs_response(doc: dict[str, Any]) -> dict[str, Any]:
+    ui = dict(doc.get("ui") or {})
+    for key in _DETAIL_ROTATION_UI_KEYS:
+        ui.pop(key, None)
     return {
         "ok": True,
         "updated_at": str(doc.get("updated_at") or ""),
         "jobs": doc.get("jobs") or {},
+        "ui": ui,
     }
+
+
+def apply_nas_pipeline_ui(
+    runtime_path: Path,
+    backup_dir: Path,
+    request: Any,
+) -> tuple[int, dict[str, Any]]:
+    """Save board settings under the same lock as a row write. Scrape state stays."""
+    nas = _load_pipeline_nas()
+    lock_path = runtime_path.with_name(runtime_path.name + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock_path, "a+", encoding="utf-8") as lock_fh:
+        fcntl.flock(lock_fh.fileno(), fcntl.LOCK_EX)
+        doc = _read_runtime_file(runtime_path)
+        try:
+            incoming_ui = (request.body or {}).get("ui") or {}
+            updated = apply_pipeline_board_ui(doc, incoming_ui)
+            apply_board_ui_to_scrape_configs(incoming_ui)
+        except ValueError as exc:
+            return 400, {"ok": False, "error": str(exc)}
+        except OSError:
+            return 500, {"ok": False, "error": "could not update the scrape config"}
+        nas.snapshot_pipeline_jobs(updated, backup_dir)
+        _write_runtime_file(runtime_path, updated)
+        ui = dict(updated.get("ui") or {})
+        for key in _DETAIL_ROTATION_UI_KEYS:
+            ui.pop(key, None)
+        return 200, {"ok": True, "ui": ui}
 
 
 def apply_nas_pipeline_post(
@@ -1090,6 +1242,10 @@ def _make_nas_pipeline_handler(
                 return
             if decision.action == "post":
                 status, payload = apply_nas_pipeline_post(runtime_path, backup_dir, decision)
+                self._send(status, payload)
+                return
+            if decision.action == "post_ui":
+                status, payload = apply_nas_pipeline_ui(runtime_path, backup_dir, decision)
                 self._send(status, payload)
                 return
             self._send(decision.http_status, {"ok": False, "error": decision.error})
@@ -1712,6 +1868,17 @@ def parse_pipeline_from_html(html_text: str) -> dict[str, dict[str, str]]:
     return store
 
 
+def load_runtime_jobs(out_path: Path) -> dict[str, dict[str, str]]:
+    """Status rows from the runtime file only.
+
+    The HTML embed and the pipeline mirror are older copies. Mixing them back
+    in would undo a save made with the token.
+    """
+    doc = load_runtime_document(out_path)
+    jobs = dict(doc.get("jobs") or {})
+    return migrate_cisco_pipeline_keys(migrate_nike_pipeline_keys(jobs))
+
+
 def load_pipeline_store(out_path: Path) -> dict[str, dict[str, str]]:
     doc = load_runtime_document(out_path)
     store = dict(doc.get("jobs") or {})
@@ -1740,9 +1907,15 @@ def load_run_state(out_path: Path) -> dict[str, Any]:
 
 
 def save_run_state(out_path: Path, urls: set[str], run_time: datetime) -> None:
-    doc = load_runtime_document(out_path)
-    doc["state"] = {"urls": sorted(urls), "run_at": run_time.isoformat()}
-    save_runtime_document(out_path, doc)
+    """Update scrape urls only. Job rows and board settings stay as they are."""
+    runtime_path = runtime_json_path(out_path)
+    lock_path = runtime_path.with_name(runtime_path.name + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock_path, "a+", encoding="utf-8") as lock_fh:
+        fcntl.flock(lock_fh.fileno(), fcntl.LOCK_EX)
+        doc = load_runtime_document(out_path)
+        doc["state"] = {"urls": sorted(urls), "run_at": run_time.isoformat()}
+        save_runtime_document(out_path, doc)
 
 
 def run_snapshot_path(out_path: Path) -> Path:
@@ -5219,15 +5392,20 @@ def load_detail_rotation_offsets(out_path: Path, ui_key: str) -> dict[str, int]:
 def save_detail_rotation_offsets(
     out_path: Path, ui_key: str, offsets: dict[str, int]
 ) -> None:
-    doc = load_runtime_document(out_path)
-    ui = doc.get("ui")
-    if not isinstance(ui, dict):
-        ui = {}
-    ui[ui_key] = {
-        str(k): max(0, int(v)) for k, v in sorted(offsets.items()) if str(k).strip()
-    }
-    doc["ui"] = ui
-    save_runtime_document(out_path, doc)
+    runtime_path = runtime_json_path(out_path)
+    lock_path = runtime_path.with_name(runtime_path.name + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock_path, "a+", encoding="utf-8") as lock_fh:
+        fcntl.flock(lock_fh.fileno(), fcntl.LOCK_EX)
+        doc = load_runtime_document(out_path)
+        ui = doc.get("ui")
+        if not isinstance(ui, dict):
+            ui = {}
+        ui[ui_key] = {
+            str(k): max(0, int(v)) for k, v in sorted(offsets.items()) if str(k).strip()
+        }
+        doc["ui"] = ui
+        save_runtime_document(out_path, doc)
 
 
 def init_detail_rotation_stores(out_path: Path) -> None:
@@ -34143,7 +34321,7 @@ def render_search_parameters_panel(cfg: dict[str, Any]) -> str:
     lines.extend(
         [
             "        </section>",
-            '        <section class="search-params-block search-params-block-wide">',
+            '        <section class="search-params-block search-params-block-wide" id="search-config-files">',
             '          <h3>Config files</h3>',
             '          <p class="search-params-hint">Link base and profile JSON (Chrome/Edge). '
             "Opens in your jobs folder (same place as the board / pipeline file) — pick "
@@ -36285,6 +36463,7 @@ def build_html(
     function scheduleProfilePersist() {{
       readProfileScalarsFromInputs();
       schedulePersistBoardUi();
+      if (location.protocol === 'https:') return;
       if (profilePersistTimer) clearTimeout(profilePersistTimer);
       profilePersistTimer = setTimeout(() => {{
         profilePersistTimer = null;
@@ -36302,11 +36481,16 @@ def build_html(
       const residentSelect = document.getElementById('profile-resident-status');
       residentSelect?.addEventListener('change', scheduleProfilePersist);
       if (linkProfileConfigFileBtn) {{
-        linkProfileConfigFileBtn.hidden = !window.showOpenFilePicker;
-        linkProfileConfigFileBtn.addEventListener('click', () => {{
-          void linkProfileConfigFile({{ prompt: true }});
-        }});
+        if (location.protocol === 'https:') {{
+          linkProfileConfigFileBtn.hidden = true;
+        }} else {{
+          linkProfileConfigFileBtn.hidden = !window.showOpenFilePicker;
+          linkProfileConfigFileBtn.addEventListener('click', () => {{
+            void linkProfileConfigFile({{ prompt: true }});
+          }});
+        }}
       }}
+      if (location.protocol === 'https:') return;
       void (async () => {{
         const saved = await loadSavedProfileConfigHandle();
         if (saved) {{
@@ -36403,6 +36587,7 @@ def build_html(
 
     function scheduleSearchKeywordPersist() {{
       schedulePersistBoardUi();
+      if (location.protocol === 'https:') return;
       if (searchKeywordPersistTimer) clearTimeout(searchKeywordPersistTimer);
       searchKeywordPersistTimer = setTimeout(() => {{
         searchKeywordPersistTimer = null;
@@ -36520,11 +36705,16 @@ def build_html(
       searchKeywordLists = readKeywordListsFromConfig();
       renderAllSearchKeywordLists();
       if (linkBaseConfigFileBtn) {{
-        linkBaseConfigFileBtn.hidden = !window.showOpenFilePicker;
-        linkBaseConfigFileBtn.addEventListener('click', () => {{
-          void linkBaseConfigFile({{ prompt: true }});
-        }});
+        if (location.protocol === 'https:') {{
+          linkBaseConfigFileBtn.hidden = true;
+        }} else {{
+          linkBaseConfigFileBtn.hidden = !window.showOpenFilePicker;
+          linkBaseConfigFileBtn.addEventListener('click', () => {{
+            void linkBaseConfigFile({{ prompt: true }});
+          }});
+        }}
       }}
+      if (location.protocol === 'https:') return;
       void (async () => {{
         const saved = await loadSavedBaseConfigHandle();
         if (saved) {{
@@ -36715,6 +36905,11 @@ def build_html(
     }}
 
     async function refreshPipelineSaveMode() {{
+      if (location.protocol === 'https:') {{
+        if (linkRuntimeFileBtn) linkRuntimeFileBtn.hidden = true;
+        if (linkPipelineFileBtn) linkPipelineFileBtn.hidden = true;
+        return;
+      }}
       const cfg = readPipelineConfig();
       if (cfg.autosaveServer) {{
         try {{
@@ -37020,6 +37215,12 @@ def build_html(
           }}
           void persistNasPipelineRow(key, row.status || '', {{ updated: row.base_updated }}, row.meta || {{}});
         }});
+        if (data.ui && typeof data.ui === 'object') {{
+          applyBoardUiState(data.ui);
+          try {{
+            localStorage.setItem(BOARD_UI_STORAGE_KEY, JSON.stringify(collectBoardUiState()));
+          }} catch (_) {{}}
+        }}
         setPipelineTokenMark('valid');
         setPipelineSaveStatus('Loaded pipeline status from the NAS.');
       }} catch (_) {{
@@ -39637,6 +39838,38 @@ def build_html(
       return false;
     }}
 
+    async function persistNasBoardUi(ui) {{
+      const token = pipelineTokenValue();
+      if (!token) {{
+        setPipelineSaveStatus('Enter the pipeline token to load and save status.');
+        return;
+      }}
+      try {{
+        const resp = await fetch(PIPELINE_ROW_URL, {{
+          method: 'POST',
+          cache: 'no-store',
+          headers: {{
+            'Content-Type': 'application/json',
+            'X-Quickjobs-Token': token,
+          }},
+          body: JSON.stringify({{ ui }}),
+        }});
+        if (resp.status === 401) {{
+          setPipelineTokenMark('invalid');
+          setPipelineSaveStatus('Unsaved. Invalid token.');
+          return;
+        }}
+        if (!resp.ok) {{
+          setPipelineSaveStatus('Unsaved. The NAS did not take the board settings.');
+          return;
+        }}
+        setPipelineTokenMark('valid');
+        setPipelineSaveStatus('Saved to the NAS.');
+      }} catch (_) {{
+        setPipelineSaveStatus('Unsaved. The NAS did not take the board settings.');
+      }}
+    }}
+
     function schedulePersistBoardUi() {{
       if (boardUiPersistTimer) clearTimeout(boardUiPersistTimer);
       boardUiPersistTimer = setTimeout(() => {{
@@ -39645,6 +39878,10 @@ def build_html(
         try {{
           localStorage.setItem(BOARD_UI_STORAGE_KEY, JSON.stringify(ui));
         }} catch (_) {{}}
+        if (location.protocol === 'https:') {{
+          void persistNasBoardUi(ui);
+          return;
+        }}
         if (pipelineSaveMode === 'runtime' && runtimeFileHandle) {{
           void persistBoardUiToRuntimeFile(ui);
         }}
@@ -41090,6 +41327,8 @@ def build_html(
       if (location.protocol === 'https:') {{
         if (linkRuntimeFileBtn) linkRuntimeFileBtn.hidden = true;
         if (linkPipelineFileBtn) linkPipelineFileBtn.hidden = true;
+        const configFiles = document.getElementById('search-config-files');
+        if (configFiles) configFiles.hidden = true;
       }} else {{
         const savedHandle = await loadSavedRuntimeHandle();
         if (savedHandle) {{
@@ -42186,7 +42425,7 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
             print(f"Rewrote Greenhouse career-index URLs; saved {run_snapshot_path(out_path)}")
         elif exclude_dropped:
             print(f"Dropped excluded employers; saved {run_snapshot_path(out_path)}")
-    pipeline = load_pipeline_store(out_path)
+    pipeline = load_runtime_jobs(out_path)
     prev_state = load_run_state(out_path)
     digest_html, _digest_plain = board_digest_html(
         run_time,
@@ -42210,7 +42449,6 @@ def cmd_rebuild_snapshot(argv: list[str] | None = None) -> int:
     atomic_write_text(out_path, html)
     verify_written_file(out_path, min_bytes, out_path.name)
     publish_board_pwa_assets(out_path)
-    persist_pipeline_store(out_path, pipeline, patch_html=False)
     structure_issues = validate_html_structure(
         html,
         html_path=out_path,
@@ -43058,6 +43296,7 @@ def _run_board_scrape_phase4_body(
             if job.is_new and job.match == "strong":
                 RUN_METRICS["new_strong"].append(job.title)
 
+    pipeline = load_runtime_jobs(out_path)
     enrich_pipeline_store(pipeline, results, cfg)
 
     digest_html, digest_plain = build_digest(
@@ -43088,7 +43327,6 @@ def _run_board_scrape_phase4_body(
     verify_written_file(out_path, min_html_bytes, out_path.name)
     publish_board_pwa_assets(out_path)
     log_run_phase("write")
-    persist_pipeline_store(out_path, pipeline, patch_html=False)
     save_run_state(out_path, all_urls, run_time)
     atomic_write_text(digest_path(out_path), digest_plain)
 
