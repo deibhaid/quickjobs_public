@@ -35836,14 +35836,14 @@ def build_html(
       font-weight: 700;
       line-height: 1;
       cursor: pointer;
-      opacity: 0.82;
+      opacity: 0;
+      pointer-events: none;
     }}
-    .job-pass-btn:hover,
+    .job:hover > .job-pass-btn,
     .job-pass-btn:focus-visible {{
       opacity: 1;
-      background: var(--pass-btn-hover-bg);
-      outline: 2px solid var(--pass-btn-hover-outline);
-      outline-offset: 1px;
+      pointer-events: auto;
+      outline: none;
     }}
     .job.job-applied .job-pass-btn {{ top: 0.15rem; right: 0.25rem; font-size: 0.95rem; }}
     .job.job-applied {{ padding: 0.4rem 0.85rem; margin-bottom: 0; opacity: 0.92; align-items: center; }}
@@ -36169,6 +36169,7 @@ def build_html(
     html:not(.board-listings-ready) .company-group,
     html:not(.board-listings-ready) #job-listings-body > .job,
     html:not(.board-listings-ready) #job-listings-body > .job-applied-row {{ display: none !important; }}
+    #job-listings-body > .company-group.company-group-lazy[data-lazy-loaded="0"] {{ display: none !important; }}
     section.is-section-header-hidden > h2, section.is-section-header-hidden > .meta {{ display: none !important; }}
     .badge-layoff {{ background: var(--badge-warning-bg); color: var(--stretch); font-size: 0.65rem; vertical-align: middle; }}
     .badge-h1b {{ font-size: 0.65rem; vertical-align: middle; white-space: nowrap; }}
@@ -36441,6 +36442,36 @@ def build_html(
     .company-group {{ scroll-margin-top: 5.5rem; }}
     .company-group-lazy {{ min-height: 2.5rem; }}
     .company-group h3 {{ font-size: 0.95rem; color: var(--muted); margin: 1rem 0 0.5rem; font-weight: 500; }}
+    .company-group > h3.company-head-with-hide .company-name-text {{
+      position: relative;
+      flex: 0 1 auto;
+    }}
+    .company-hide-active-btn {{
+      position: absolute;
+      left: calc(100% + 0.2rem);
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 2;
+      width: 1.35rem;
+      height: 1.35rem;
+      padding: 0;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--pass-btn-fg);
+      font-size: 1.05rem;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+    }}
+    .company-group > h3.company-head-with-hide:hover .company-hide-active-btn,
+    .company-hide-active-btn:focus-visible {{
+      opacity: 1;
+      pointer-events: auto;
+      outline: none;
+    }}
     .company-title-link {{ color: var(--link); font-weight: 600; text-decoration: none; }}
     .company-title-link:hover {{ color: var(--link-hover); text-decoration: underline; }}
     .excluded-toggle {{ background: var(--card); border: 1px solid var(--border); color: var(--accent); padding: 0.45rem 0.85rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; }}
@@ -38653,6 +38684,18 @@ def build_html(
     }}
 
     async function mountLazyCompanyBlock(group, {{ skipSort = false }} = {{}}) {{
+      if (!group || group.dataset.lazyLoaded === '1') return;
+      if (group._qjMount) return group._qjMount;
+      const run = mountLazyCompanyBlockNow(group, skipSort);
+      group._qjMount = run;
+      try {{
+        return await run;
+      }} finally {{
+        delete group._qjMount;
+      }}
+    }}
+
+    async function mountLazyCompanyBlockNow(group, skipSort) {{
       if (!group || group.dataset.lazyLoaded === '1') return;
       const key = group.dataset.companyFilter || '';
       await ensureLazyPayloadForGroup(group);
@@ -41131,9 +41174,18 @@ def build_html(
       // remaining shell here defeats lazy load and freezes Chrome on first paint.
       const listingsBody = document.getElementById('job-listings-body');
       if (listingsBody?.classList.contains('listings-flat-sort')) return;
-      [...document.querySelectorAll('.company-group-lazy[data-lazy-loaded="0"]')]
-        .filter(shell => !shell.classList.contains('hidden-empty') && !shell.classList.contains('hidden-company'))
-        .forEach(shell => mountLazyCompanyBlock(shell));
+      void mountVisibleListingShells();
+    }}
+
+    async function mountVisibleListingShells() {{
+      if (companySortUsesFlatList()) return;
+      const shells = [...document.querySelectorAll('#job-listings-body > .company-group-lazy[data-lazy-loaded="0"]')]
+        .filter(shell => !shell.classList.contains('hidden-empty') && !shell.classList.contains('hidden-company'));
+      const CHUNK = 4;
+      for (let i = 0; i < shells.length; i += CHUNK) {{
+        await Promise.all(shells.slice(i, i + CHUNK).map(shell => mountLazyCompanyBlock(shell, {{ skipSort: true }})));
+        if (i + CHUNK < shells.length) await yieldToMainThread();
+      }}
     }}
 
     function boardJobMatchCountsByCompany() {{
@@ -41427,6 +41479,106 @@ def build_html(
         if (!/^Browse all .+ remote roles/.test(label)) return;
         p.classList.toggle('is-hidden-for-rating-sort', hide);
       }});
+      syncCompanyHideActiveButtons(scope);
+    }}
+
+    function jobCardShowsActive(job) {{
+      if (!job || isInAppliedSection(job)) return false;
+      if (job.classList.contains('hidden')
+          || job.classList.contains('hidden-text-filter')
+          || job.classList.contains('hidden-pass')
+          || job.classList.contains('hidden-applied')
+          || job.classList.contains('hidden-layoff')) return false;
+      const sel = job.querySelector('.pipeline-status');
+      const shown = sel ? (sel.value || '') : (jobPipelineStatus(job) || '');
+      return shown === '';
+    }}
+
+    function companySortShowsCompanyHide() {{
+      return activeCompanySort === 'rating' || activeCompanySort === 'alphabetically';
+    }}
+
+    async function hideVisibleActiveJobsForCompany(group) {{
+      if (!group || !companySortShowsCompanyHide()) return;
+      if (group.dataset.lazyLoaded === '0') await mountLazyCompanyBlock(group);
+      const jobs = [...group.querySelectorAll('.job')].filter(jobCardShowsActive);
+      if (!jobs.length) return;
+      const store = readPipeline();
+      const pending = [];
+      jobs.forEach(job => {{
+        job.classList.add('hidden', 'hidden-pass');
+        const sel = job.querySelector('.pipeline-status');
+        const key = pipelineKeyForJob(job) || sel?.dataset?.applyKey;
+        if (!key) return;
+        if (sel) sel.value = 'pass';
+        const prev = store[key] || {{}};
+        const meta = snapshotJobMeta(job);
+        const entry = mergePipelineEntry(prev, 'pass', meta, true);
+        if (entry) store[key] = entry;
+        else delete store[key];
+        pending.push({{ key, prev, meta, job, entry }});
+      }});
+      writePipeline(store);
+      pending.forEach(row => {{
+        applyPipelineJobPlacement(row.job, row.entry, 'pass');
+      }});
+      applyHideApplied();
+      void applyRoleFilter();
+      void updateStats();
+      if (location.protocol === 'https:') {{
+        for (const row of pending) {{
+          await persistNasPipelineRow(row.key, 'pass', row.prev, row.meta);
+        }}
+        return;
+      }}
+      await ensureRuntimeFileLinked();
+      await persistPipeline(readPipeline());
+    }}
+
+    function syncCompanyHideActiveButtons(root) {{
+      const show = companySortShowsCompanyHide();
+      const scope = root && root.querySelectorAll ? root : document.getElementById('job-listings-body');
+      if (!scope) return;
+      wireCompanyHideActiveButtons();
+      const groups = [];
+      if (scope.classList && scope.classList.contains('company-group')) groups.push(scope);
+      scope.querySelectorAll('.company-group').forEach(group => groups.push(group));
+      groups.forEach(group => {{
+        if (group.closest('#excluded-panel, #applied-section-panel, #sec-applied')) return;
+        const head = group.querySelector(':scope > h3');
+        if (!head) return;
+        let btn = head.querySelector('.company-hide-active-btn');
+        if (!show) {{
+          if (btn) btn.remove();
+          head.classList.remove('company-head-with-hide');
+          return;
+        }}
+        const nameText = head.querySelector('.company-name-text');
+        if (!btn) {{
+          btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'company-hide-active-btn';
+          btn.textContent = '×';
+          btn.title = 'Hide visible Active listings';
+          btn.setAttribute('aria-label', 'Hide visible Active listings for this company');
+        }}
+        if (nameText) nameText.appendChild(btn);
+        else head.appendChild(btn);
+        head.classList.add('company-head-with-hide');
+      }});
+    }}
+
+    function wireCompanyHideActiveButtons() {{
+      const listingsBody = document.getElementById('job-listings-body');
+      if (!listingsBody || listingsBody.dataset.companyHideWired === '1') return;
+      listingsBody.dataset.companyHideWired = '1';
+      listingsBody.addEventListener('click', (event) => {{
+        const btn = event.target.closest && event.target.closest('.company-hide-active-btn');
+        if (!btn || !listingsBody.contains(btn)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        void hideVisibleActiveJobsForCompany(btn.closest('.company-group'));
+      }});
     }}
 
     function refreshCompanySortButtons() {{
@@ -41562,7 +41714,7 @@ def build_html(
       await applyCompanyGroupSort();
       refreshLazyShellVisibility();
       refreshMatchGroupVisibility();
-      mountEligibleLazyShells();
+      await mountVisibleListingShells();
       observeLazyCompanyGroups(document.getElementById('job-listings-body'));
       observeLazyCompanyGroups(excludedPanel);
       refreshSectionVisibility();

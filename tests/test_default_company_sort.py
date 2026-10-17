@@ -38,6 +38,30 @@ class DefaultCompanySortTests(unittest.TestCase):
         self.assertIn("is-hidden-for-rating-sort", SRC)
         self.assertIn("Browse all .+ remote roles", SRC)
 
+    def test_rating_sort_company_hides_visible_active_jobs(self) -> None:
+        self.assertIn("function syncCompanyHideActiveButtons(root)", SRC)
+        self.assertIn("function jobCardShowsActive(job)", SRC)
+        self.assertIn("function companySortShowsCompanyHide()", SRC)
+        self.assertIn("activeCompanySort === 'alphabetically'", SRC)
+        hide_fn = SRC.split("async function hideVisibleActiveJobsForCompany(group)", 1)[1].split(
+            "function syncCompanyHideActiveButtons(root)", 1
+        )[0]
+        self.assertNotIn("await commitPipelineStatusChange", hide_fn)
+        self.assertIn("job.classList.add('hidden', 'hidden-pass')", hide_fn)
+        self.assertIn("writePipeline(store)", hide_fn)
+        self.assertEqual(hide_fn.count("void applyRoleFilter()"), 1)
+        self.assertIn("company-hide-active-btn", SRC)
+        self.assertIn("Hide visible Active listings", SRC)
+        self.assertIn(".job:hover > .job-pass-btn", SRC)
+        self.assertIn("h3.company-head-with-hide:hover .company-hide-active-btn", SRC)
+        self.assertIn("nameText.appendChild(btn)", SRC)
+        self.assertIn("async function mountVisibleListingShells()", SRC)
+        self.assertIn("await mountVisibleListingShells()", SRC)
+        self.assertIn(
+            '#job-listings-body > .company-group.company-group-lazy[data-lazy-loaded="0"]',
+            SRC,
+        )
+
     def test_stability_hide_controls_are_removed(self) -> None:
         self.assertNotIn(">Stability</h2>", SRC)
         self.assertNotIn("Hide layoff-prone employers", SRC)
