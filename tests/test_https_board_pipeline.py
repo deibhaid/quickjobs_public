@@ -29,6 +29,17 @@ class HttpsBoardPipelineTests(unittest.TestCase):
         self.assertGreater(handle_at, https_at)
         self.assertIn("await refreshNasPipeline();", init)
         self.assertIn("await persistNasPipelineRow", src)
+        boot = src[src.find("void (async () => {{"):]
+        boot = boot[: boot.find("</script>")]
+        self.assertLess(
+            boot.find("await initPipelinePersistence();"),
+            boot.find("boardListingsSettled = true;"),
+        )
+        self.assertLess(
+            boot.find("boardListingsSettled = true;"),
+            boot.find("await applyRoleFilter();"),
+        )
+        self.assertIn("if (!boardListingsSettled) return;", src)
 
         profile = src[src.find("function initProfileEditors() {{"):]
         profile = profile[: profile.find("function scheduleSearchKeywordPersist")]

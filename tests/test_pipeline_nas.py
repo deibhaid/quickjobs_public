@@ -117,6 +117,27 @@ class PipelineNasTests(unittest.TestCase):
             trusted_proxies=("192.168.86.240",),
         )
         self.assertEqual(allowed.action, "get")
+        settings_only = nas.classify_pipeline_request(
+            "GET",
+            "/pipeline",
+            {"X-Forwarded-Proto": "https"},
+            b"",
+            token_record=record,
+            client_ip="192.168.86.240",
+            trusted_proxies=("192.168.86.240",),
+        )
+        self.assertEqual(settings_only.action, "get_ui")
+        self.assertEqual(settings_only.http_status, 200)
+        missing_token_post = nas.classify_pipeline_request(
+            "POST",
+            "/pipeline",
+            {"X-Forwarded-Proto": "https"},
+            b'{"ui":{"theme":"dark"}}',
+            token_record=record,
+            client_ip="192.168.86.240",
+            trusted_proxies=("192.168.86.240",),
+        )
+        self.assertEqual(missing_token_post.http_status, 401)
 
     def test_https_post_is_one_row(self) -> None:
         token = "apple beach cedar delta eagle"

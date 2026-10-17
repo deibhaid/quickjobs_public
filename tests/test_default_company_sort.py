@@ -32,6 +32,19 @@ class DefaultCompanySortTests(unittest.TestCase):
         self.assertIn("activeCompanySort = 'date';", clear_fn)
         self.assertNotIn("activeCompanySort = 'salary';", clear_fn)
 
+    def test_rating_sort_hides_employer_browse_links(self) -> None:
+        self.assertIn("function syncEmployerBrowseLinks(root)", SRC)
+        self.assertIn("activeCompanySort === 'rating'", SRC)
+        self.assertIn("is-hidden-for-rating-sort", SRC)
+        self.assertIn("Browse all .+ remote roles", SRC)
+
+    def test_stability_hide_controls_are_removed(self) -> None:
+        self.assertNotIn(">Stability</h2>", SRC)
+        self.assertNotIn("Hide layoff-prone employers", SRC)
+        self.assertNotIn("Hide applied / screen / rejected / ghosted", SRC)
+        self.assertNotIn('id="hide-layoff-prone"', SRC)
+        self.assertNotIn('id="hide-applied"', SRC)
+
 
 if __name__ == "__main__":
     unittest.main()

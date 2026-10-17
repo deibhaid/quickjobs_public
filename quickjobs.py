@@ -1117,16 +1117,39 @@ def _write_runtime_file(path: Path, doc: dict[str, Any]) -> None:
     atomic_write_text(path, json.dumps(normalized, indent=2) + "\n")
 
 
-def _pipeline_jobs_response(doc: dict[str, Any]) -> dict[str, Any]:
+def public_board_ui(doc: dict[str, Any]) -> dict[str, Any]:
+    """Board settings for the page. Scrape rotation maps stay on the server."""
     ui = dict(doc.get("ui") or {})
     for key in _DETAIL_ROTATION_UI_KEYS:
         ui.pop(key, None)
+    return ui
+
+
+def published_board_ui(out_path: Path | None) -> dict[str, Any]:
+    """Settings saved on the NAS, embedded so a fresh page can start from them."""
+    if out_path is None:
+        return {}
+    path = runtime_json_path(out_path)
+    if not path.is_file():
+        return {}
+    try:
+        doc = _read_runtime_file(path)
+    except ValueError:
+        return {}
+    return public_board_ui(doc)
+
+
+def _pipeline_jobs_response(doc: dict[str, Any]) -> dict[str, Any]:
     return {
         "ok": True,
         "updated_at": str(doc.get("updated_at") or ""),
         "jobs": doc.get("jobs") or {},
-        "ui": ui,
+        "ui": public_board_ui(doc),
     }
+
+
+def _pipeline_ui_response(doc: dict[str, Any]) -> dict[str, Any]:
+    return {"ok": True, "ui": public_board_ui(doc)}
 
 
 def apply_nas_pipeline_ui(
@@ -1232,13 +1255,16 @@ def _make_nas_pipeline_handler(
             if decision.action == "health":
                 self._send(200, {"ok": True})
                 return
-            if decision.action == "get":
+            if decision.action in ("get", "get_ui"):
                 try:
                     doc = _read_runtime_file(runtime_path)
                 except ValueError as exc:
                     self._send(500, {"ok": False, "error": str(exc)})
                     return
-                self._send(200, _pipeline_jobs_response(doc))
+                if decision.action == "get_ui":
+                    self._send(200, _pipeline_ui_response(doc))
+                else:
+                    self._send(200, _pipeline_jobs_response(doc))
                 return
             if decision.action == "post":
                 status, payload = apply_nas_pipeline_post(runtime_path, backup_dir, decision)
@@ -7661,6 +7687,81 @@ def greenhouse_job_id_from_url(url: str) -> str:
 def greenhouse_board_from_url(url: str) -> str:
     match = _GH_BOARD_JOBS_RE.search(str(url or "").strip())
     return match.group("board") if match else ""
+
+
+_GH_BOARD_JOB_CACHE: dict[str, list[dict[str, Any]]] = {}
+
+
+def greenhouse_board_jobs(board: str) -> list[dict[str, Any]]:
+    """Live Greenhouse postings for one board. Empty when the board cannot be read."""
+    slug = str(board or "").strip().strip("/")
+    if not slug:
+        return []
+    cached = _GH_BOARD_JOB_CACHE.get(slug)
+    if cached is not None:
+        return cached
+    jobs: list[dict[str, Any]] = []
+    api = f"https://boards-api.greenhouse.io/v1/boards/{urllib.parse.quote(slug)}/jobs"
+    try:
+        req = urllib.request.Request(api, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            data = json.loads(resp.read().decode("utf-8", "replace"))
+        rows = data.get("jobs") if isinstance(data, dict) else None
+        if isinstance(rows, list):
+            jobs = [row for row in rows if isinstance(row, dict)]
+    except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError, ValueError):
+        jobs = []
+    _GH_BOARD_JOB_CACHE[slug] = jobs
+    return jobs
+
+
+def greenhouse_live_listing_url(
+    url: str,
+    company: dict[str, Any] | None,
+    title: str = "",
+) -> str:
+    """Company job-page URL for this posting.
+
+    A closed id is replaced only when the board has exactly one live posting
+    with the same title. Otherwise the stored URL is left unchanged.
+    """
+    raw = str(url or "").strip()
+    if not isinstance(company, dict):
+        return raw
+    if str(company.get("type") or "").strip().lower() != "greenhouse":
+        return raw
+    board = str(company.get("board") or "").strip().strip("/") or greenhouse_board_from_url(raw)
+    jobs = greenhouse_board_jobs(board)
+    if not jobs:
+        return raw
+    jid = greenhouse_job_id_from_url(raw)
+    by_id = {str(row.get("id") or ""): row for row in jobs}
+    if jid and jid in by_id:
+        return raw
+    want = re.sub(r"\s+", " ", str(title or "")).strip().lower()
+    matches = [
+        row
+        for row in jobs
+        if want
+        and re.sub(r"\s+", " ", str(row.get("title") or "")).strip().lower() == want
+    ]
+    if len(matches) != 1:
+        return raw
+    chosen = matches[0]
+    live_id = str(chosen.get("id") or "").strip()
+    live = str(chosen.get("absolute_url") or "").strip()
+    path = urllib.parse.urlsplit(live).path if live else ""
+    posting_path = bool(live_id) and (
+        f"/{live_id}" in path
+        or path.rstrip("/").endswith("/job")
+        or "/roles/" in path
+        or "/role/" in path
+    )
+    if posting_path:
+        return live
+    if board and live_id:
+        return f"https://job-boards.greenhouse.io/{board}/jobs/{live_id}"
+    return live or raw
 
 
 def greenhouse_canonical_job_url(url: str, board: str = "") -> str:
@@ -32288,29 +32389,25 @@ def greenhouse_company_embed_url(url: str, company: dict[str, Any] | None) -> st
 
 
 def listing_frame_url_for_job(url: str, company: dict[str, Any] | None = None) -> str:
-    """Frame URL for a card, including Greenhouse embeds hidden behind ?gh_jid=."""
-    frame = listing_frame_url_for_card(url)
-    if frame:
-        return frame
-    embed = greenhouse_company_embed_url(url, company)
-    if embed and greenhouse_embed_shows_posting(embed):
-        return embed
-    return ""
+    """Frame URL for a card. Greenhouse and Ashby use a local posting instead."""
+    del company
+    return listing_frame_url_for_card(url)
 
 
 def listing_frame_url_for_card(url: str) -> str:
-    """Frame URL for a card. Ashby companies that refuse the frame get no URL."""
+    """Frame URL for a card.
+
+    Greenhouse's frameable page is the application form, and a closed id redirects
+    to the company board. Ashby's page stays blank in the card sandbox. Both use
+    a local copy of the posting instead.
+    """
     frame = job_listing_frame_url(url)
     if not frame:
         return ""
     host = _listing_frame_host(frame)
-    if _listing_frame_host_is(host, "ashbyhq.com") and not ashby_posting_allows_frame(frame):
+    if _listing_frame_host_is(host, "ashbyhq.com"):
         return ""
-    if (
-        _listing_frame_host_is(host, "greenhouse.io")
-        and "/embed/job_app" in frame
-        and not greenhouse_embed_shows_posting(frame)
-    ):
+    if _listing_frame_host_is(host, "greenhouse.io"):
         return ""
     return frame
 
@@ -32527,6 +32624,7 @@ def _styled_listing_document(title: str, description: str, page_url: str) -> str
         "font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;"
         "line-height:1.5;}"
         "h1{font-size:2rem;font-weight:700;line-height:1.2;margin:0 0 1.25rem;color:#111;}"
+        "h2{font-size:1.25rem;font-weight:700;line-height:1.3;margin:1.5rem 0 0.6rem;color:#111;}"
         ".job-listing-body{font-size:1rem;}"
         ".job-listing-body p{margin:0 0 1rem;}"
         ".job-listing-body ul,.job-listing-body ol{margin:0 0 1rem;padding-left:1.25rem;}"
@@ -32540,12 +32638,327 @@ def _styled_listing_document(title: str, description: str, page_url: str) -> str
     return page.replace("</template", "<\\/template")
 
 
+_LINKEDIN_CHROME_MARKERS = ("forgot password", "join or sign in", "new to linkedin")
+_LINKEDIN_BODY_MARKERS = (
+    "base pay range",
+    "this range is provided",
+    "about the job",
+    "about you",
+    "who you are",
+    "what you'll do",
+    "what you will do",
+    "the role",
+    "role summary",
+    "responsibilities",
+)
+_LINKEDIN_SECTION_RE = re.compile(
+    r"\s+(?=(?:About You|What will you do|What You Will Do|What you'll do|"
+    r"Perks|Requirements|Qualifications|Responsibilities|Role Summary|"
+    r"Who You Are|The Role)\b)"
+)
+
+
+def _text_is_linkedin_chrome(text: str) -> bool:
+    lower = str(text or "").lower()
+    return any(marker in lower for marker in _LINKEDIN_CHROME_MARKERS)
+
+
+def linkedin_posting_html_from_blob(body: str) -> str:
+    """Drop LinkedIn sign-in chrome from a flattened guest page and keep the posting."""
+    plain = re.sub(r"<[^>]+>", " ", str(body or ""))
+    plain = html.unescape(re.sub(r"\s+", " ", plain)).strip()
+    if not _text_is_linkedin_chrome(plain):
+        return ""
+    lower = plain.lower()
+    starts = [lower.find(marker) for marker in _LINKEDIN_BODY_MARKERS if lower.find(marker) >= 0]
+    if not starts:
+        return ""
+    kept = plain[min(starts) :].strip()
+    chunks = [chunk.strip() for chunk in _LINKEDIN_SECTION_RE.split(kept) if chunk.strip()]
+    if not chunks:
+        return ""
+    headers = (
+        "About You",
+        "What will you do",
+        "What You Will Do",
+        "What you'll do",
+        "Perks",
+        "Requirements",
+        "Qualifications",
+        "Responsibilities",
+        "Role Summary",
+        "Who You Are",
+        "The Role",
+    )
+    parts: list[str] = []
+    for chunk in chunks:
+        matched = ""
+        for header in headers:
+            if chunk.lower().startswith(header.lower()):
+                matched = header
+                break
+        if not matched:
+            parts.append(f"<p>{html.escape(chunk)}</p>")
+            continue
+        rest = chunk[len(matched) :].strip(" :-")
+        parts.append(f"<h2>{html.escape(matched)}</h2>")
+        if rest:
+            parts.append(f"<p>{html.escape(rest)}</p>")
+    return "".join(parts)
+
+
+_REFLOW_HEADINGS = (
+    "About the role",
+    "About the job",
+    "About us",
+    "About you",
+    "Who you are",
+    "Who we are",
+    "The team",
+    "The role",
+    "How you'll make an impact",
+    "How you’ll make an impact",
+    "What you'll do",
+    "What you’ll do",
+    "What you will do",
+    "What you will be doing",
+    "What you bring",
+    "What is the role",
+    "What we're looking for",
+    "What we’re looking for",
+    "What we look for",
+    "Minimum requirements",
+    "Minimum qualifications",
+    "Preferred qualifications",
+    "Basic qualifications",
+    "Qualifications",
+    "Requirements",
+    "Responsibilities",
+    "Benefits",
+    "What you'll love",
+    "What you’ll love",
+    "The impact you'll have",
+    "The impact you’ll have",
+    "On-call & incident response",
+    "Skillset",
+    "Education",
+    "Pay range transparency",
+    "Compensation",
+    "Bonus points",
+    "Position location",
+    "Time zone requirements",
+    "Travel requirements",
+)
+_REFLOW_ITEM_STARTS = {
+    "ability",
+    "automate",
+    "bachelor",
+    "build",
+    "contribute",
+    "data",
+    "design",
+    "embody",
+    "excellent",
+    "exercise",
+    "experience",
+    "full",
+    "fundamentally",
+    "hands",
+    "implement",
+    "improve",
+    "knowledge",
+    "lead",
+    "minimum",
+    "own",
+    "partner",
+    "prior",
+    "production",
+    "proficiency",
+    "represent",
+    "set",
+    "software",
+    "strong",
+    "translate",
+    "uphold",
+    "you",
+}
+_REFLOW_FUNCTION_WORDS = {
+    "a",
+    "an",
+    "and",
+    "as",
+    "at",
+    "between",
+    "by",
+    "for",
+    "from",
+    "in",
+    "including",
+    "into",
+    "of",
+    "on",
+    "or",
+    "our",
+    "over",
+    "per",
+    "than",
+    "that",
+    "the",
+    "their",
+    "this",
+    "throughout",
+    "to",
+    "via",
+    "with",
+    "within",
+    "your",
+}
+
+
+def _listing_html_is_flattened(body: str) -> bool:
+    plain_len = len(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", str(body or ""))).strip())
+    if plain_len < 500:
+        return False
+    blocks = len(re.findall(r"<h2\b|<p\b|<li\b", str(body or ""), re.I))
+    return blocks < 4 or plain_len / max(blocks, 1) > 450
+
+
+def _reflow_heading_re() -> re.Pattern[str]:
+    alts = "|".join(
+        re.escape(heading)
+        for heading in sorted(_REFLOW_HEADINGS, key=len, reverse=True)
+    )
+    alts = rf"{alts}|About [A-Z][A-Za-z0-9&'.-]{{1,40}}"
+    return re.compile(rf"(?i)(?<![A-Za-z])({alts})(?=$|[:\s])")
+
+
+def _reflow_sections(text: str) -> list[tuple[str, str]]:
+    matches = []
+    for match in _reflow_heading_re().finditer(text):
+        after = text[match.end() :]
+        after = after.lstrip(" \t")
+        if after.startswith(":"):
+            after = after[1:].lstrip()
+        if after and after[0].islower():
+            continue
+        matches.append(match)
+    if not matches:
+        return [("", text)]
+    sections: list[tuple[str, str]] = []
+    if matches[0].start() > 0:
+        lead = text[: matches[0].start()].strip()
+        if lead:
+            sections.append(("", lead))
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        body = text[match.end() : end].strip(" :")
+        sections.append((match.group(1).strip(), body))
+    return sections
+
+
+def _section_is_list(heading: str) -> bool:
+    lower = heading.lower()
+    return any(
+        token in lower
+        for token in (
+            "impact",
+            "looking for",
+            "requirement",
+            "qualification",
+            "bring",
+            "bonus",
+            "skillset",
+            "responsibilit",
+            "you will be doing",
+            "you'll do",
+            "you’ll do",
+        )
+    )
+
+
+def _split_reflow_items(body: str) -> list[str]:
+    starts = [0]
+    for match in re.finditer(r"(?<=[a-z)])\s+(?=[A-Z])", body):
+        word_match = re.match(r"[A-Z][A-Za-z'’/-]*", body[match.end() :])
+        if not word_match:
+            continue
+        if word_match.group(0).lower() not in _REFLOW_ITEM_STARTS:
+            continue
+        prev = body[: match.start()]
+        prev_word = re.search(r"([A-Za-z][A-Za-z'’/-]*)$", prev)
+        if prev_word and prev_word.group(1).lower() in _REFLOW_FUNCTION_WORDS:
+            continue
+        starts.append(match.end())
+    items = []
+    for index, start in enumerate(starts):
+        end = starts[index + 1] if index + 1 < len(starts) else len(body)
+        piece = body[start:end].strip(" :")
+        if piece:
+            items.append(piece)
+    return items
+
+
+def _linkify_text(text: str) -> str:
+    escaped = html.escape(text)
+    return re.sub(
+        r"(https?://[^\s<&]+)",
+        lambda match: (
+            f'<a href="{match.group(1).rstrip(".,;:")}" target="_top">'
+            f'{match.group(1).rstrip(".,;:")}</a>'
+        ),
+        escaped,
+    )
+
+
+def reflow_flattened_posting_text(text: str) -> str:
+    """Turn a run-on saved posting into headings, paragraphs, and lists."""
+    plain = re.sub(r"\s+", " ", str(text or "")).strip()
+    if len(plain) < 80:
+        return ""
+    parts: list[str] = []
+    for heading, body in _reflow_sections(plain):
+        if heading:
+            parts.append(f"<h2>{html.escape(heading)}</h2>")
+        body = body.strip()
+        if not body:
+            continue
+        if _section_is_list(heading):
+            items = _split_reflow_items(body)
+            if len(items) >= 2:
+                parts.append(
+                    "<ul>"
+                    + "".join(f"<li>{_linkify_text(item)}</li>" for item in items)
+                    + "</ul>"
+                )
+                continue
+        sentences = [
+            sentence.strip()
+            for sentence in re.split(r"(?<=[.!?])\s+(?=[A-Z])", body)
+            if sentence.strip()
+        ]
+        if not sentences:
+            sentences = [body]
+        for sentence in sentences:
+            parts.append(f"<p>{_linkify_text(sentence)}</p>")
+    return "".join(parts)
+
+
 def saved_listing_snapshot(title: str, description_html: str, page_url: str) -> str:
     """Listing page built from the stored posting when the job page cannot be copied."""
     body = re.sub(r"<script\b[^>]*>.*?</script>", "", str(description_html or ""), flags=re.I | re.S)
     body = re.sub(r"<noscript\b[^>]*>.*?</noscript>", "", body, flags=re.I | re.S).strip()
     heading = re.sub(r"\s+", " ", str(title or "")).strip()
     plain = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", body)).strip()
+    if _text_is_linkedin_chrome(plain):
+        cleaned = linkedin_posting_html_from_blob(body)
+        if not cleaned:
+            return ""
+        body = cleaned
+        plain = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", body)).strip()
+    elif _listing_html_is_flattened(body):
+        reflowed = reflow_flattened_posting_text(plain)
+        if reflowed:
+            body = reflowed
     if len(plain) < 20:
         return ""
     if "<" not in body:
@@ -32887,7 +33300,107 @@ def replace_bot_wall_listing_blocks(html: str) -> tuple[str, int]:
     return "".join(parts), replaced
 
 
-def listing_snapshot_html(url: str) -> str:
+_GH_EMBED_TOKEN_RE = re.compile(
+    r"https?://(?:job-boards|boards)\.greenhouse\.io/embed/job_app"
+    r"\?for=(?P<board>[^&#]+)&token=(?P<jid>\d+)",
+    re.I,
+)
+_ASHBY_JSONLD_RE = re.compile(
+    r'<script type="application/ld\+json">(.*?)</script>',
+    re.I | re.S,
+)
+
+
+def _greenhouse_content_html(raw: str) -> str:
+    text = str(raw or "").strip()
+    for _ in range(2):
+        if "<" in text and not text.lstrip().startswith("&lt;"):
+            break
+        nxt = html.unescape(text)
+        if nxt == text:
+            break
+        text = nxt
+    return re.sub(r"<script\b[^>]*>.*?</script>", "", text, flags=re.I | re.S)
+
+
+def greenhouse_board_and_job_id(
+    url: str,
+    company: dict[str, Any] | None = None,
+) -> tuple[str, str]:
+    raw = str(url or "").strip()
+    match = _GH_BOARD_JOBS_RE.search(raw) or _GH_EMBED_TOKEN_RE.search(raw)
+    if match:
+        return match.group("board"), match.group("jid")
+    jid = greenhouse_job_id_from_url(raw)
+    board = ""
+    if isinstance(company, dict):
+        board = str(company.get("board") or "").strip().strip("/")
+    if board and jid:
+        return board, jid
+    return "", ""
+
+
+def greenhouse_listing_document(
+    url: str,
+    company: dict[str, Any] | None = None,
+) -> str:
+    """Job description from Greenhouse's posting API, without the application form."""
+    board, jid = greenhouse_board_and_job_id(url, company)
+    if not board or not jid:
+        return ""
+    api = f"https://boards-api.greenhouse.io/v1/boards/{urllib.parse.quote(board)}/jobs/{jid}"
+    try:
+        req = urllib.request.Request(api, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            data = json.loads(resp.read().decode("utf-8", "replace"))
+    except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError, ValueError):
+        return ""
+    if not isinstance(data, dict):
+        return ""
+    content = _greenhouse_content_html(str(data.get("content") or ""))
+    title = re.sub(r"\s+", " ", str(data.get("title") or "")).strip()
+    plain = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", content)).strip()
+    if len(plain) < 80:
+        return ""
+    page = str(data.get("absolute_url") or url or "").strip() or "about:blank"
+    return _styled_listing_document(title, content, page)
+
+
+def ashby_listing_document(url: str) -> str:
+    """Job description from the Ashby posting page, without loading its application shell."""
+    raw = str(url or "").strip()
+    if "ashbyhq.com" not in raw.lower():
+        return ""
+    try:
+        req = urllib.request.Request(raw, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            body = resp.read().decode("utf-8", "replace")
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError):
+        return ""
+    title = ""
+    description = ""
+    posting = ashby_posting_page_posting(body)
+    if isinstance(posting, dict):
+        title = re.sub(r"\s+", " ", str(posting.get("title") or "")).strip()
+        description = str(posting.get("descriptionHtml") or "").strip()
+    if len(re.sub(r"<[^>]+>", " ", description).strip()) < 80:
+        match = _ASHBY_JSONLD_RE.search(body)
+        if match:
+            try:
+                data = json.loads(match.group(1))
+            except json.JSONDecodeError:
+                data = None
+            if isinstance(data, dict) and str(data.get("@type") or "") == "JobPosting":
+                title = title or re.sub(r"\s+", " ", str(data.get("title") or "")).strip()
+                description = str(data.get("description") or "").strip()
+    description = re.sub(r"<script\b[^>]*>.*?</script>", "", description, flags=re.I | re.S)
+    plain = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", description)).strip()
+    if len(plain) < 80:
+        return ""
+    return _styled_listing_document(title, description, raw)
+
+
+def listing_snapshot_html(url: str, company: dict[str, Any] | None = None) -> str:
     """Local copy of a posting that cannot be framed. Empty when the live frame is used."""
     raw = str(url or "").strip()
     if not raw.startswith(("http://", "https://")):
@@ -32903,13 +33416,25 @@ def listing_snapshot_html(url: str) -> str:
         if cached is not None:
             return cached
         print(f"Listing snapshot: {raw}", file=sys.stderr)
-        html = workday_guest_listing_document(raw)
-        _LISTING_SNAPSHOTS[raw] = html
-        return html
-    embed = greenhouse_embed_frame_url(raw)
-    if embed and not greenhouse_embed_shows_posting(embed):
-        _LISTING_SNAPSHOTS[raw] = ""
-        return ""
+        html_doc = workday_guest_listing_document(raw)
+        _LISTING_SNAPSHOTS[raw] = html_doc
+        return html_doc
+    if _listing_frame_host_is(host, "ashbyhq.com"):
+        cached = _LISTING_SNAPSHOTS.get(raw)
+        if cached is not None:
+            return cached
+        print(f"Listing snapshot: {raw}", file=sys.stderr)
+        html_doc = ashby_listing_document(raw)
+        _LISTING_SNAPSHOTS[raw] = html_doc
+        return html_doc
+    if _listing_frame_host_is(host, "greenhouse.io") or greenhouse_job_id_from_url(raw):
+        cached = _LISTING_SNAPSHOTS.get(raw)
+        if cached is not None:
+            return cached
+        print(f"Listing snapshot: {raw}", file=sys.stderr)
+        html_doc = greenhouse_listing_document(raw, company)
+        _LISTING_SNAPSHOTS[raw] = html_doc
+        return html_doc
     if "careers.oracle.com" in raw.lower():
         cached = _LISTING_SNAPSHOTS.get(raw)
         if cached is not None:
@@ -32979,11 +33504,12 @@ def render_job_description_block(
     listing_url: str = "",
     frame_url: str = "",
     title: str = "",
+    company: dict[str, Any] | None = None,
 ) -> str:
     resolved = frame_url or listing_frame_url_for_card(listing_url)
     if resolved:
         return render_show_listing_block(resolved)
-    snapshot = listing_snapshot_html(listing_url)
+    snapshot = listing_snapshot_html(listing_url, company)
     if not snapshot:
         snapshot = saved_listing_snapshot(
             title,
@@ -33003,11 +33529,12 @@ def render_job_description_block_lazy(
     frame_url: str = "",
     title: str = "",
     description_html: str = "",
+    company: dict[str, Any] | None = None,
 ) -> str:
     resolved = frame_url or listing_frame_url_for_card(listing_url)
     if resolved:
         return render_show_listing_block(resolved, apply_key=apply_key)
-    snapshot = listing_snapshot_html(listing_url)
+    snapshot = listing_snapshot_html(listing_url, company)
     if not snapshot and description_html:
         snapshot = saved_listing_snapshot(title, description_html, listing_url or apply_key)
     if snapshot:
@@ -33285,6 +33812,10 @@ def render_job(
             link_url = fixed or (
                 "" if is_careers_landing_url(link_url, co_cfg) else link_url
             )
+    if link_url and isinstance(co_cfg, dict):
+        live_listing = greenhouse_live_listing_url(link_url, co_cfg, job.title)
+        if live_listing:
+            link_url = live_listing
     if link_url:
         title = f'<a href="{esc(link_url)}" target="_blank" rel="noopener">{title}</a>'
     if job.is_new:
@@ -33354,6 +33885,7 @@ def render_job(
                     frame_url=frame_url,
                     title=job.title,
                     description_html=str(desc_html or ""),
+                    company=co_cfg if isinstance(co_cfg, dict) else None,
                 )
             )
     else:
@@ -34455,6 +34987,7 @@ def build_html(
             default_runtime_path=default_runtime_path,
         )
     )
+    board_ui_defaults_json = json.dumps(published_board_ui(out_path)).replace("<", "\\u003c")
     sections_cfg = cfg.get("sections", {})
 
     # Unified Glassdoor enrichment for all companies (headers + hubs).
@@ -35465,6 +35998,9 @@ def build_html(
     #job-listings-body.listings-flat-sort > .company-group {{
       display: none !important;
     }}
+    #job-listings-body p.meta.is-hidden-for-rating-sort {{
+      display: none !important;
+    }}
     .applied-mark input {{ accent-color: var(--accent); cursor: pointer; width: 1rem; height: 1rem; }}
     .pipeline-status {{ display: block; width: 100%; max-width: 100%; box-sizing: border-box; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-size: 0.68rem; padding: 0.15rem 0.25rem; border-radius: 4px; cursor: pointer; }}
     .pipeline-company {{ color: var(--muted); font-weight: 600; }}
@@ -35630,6 +36166,9 @@ def build_html(
     }}
     .hub-glassdoor:hover {{ color: var(--link-hover); text-decoration: underline; }}
     .job.hidden, .job.hidden-text-filter, .company-group.hidden-company, .company-group.hidden-empty, .match-group.hidden-empty, .hub-list .hub-row.hidden-company, .company-empty.hidden-company, .company-check.hidden-layoff, .hidden-layoff, section.is-section-empty {{ display: none !important; }}
+    html:not(.board-listings-ready) .company-group,
+    html:not(.board-listings-ready) #job-listings-body > .job,
+    html:not(.board-listings-ready) #job-listings-body > .job-applied-row {{ display: none !important; }}
     section.is-section-header-hidden > h2, section.is-section-header-hidden > .meta {{ display: none !important; }}
     .badge-layoff {{ background: var(--badge-warning-bg); color: var(--stretch); font-size: 0.65rem; vertical-align: middle; }}
     .badge-h1b {{ font-size: 0.65rem; vertical-align: middle; white-space: nowrap; }}
@@ -35940,15 +36479,6 @@ def build_html(
       </div>
     </div>
     <div class="filter-row">
-      <h2>Stability</h2>
-      <label class="company-check layoff-toggle">
-        <input type="checkbox" id="hide-layoff-prone">
-        <span>Hide layoff-prone employers</span>
-      </label>
-      <label class="company-check layoff-toggle">
-        <input type="checkbox" id="hide-applied">
-        <span>Hide applied / screen / rejected / ghosted in active sections</span>
-      </label>
       <p class="meta filter-hint" id="pipeline-save-row">
         <button type="button" class="excluded-toggle" id="link-runtime-file" hidden>Link runtime file</button>
         <button type="button" class="excluded-toggle" id="link-pipeline-file" hidden style="margin-left:0.35rem;opacity:0.75;font-size:0.8rem">Link HTML file (legacy)</button>
@@ -35991,6 +36521,7 @@ def build_html(
     </div>
     <p class="stats" id="stats"></p>
     <script type="application/json" id="pipeline-config">{pipeline_config_json}</script>
+    <script type="application/json" id="board-ui-defaults">{board_ui_defaults_json}</script>
     <script type="application/json" id="pipeline-data">{pipeline_json}</script>
     <script type="application/json" id="lazy-board-index">{lazy_board_index_json}</script>
     <script type="application/json" id="lazy-board-payload">{lazy_board_payload_json}</script>
@@ -37151,6 +37682,25 @@ def build_html(
       mark.removeAttribute('aria-label');
     }}
 
+    async function loadNasBoardUi() {{
+      try {{
+        const resp = await fetch(PIPELINE_ROW_URL, {{
+          method: 'GET',
+          cache: 'no-store',
+        }});
+        if (!resp.ok) return false;
+        const data = await resp.json();
+        if (!data.ui || typeof data.ui !== 'object') return false;
+        applyBoardUiState(data.ui);
+        try {{
+          localStorage.setItem(BOARD_UI_STORAGE_KEY, JSON.stringify(collectBoardUiState()));
+        }} catch (_) {{}}
+        return true;
+      }} catch (_) {{
+        return false;
+      }}
+    }}
+
     async function refreshNasPipeline() {{
       const label = document.getElementById('pipeline-token-label');
       const input = document.getElementById('pipeline-token-input');
@@ -37176,7 +37726,12 @@ def build_html(
       if (!token) {{
         nasPipelineStale = true;
         setPipelineTokenMark('');
-        setPipelineSaveStatus('Enter the pipeline token to load and save status.');
+        const loaded = await loadNasBoardUi();
+        setPipelineSaveStatus(
+          loaded
+            ? 'Board settings loaded. Enter the pipeline token to load and save status.'
+            : 'Enter the pipeline token to load and save status.'
+        );
         return;
       }}
       try {{
@@ -38091,8 +38646,7 @@ def build_html(
         const applyKey = pipelineKeyForApplyKey(job.dataset.applyKey || '');
         const st = (readPipeline()[applyKey]?.status || job.dataset.pipeline || '');
         syncJobPipelineUi(job, st);
-        // Terminal statuses leave primary listings; keep DOM classes aligned with counts.
-        job.classList.toggle('hidden-applied', isHiddenTerminal(st));
+        job.classList.remove('hidden-applied');
         job.classList.toggle('hidden-pass', st === 'pass');
         if (st === 'pass' && !job.closest('#excluded-panel')) relocatePassJob(job);
       }});
@@ -38151,6 +38705,7 @@ def build_html(
       }}
       refreshMatchGroupVisibility();
       markTruncatedLocBadges(group);
+      syncEmployerBrowseLinks(group);
     }}
 
     function resetEmptyLazyCompanyShells(root) {{
@@ -38169,7 +38724,9 @@ def build_html(
     }}
 
     let lazyCompanyObserver = null;
+    let boardListingsSettled = false;
     function observeLazyCompanyGroups(root) {{
+      if (!boardListingsSettled) return;
       if (!('IntersectionObserver' in window)) {{
         (root || document).querySelectorAll('.company-group-lazy[data-lazy-loaded="0"]').forEach(mountLazyCompanyBlock);
         return;
@@ -39048,11 +39605,6 @@ def build_html(
       const inExcludedPanel = Boolean(job.closest('#excluded-panel'));
       const st = jobPipelineStatus(job);
       if (st === 'pass') return inExcludedPanel && showHiddenJobsOn();
-      // Applied/screen/rejected/ghosted leave primary listings (Applied section).
-      // Match entryPipelineVisible so sidebar dots and cards stay aligned.
-      if (isHiddenTerminal(st)) {{
-        return inExcludedPanel && showHiddenJobsOn();
-      }}
       if (!inExcludedPanel && jobIsHiddenPool(job)) return false;
       return true;
     }}
@@ -39061,7 +39613,7 @@ def build_html(
       document.querySelectorAll('.job').forEach(job => {{
         if (isInAppliedSection(job) || job.closest('#excluded-panel')) return;
         const st = jobPipelineStatus(job);
-        job.classList.toggle('hidden-applied', isHiddenTerminal(st));
+        job.classList.remove('hidden-applied');
         job.classList.toggle('hidden-pass', st === 'pass');
       }});
     }}
@@ -39888,11 +40440,26 @@ def build_html(
       }}, 350);
     }}
 
+    function readEmbeddedBoardUi() {{
+      const el = document.getElementById('board-ui-defaults');
+      if (!el || !String(el.textContent || '').trim()) return null;
+      try {{
+        const ui = JSON.parse(el.textContent || '');
+        return ui && typeof ui === 'object' ? ui : null;
+      }} catch (_) {{
+        return null;
+      }}
+    }}
+
     function initBoardUiStateSync() {{
       if (boardUiLoaded) return;
       loadTextFilterChips();
       loadTextFilterCombine();
       loadBoardUiFromLocalStorage();
+      if (!boardUiLoaded) {{
+        const embedded = readEmbeddedBoardUi();
+        if (embedded && Object.keys(embedded).length) applyBoardUiState(embedded);
+      }}
       if (!boardUiLoaded) restoreShowHiddenToggle();
       if (!textFilterChips.length) applyProfileDefaultTextFilters();
       reconcileTextFilterChipsOnLoad();
@@ -40273,9 +40840,6 @@ def build_html(
       if (!entry?.k) return true;
       const st = readPipeline()[pipelineKeyForApplyKey(entry.k)]?.status || '';
       if (st === 'pass') return false;
-      // Applied/screen/rejected/ghosted leave primary listings (Applied section).
-      // Keep sidebar dots aligned with active-section cards, not pipeline history.
-      if (isHiddenTerminal(st)) return false;
       return true;
     }}
 
@@ -40854,6 +41418,17 @@ def build_html(
       markTruncatedLocBadges(btn.closest('.job') || document);
     }}
 
+    function syncEmployerBrowseLinks(root) {{
+      const hide = activeCompanySort === 'rating';
+      const scope = root && root.querySelectorAll ? root : document.getElementById('job-listings-body');
+      if (!scope) return;
+      scope.querySelectorAll('p.meta').forEach(p => {{
+        const label = (p.textContent || '').replace(/\\s+/g, ' ').trim();
+        if (!/^Browse all .+ remote roles/.test(label)) return;
+        p.classList.toggle('is-hidden-for-rating-sort', hide);
+      }});
+    }}
+
     function refreshCompanySortButtons() {{
       document.querySelectorAll('.company-sort-btn').forEach(btn => {{
         const active = (btn.dataset.companySort || '') === activeCompanySort;
@@ -40906,9 +41481,10 @@ def build_html(
       if (!listingsBody) return;
       if (companySortUsesFlatList()) {{
         await flattenJobListings(listingsBody);
-        return;
+      }} else {{
+        await restoreCompanyGroupLayout(listingsBody);
       }}
-      await restoreCompanyGroupLayout(listingsBody);
+      syncEmployerBrowseLinks(listingsBody);
     }}
 
     function refreshCompanyFilterDots(countsByCompany) {{
@@ -40964,6 +41540,7 @@ def build_html(
     }}
 
     async function applyRoleFilter() {{
+      if (!boardListingsSettled) return;
       clearScrollReveal();
       resetFilterPassCache();
       syncExcludedPanelForMatchFilter();
@@ -41360,12 +41937,19 @@ def build_html(
     }}
 
     void (async () => {{
-      await bootstrapLazyBoard();
-      // After sidecars load — calling this earlier poisoned index to [] via
-      // reconcileTextFilterChipsOnLoad → getJobBoardIndex → stub embed.
-      initBoardUiStateSync();
-      await applyRoleFilter();
-      await initPipelinePersistence();
+      try {{
+        await bootstrapLazyBoard();
+        // After sidecars load — calling this earlier poisoned index to [] via
+        // reconcileTextFilterChipsOnLoad → getJobBoardIndex → stub embed.
+        initBoardUiStateSync();
+        await initPipelinePersistence();
+      }} finally {{
+        boardListingsSettled = true;
+        try {{
+          await applyRoleFilter();
+        }} catch (_) {{}}
+        document.documentElement.classList.add('board-listings-ready');
+      }}
     }})();
   </script>
 </body>

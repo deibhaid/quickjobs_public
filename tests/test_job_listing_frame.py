@@ -108,16 +108,16 @@ class JobListingFrameTests(unittest.TestCase):
 
     def test_ashby_refuse_without_snapshot_uses_saved_description(self) -> None:
         url = "https://jobs.ashbyhq.com/clickhouse/6b2709a0-ee6b-481a-b72c-87a669acd055"
-        original_allow = self.qj.ashby_posting_allows_frame
+        original_doc = self.qj.ashby_listing_document
         original_capture = self.qj._capture_listing_snapshot
-        self.qj.ashby_posting_allows_frame = lambda _url: False
+        self.qj.ashby_listing_document = lambda _url: ""
         self.qj._capture_listing_snapshot = lambda _url: ""
         self.qj._LISTING_SNAPSHOTS.pop(url, None)
         try:
             self.assertEqual(self.qj.listing_frame_url_for_card(url), "")
             html = self.qj.render_job_description_block("On call for the platform.", url)
         finally:
-            self.qj.ashby_posting_allows_frame = original_allow
+            self.qj.ashby_listing_document = original_doc
             self.qj._capture_listing_snapshot = original_capture
             self.qj._LISTING_SNAPSHOTS.pop(url, None)
         self.assertIn("Show listing", html)
@@ -126,16 +126,13 @@ class JobListingFrameTests(unittest.TestCase):
 
     def test_ashby_snapshot_shows_local_listing(self) -> None:
         url = "https://jobs.ashbyhq.com/clickhouse/6b2709a0-ee6b-481a-b72c-87a669acd055"
-        original_allow = self.qj.ashby_posting_allows_frame
-        original_capture = self.qj._capture_listing_snapshot
-        self.qj.ashby_posting_allows_frame = lambda _url: False
-        self.qj._capture_listing_snapshot = lambda _url: "<main>Senior Site Reliability</main>"
+        original_doc = self.qj.ashby_listing_document
+        self.qj.ashby_listing_document = lambda _url: "<main>Senior Site Reliability</main>"
         self.qj._LISTING_SNAPSHOTS.pop(url, None)
         try:
             html = self.qj.render_job_description_block("On call for the platform.", url)
         finally:
-            self.qj.ashby_posting_allows_frame = original_allow
-            self.qj._capture_listing_snapshot = original_capture
+            self.qj.ashby_listing_document = original_doc
             self.qj._LISTING_SNAPSHOTS.pop(url, None)
         self.assertIn("Show listing", html)
         self.assertIn("data-listing-snapshot", html)
@@ -261,9 +258,9 @@ class JobListingFrameTests(unittest.TestCase):
 
     def test_missing_greenhouse_job_uses_saved_description(self) -> None:
         url = "https://job-boards.greenhouse.io/pinterest/jobs/7494956"
-        original = self.qj.greenhouse_embed_shows_posting
+        original = self.qj.greenhouse_listing_document
         original_capture = self.qj._capture_listing_snapshot
-        self.qj.greenhouse_embed_shows_posting = lambda _url: False
+        self.qj.greenhouse_listing_document = lambda _url, _company=None: ""
         self.qj._capture_listing_snapshot = lambda _url: (_ for _ in ()).throw(
             AssertionError("removed Greenhouse job must not be snapshotted")
         )
@@ -274,24 +271,31 @@ class JobListingFrameTests(unittest.TestCase):
                 url,
             )
         finally:
-            self.qj.greenhouse_embed_shows_posting = original
+            self.qj.greenhouse_listing_document = original
             self.qj._capture_listing_snapshot = original_capture
             self.qj._LISTING_SNAPSHOTS.pop(url, None)
         self.assertIn("Show listing", html)
         self.assertIn("Big Data Platform", html)
         self.assertNotIn("Expand description", html)
         self.assertNotIn("job_board", html)
+        self.assertNotIn("embed/job_app", html)
 
-    def test_live_greenhouse_embed_still_frames(self) -> None:
+    def test_live_greenhouse_uses_posting_not_application(self) -> None:
         url = "https://job-boards.greenhouse.io/pinterest/jobs/7990090"
-        original = self.qj.greenhouse_embed_shows_posting
-        self.qj.greenhouse_embed_shows_posting = lambda _url: True
+        original = self.qj.greenhouse_listing_document
+        self.qj.greenhouse_listing_document = (
+            lambda _url, _company=None: "<main><h1>Staff engineer</h1><p>Platform work.</p></main>"
+        )
+        self.qj._LISTING_SNAPSHOTS.pop(url, None)
         try:
             html = self.qj.render_job_description_block("Staff engineer.", url)
         finally:
-            self.qj.greenhouse_embed_shows_posting = original
+            self.qj.greenhouse_listing_document = original
+            self.qj._LISTING_SNAPSHOTS.pop(url, None)
         self.assertIn("Show listing", html)
-        self.assertIn("embed/job_app?for=pinterest&amp;token=7990090", html)
+        self.assertIn("data-listing-snapshot", html)
+        self.assertIn("Platform work.", html)
+        self.assertNotIn("embed/job_app", html)
         self.assertNotIn("Expand description", html)
 
     def test_replace_job_board_frame_keeps_real_embed(self) -> None:
@@ -313,11 +317,14 @@ class JobListingFrameTests(unittest.TestCase):
         self.assertIn("Show listing", html)
         self.assertNotIn("token=7494956", html)
 
-    def test_redventures_gh_jid_frames_greenhouse_embed(self) -> None:
+    def test_redventures_gh_jid_uses_posting_not_board(self) -> None:
         url = "https://www.redventures.com/careers/positions/open?gh_jid=8214077"
         company = {"type": "greenhouse", "board": "redventures"}
-        original = self.qj.greenhouse_embed_shows_posting
-        self.qj.greenhouse_embed_shows_posting = lambda _url: True
+        original = self.qj.greenhouse_listing_document
+        self.qj.greenhouse_listing_document = (
+            lambda _url, _company=None: "<main><p>Assess the product.</p></main>"
+        )
+        self.qj._LISTING_SNAPSHOTS.pop(url, None)
         try:
             frame = self.qj.listing_frame_url_for_job(url, company)
             html = self.qj.render_job_description_block_lazy(
@@ -325,17 +332,16 @@ class JobListingFrameTests(unittest.TestCase):
                 url,
                 has_description=True,
                 frame_url=frame,
+                company=company,
             )
         finally:
-            self.qj.greenhouse_embed_shows_posting = original
-        self.assertEqual(
-            frame,
-            "https://job-boards.greenhouse.io/embed/job_app?for=redventures&token=8214077",
-        )
+            self.qj.greenhouse_listing_document = original
+            self.qj._LISTING_SNAPSHOTS.pop(url, None)
+        self.assertEqual(frame, "")
         self.assertIn("Show listing", html)
-        self.assertIn("token=8214077", html)
-        self.assertIn("data-listing-sandbox", html)
-        self.assertNotIn("data-listing-snapshot", html)
+        self.assertIn("data-listing-snapshot", html)
+        self.assertIn("Assess the product.", html)
+        self.assertNotIn("embed/job_app", html)
         self.assertNotIn("Open Positions", html)
 
     def test_replace_redventures_snapshot_with_embed(self) -> None:
@@ -477,6 +483,68 @@ class JobListingFrameTests(unittest.TestCase):
         self.assertLess(html.find("<h1"), html.find("job__description"))
         self.assertLess(html.find("job__description"), html.find("Apply for this job"))
         self.assertNotIn("<script", html.lower())
+
+    def test_reflow_splits_glued_sections_and_requirement_items(self) -> None:
+        text = (
+            "About Upstart At Upstart, we are united by a mission that matters. "
+            "How you'll make an impact: Embody and share SRE principles at Upstart "
+            "Exercise state-of-the-art SRE practices throughout the company "
+            "What we're looking for: Minimum requirements: Minimum of 6 years combined experience "
+            "Proficiency coding Python https://www.upstart.com/candidate_privacy_policy"
+        )
+        html = self.qj.reflow_flattened_posting_text(text)
+        self.assertIn("<h2>About Upstart</h2>", html)
+        self.assertIn("How you", html)
+        self.assertIn("make an impact</h2>", html)
+        self.assertIn("<li>Embody and share SRE principles at Upstart</li>", html)
+        self.assertIn(
+            "<li>Exercise state-of-the-art SRE practices throughout the company</li>",
+            html,
+        )
+        self.assertIn("<li>Proficiency coding Python", html)
+        self.assertIn('href="https://www.upstart.com/candidate_privacy_policy"', html)
+
+    def test_greenhouse_closed_id_uses_the_live_same_title(self) -> None:
+        company = {"type": "greenhouse", "board": "databricks"}
+        original = self.qj.greenhouse_board_jobs
+        self.qj.greenhouse_board_jobs = lambda _board: [
+            {
+                "id": 8407875002,
+                "title": "Senior Production Engineer - Realtime Products",
+                "absolute_url": "https://www.databricks.com/company/careers/open-positions/job?gh_jid=8407875002",
+            }
+        ]
+        try:
+            live = self.qj.greenhouse_live_listing_url(
+                "https://databricks.com/company/careers/open-positions/job?gh_jid=8337401002",
+                company,
+                "Senior Production Engineer - Realtime Products",
+            )
+        finally:
+            self.qj.greenhouse_board_jobs = original
+        self.assertEqual(
+            live,
+            "https://www.databricks.com/company/careers/open-positions/job?gh_jid=8407875002",
+        )
+        self.qj.greenhouse_board_jobs = lambda _board: [
+            {
+                "id": 8015547,
+                "title": "Staff Software Engineer",
+                "absolute_url": "https://www.pinterestcareers.com/jobs/?gh_jid=8015547",
+            }
+        ]
+        try:
+            index = self.qj.greenhouse_live_listing_url(
+                "https://job-boards.greenhouse.io/pinterest/jobs/8015490",
+                {"type": "greenhouse", "board": "pinterest"},
+                "Staff Software Engineer",
+            )
+        finally:
+            self.qj.greenhouse_board_jobs = original
+        self.assertEqual(
+            index,
+            "https://job-boards.greenhouse.io/pinterest/jobs/8015547",
+        )
 
     def test_greenhouse_listing_keeps_description_already_on_the_page(self) -> None:
         page = (
