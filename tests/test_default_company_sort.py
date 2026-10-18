@@ -55,6 +55,12 @@ class DefaultCompanySortTests(unittest.TestCase):
         self.assertIn(".job:hover > .job-pass-btn", SRC)
         self.assertIn("h3.company-head-with-hide:hover .company-hide-active-btn", SRC)
         self.assertIn("nameText.appendChild(btn)", SRC)
+        self.assertIn("function syncListingExpandToggles()", SRC)
+        self.assertIn("function shownBoardJobs(root)", SRC)
+        self.assertIn('id="listing-expand-all"', SRC)
+        self.assertIn("color: #fff;", SRC)
+        self.assertIn(".listing-expand-all-row:hover .listing-expand-toggle", SRC)
+        self.assertIn(".company-listing-expand-btn", SRC)
         self.assertIn("async function mountVisibleListingShells()", SRC)
         self.assertIn("await mountVisibleListingShells()", SRC)
         self.assertIn(

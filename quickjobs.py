@@ -5218,6 +5218,10 @@ class CompanyResult:
     source_group: str = "company"
     h1b_grade: str = ""
     h1b_label: str = ""
+    # Ids from a completed openings list this run. None means the source did
+    # not return a full list, so missing priors still need a URL check.
+    # Not written to the snapshot.
+    listed_job_ids: set[str] | None = None
 
 
 def job_to_dict(job: Job) -> dict[str, Any]:
@@ -5675,6 +5679,71 @@ def _job_seen_in_scrape(company_id: str, job: Job, fresh_keys: set[str], fresh_u
     return False
 
 
+def remember_complete_board_ids(company: dict[str, Any], ids: Any) -> None:
+    """Record every id from a completed openings list for this run.
+
+    Only call this when the response is the company's full list, not a keyword
+    or page window. An id missing from that set is closed.
+    """
+    found: set[str] = set()
+    for item in ids or []:
+        text = str(item or "").strip()
+        if text:
+            found.add(text)
+    company["_board_job_ids"] = found
+
+
+def _job_on_complete_board_list(job: Job, listed_ids: set[str]) -> bool:
+    """True when this prior row is an id the source just returned."""
+    jid = str(job.job_id or "").strip()
+    if jid and jid in listed_ids:
+        return True
+    url = str(job.url or "")
+    from_url = greenhouse_job_id_from_url(url)
+    if from_url and from_url in listed_ids:
+        return True
+    for part in re.split(r"[/?#=&]+", url):
+        if part and part in listed_ids:
+            return True
+    return False
+
+
+def _note_dropped_absent(co: CompanyResult, count: int) -> CompanyResult:
+    if count <= 0:
+        return co
+    extra = f"dropped {count} prior job(s) absent from the company list"
+    note = (co.search_note or "").strip()
+    search_note = f"{note} · {extra}" if note else extra
+    return replace(co, search_note=search_note)
+
+
+def _priors_still_on_board_list(
+    fresh: CompanyResult, prior: CompanyResult | None
+) -> tuple[CompanyResult | None, int]:
+    """Drop priors that a completed openings list did not include.
+
+    The list is the confirmation. A later page check can fail open (HTTP 406,
+    or a redirect the probe does not treat as closed) and republish a job the
+    company list already omitted.
+    """
+    listed = fresh.listed_job_ids
+    if listed is None or prior is None or not prior.jobs:
+        return prior, 0
+    kept = [job for job in prior.jobs if _job_on_complete_board_list(job, listed)]
+    absent = len(prior.jobs) - len(kept)
+    if absent <= 0:
+        return prior, 0
+    print(
+        f"retain_prior_open_jobs: {fresh.id} dropped {absent} prior job(s) "
+        "absent from the company list",
+        file=sys.stderr,
+    )
+    sys.stderr.flush()
+    if not kept:
+        return None, absent
+    return replace(prior, jobs=kept), absent
+
+
 def retain_prior_open_jobs(
     fresh: CompanyResult, prior: CompanyResult | None
 ) -> CompanyResult:
@@ -5684,7 +5753,13 @@ def retain_prior_open_jobs(
     open postings. Fresh rows win on identity; prior-only rows are carried with
     ``force_url_verify`` so ``verify_jobs`` can drop dead links. Confirmed-dead
     boards (e.g. Greenhouse HTTP 404) still clear to empty without carry-forward.
+
+    When this run recorded a complete openings list (``listed_job_ids``), a prior
+    job that is not on that list is closed and is not carried.
     """
+    prior, absent = _priors_still_on_board_list(fresh, prior)
+    if absent:
+        fresh = _note_dropped_absent(fresh, absent)
     if not prior or not prior.jobs:
         return fresh
     if company_result_suspicious_zero_yield(fresh):
@@ -17313,6 +17388,9 @@ def ingest_postings(
     employer_region = company_employer_region(company)
     default_loc = str(company.get("default_loc") or "")
     result = company_result_shell(company)
+    listed = company.get("_board_job_ids")
+    if isinstance(listed, set):
+        result.listed_job_ids = {str(item) for item in listed if str(item).strip()}
     if error_note:
         result.search_note = error_note
         return result
@@ -21275,9 +21353,22 @@ def fetch_greenhouse(company: dict[str, Any], cfg: dict[str, Any]) -> tuple[list
     if code != 200:
         return [], f"Greenhouse API returned HTTP {code}"
     try:
-        board_jobs = json.loads(body).get("jobs", [])
+        payload = json.loads(body)
+        board_jobs = payload.get("jobs", []) if isinstance(payload, dict) else None
     except json.JSONDecodeError:
         return [], "Greenhouse API returned invalid JSON"
+    if not isinstance(board_jobs, list):
+        return [], "Greenhouse API returned invalid JSON"
+    # Same response the scrape just trusted. Priors whose ids are missing from
+    # this set are closed; do not leave that decision to a page probe.
+    remember_complete_board_ids(
+        company,
+        (
+            row.get("id")
+            for row in board_jobs
+            if isinstance(row, dict)
+        ),
+    )
     raw: list[RawPosting] = []
     seen: set[int] = set()
     cid = str(company.get("id") or "")
@@ -21463,6 +21554,14 @@ def fetch_lever(company: dict[str, Any], cfg: dict[str, Any]) -> tuple[list[RawP
         return [], "Lever API returned invalid JSON"
     if not isinstance(postings, list):
         return [], "Lever API returned unexpected payload"
+    remember_complete_board_ids(
+        company,
+        (
+            posting.get("id")
+            for posting in postings
+            if isinstance(posting, dict)
+        ),
+    )
     cid = str(company.get("id") or "")
     raw: list[RawPosting] = []
     for posting in postings:
@@ -22239,6 +22338,14 @@ def fetch_ashby(company: dict[str, Any], cfg: dict[str, Any]) -> tuple[list[RawP
     postings, list_source, list_err = ashby_fetch_list_postings(company, cache_ttl_hours)
     if list_err:
         return [], list_err
+    remember_complete_board_ids(
+        company,
+        (
+            posting.get("id")
+            for posting in postings
+            if isinstance(posting, dict) and posting.get("isListed") is not False
+        ),
+    )
     if list_source == "board-html":
         ashby_overlay_published_at(postings, company, cache_ttl_hours)
     cid = str(company.get("id") or "")
@@ -22707,6 +22814,14 @@ def fetch_successfactors(company: dict[str, Any], cfg: dict[str, Any]) -> tuple[
             ):
                 rows_by_url[row["url"]] = row
     scanned = len(rows_by_url)
+    if source == "sitemal":
+        sitemal_ids: list[str] = []
+        for row in rows_by_url.values():
+            sitemal_ids.append(str(row.get("job_id") or ""))
+            id_match = re.search(r"/(\d+)/?$", str(row.get("url") or ""))
+            if id_match:
+                sitemal_ids.append(id_match.group(1))
+        remember_complete_board_ids(company, sitemal_ids)
     for row in rows_by_url.values():
         url = row["url"]
         title = row["title"]
@@ -22827,6 +22942,8 @@ def fetch_smartrecruiters(company: dict[str, Any], cfg: dict[str, Any]) -> tuple
     cid = str(company.get("id") or "")
     raw: list[RawPosting] = []
     total_found = 0
+    listed_ids: list[str] = []
+    list_complete = True
     use_keyword_query = bool(company.get("smartrecruiters_keyword_query"))
     query_terms: list[str] = [""]
     if use_keyword_query:
@@ -22839,6 +22956,7 @@ def fetch_smartrecruiters(company: dict[str, Any], cfg: dict[str, Any]) -> tuple
     for term in query_terms:
         offset = 0
         term_total = 0
+        finished_term = False
         while offset < 500:
             params = f"limit=100&offset={offset}"
             if term:
@@ -22849,12 +22967,14 @@ def fetch_smartrecruiters(company: dict[str, Any], cfg: dict[str, Any]) -> tuple
             )
             code, _, body = http_get(api)
             if code != 200:
+                list_complete = False
                 if raw:
                     break
                 return raw, f"SmartRecruiters API HTTP {code}"
             try:
                 payload = json.loads(body)
             except json.JSONDecodeError:
+                list_complete = False
                 if raw:
                     break
                 return raw, "SmartRecruiters API returned invalid JSON"
@@ -22863,9 +22983,16 @@ def fetch_smartrecruiters(company: dict[str, Any], cfg: dict[str, Any]) -> tuple
                 term_total = int(payload.get("totalFound") or len(content))
                 total_found += term_total
             if not content:
+                if term_total == 0 or offset >= term_total:
+                    finished_term = True
+                else:
+                    list_complete = False
                 break
             for posting in content:
                 if isinstance(posting, dict):
+                    pid = str(posting.get("id") or "").strip()
+                    if pid:
+                        listed_ids.append(pid)
                     _smartrecruiters_append_posting(
                         posting,
                         sr_id=str(sr_id),
@@ -22878,10 +23005,15 @@ def fetch_smartrecruiters(company: dict[str, Any], cfg: dict[str, Any]) -> tuple
                     )
             offset += len(content)
             if offset >= term_total:
+                finished_term = True
                 break
+        if not finished_term:
+            list_complete = False
         if not use_keyword_query:
             break
 
+    if list_complete and not use_keyword_query:
+        remember_complete_board_ids(company, listed_ids)
     if use_keyword_query:
         note = (
             f"SmartRecruiters keyword scan ({len(query_terms)} queries, "
@@ -22926,8 +23058,10 @@ def fetch_bullhorn_public(
     max_start = max(page_size, int(company.get("bullhorn_max_start") or 500))
     raw: list[RawPosting] = []
     seen: set[str] = set()
+    listed_ids: list[str] = []
     total = 0
     start = 0
+    reached_end = False
     while start <= max_start:
         api = (
             f"https://public-rest{urllib.parse.quote(swimlane)}.bullhornstaffing.com"
@@ -22951,11 +23085,15 @@ def fetch_bullhorn_public(
             total = int(payload.get("total") or 0)
         rows = payload.get("data") or []
         if not isinstance(rows, list) or not rows:
+            if total == 0 or start >= total:
+                reached_end = True
             break
         for row in rows:
             if not isinstance(row, dict):
                 continue
             jid = str(row.get("id") or "").strip()
+            if jid:
+                listed_ids.append(jid)
             title = str(row.get("title") or "").strip()
             if not jid or not title or jid in seen:
                 continue
@@ -23010,7 +23148,10 @@ def fetch_bullhorn_public(
             )
         start += len(rows)
         if start >= total:
+            reached_end = True
             break
+    if reached_end:
+        remember_complete_board_ids(company, listed_ids)
     note = f"Bullhorn Public API ({total} open, {len(raw)} parsed)"
     return raw, note
 
@@ -25061,7 +25202,11 @@ def _wrap_fetch_ingest(
     cfg: dict[str, Any],
     overrides: dict[str, Any],
 ) -> Any:
-    raw, note = fetch_fn(company, cfg)
+    try:
+        raw, note = fetch_fn(company, cfg)
+    except Exception:
+        company.pop("_board_job_ids", None)
+        raise
     note_lower = (note or "").lower()
     playwright_error = note_lower.startswith("playwright ") and (
         "missing" in note_lower
@@ -25099,8 +25244,11 @@ def _wrap_fetch_ingest(
         or playwright_error
         or ("HTTP " in note and "returned" in note)
     ):
-        return ingest_postings(company, cfg, overrides, [], error_note=note)
-    return ingest_postings(company, cfg, overrides, raw, search_note=note or "")
+        result = ingest_postings(company, cfg, overrides, [], error_note=note)
+    else:
+        result = ingest_postings(company, cfg, overrides, raw, search_note=note or "")
+    company.pop("_board_job_ids", None)
+    return result
 
 
 def _legacy_search(name: str, company: dict[str, Any], cfg: dict[str, Any], overrides: dict[str, Any]) -> Any:
@@ -35088,6 +35236,10 @@ def build_html(
             "        </div>\n"
             '        <div id="job-filter-chips" class="job-filter-chips" hidden></div>\n'
             "      </div>\n"
+            '      <div class="listing-expand-all-row" id="listing-expand-all-row">\n'
+            '        <button type="button" class="listing-expand-toggle" id="listing-expand-all" '
+            'title="Expand all listings" aria-label="Expand all listings">+</button>\n'
+            "      </div>\n"
             '      <div id="job-listings-body">\n'
             + "\n".join(primary_listings)
             + "\n      </div>\n"
@@ -35479,9 +35631,39 @@ def build_html(
       display: flex;
       flex-direction: column;
       gap: 0.45rem;
-      margin: 0 0 1rem;
+      margin: 0 0 0.35rem;
       padding-bottom: 0.75rem;
       border-bottom: 1px solid var(--border);
+    }}
+    .listing-expand-all-row {{
+      display: flex;
+      align-items: center;
+      min-height: 1.45rem;
+      margin: 0 0 0.35rem;
+    }}
+    .listing-expand-toggle {{
+      width: 1.35rem;
+      height: 1.35rem;
+      padding: 0;
+      border: none;
+      outline: none;
+      box-shadow: none;
+      border-radius: 0;
+      background: transparent;
+      color: #fff;
+      font-size: 1.2rem;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+    }}
+    .listing-expand-all-row:hover .listing-expand-toggle,
+    .listing-expand-toggle:focus-visible {{
+      opacity: 1;
+      pointer-events: auto;
+      outline: none;
+      border: none;
     }}
     .job-list-toolbar-row {{
       display: flex;
@@ -36446,9 +36628,38 @@ def build_html(
       position: relative;
       flex: 0 1 auto;
     }}
+    .company-listing-expand-btn {{
+      position: absolute;
+      left: calc(100% + 0.15rem);
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 2;
+      width: 1.35rem;
+      height: 1.35rem;
+      padding: 0;
+      border: none;
+      outline: none;
+      box-shadow: none;
+      border-radius: 0;
+      background: transparent;
+      color: #fff;
+      font-size: 1.15rem;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+    }}
+    .company-group > h3.company-head-with-hide:hover .company-listing-expand-btn,
+    .company-listing-expand-btn:focus-visible {{
+      opacity: 1;
+      pointer-events: auto;
+      outline: none;
+      border: none;
+    }}
     .company-hide-active-btn {{
       position: absolute;
-      left: calc(100% + 0.2rem);
+      left: calc(100% + 1.6rem);
       top: 50%;
       transform: translateY(-50%);
       z-index: 2;
@@ -41566,6 +41777,102 @@ def build_html(
         else head.appendChild(btn);
         head.classList.add('company-head-with-hide');
       }});
+      syncListingExpandToggles();
+    }}
+
+    function jobListingIsShown(job) {{
+      if (!job || isInAppliedSection(job) || job.closest('#excluded-panel')) return false;
+      if (!jobIsDomVisible(job)) return false;
+      const group = job.closest('.company-group');
+      if (group && (group.classList.contains('hidden-company') || group.classList.contains('hidden-empty'))) return false;
+      return Boolean(job.querySelector('.job-description-toggle'));
+    }}
+
+    function shownBoardJobs(root) {{
+      const scope = root || document.getElementById('job-listings-body');
+      if (!scope) return [];
+      return [...scope.querySelectorAll('.job')].filter(jobListingIsShown);
+    }}
+
+    function listingIsExpanded(job) {{
+      const btn = job?.querySelector('.job-description-toggle');
+      return btn?.getAttribute('aria-expanded') === 'true';
+    }}
+
+    function paintListingExpandButton(btn, anyOpen, scopeLabel) {{
+      const collapse = Boolean(anyOpen);
+      btn.textContent = collapse ? '\\u2212' : '+';
+      const title = collapse ? `Collapse ${{scopeLabel}}` : `Expand ${{scopeLabel}}`;
+      btn.title = title;
+      btn.setAttribute('aria-label', title);
+    }}
+
+    function ensureGlobalExpandRow() {{
+      if (document.getElementById('listing-expand-all-row')) return;
+      const listingsBody = document.getElementById('job-listings-body');
+      if (!listingsBody || !listingsBody.parentNode) return;
+      const row = document.createElement('div');
+      row.className = 'listing-expand-all-row';
+      row.id = 'listing-expand-all-row';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'listing-expand-toggle';
+      btn.id = 'listing-expand-all';
+      btn.textContent = '+';
+      row.appendChild(btn);
+      listingsBody.parentNode.insertBefore(row, listingsBody);
+    }}
+
+    function syncListingExpandToggles() {{
+      ensureGlobalExpandRow();
+      wireListingExpandToggles();
+      const listingsBody = document.getElementById('job-listings-body');
+      const allBtn = document.getElementById('listing-expand-all');
+      if (allBtn && listingsBody) {{
+        paintListingExpandButton(allBtn, shownBoardJobs(listingsBody).some(listingIsExpanded), 'all listings');
+      }}
+      if (!companySortShowsCompanyHide()) {{
+        document.querySelectorAll('.company-listing-expand-btn').forEach(btn => btn.remove());
+        return;
+      }}
+      document.querySelectorAll('#job-listings-body > .company-group').forEach(group => {{
+        const head = group.querySelector(':scope > h3');
+        const nameText = head?.querySelector('.company-name-text');
+        if (!head || !nameText) return;
+        let btn = head.querySelector('.company-listing-expand-btn');
+        if (!btn) {{
+          btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'company-listing-expand-btn';
+          nameText.appendChild(btn);
+        }}
+        paintListingExpandButton(btn, shownBoardJobs(group).some(listingIsExpanded), 'company listings');
+        head.classList.add('company-head-with-hide');
+      }});
+    }}
+
+    function wireListingExpandToggles() {{
+      const root = document.getElementById('job-listings');
+      if (!root || root.dataset.expandWired === '1') return;
+      root.dataset.expandWired = '1';
+      root.addEventListener('click', (event) => {{
+        const companyBtn = event.target.closest && event.target.closest('.company-listing-expand-btn');
+        const allBtn = event.target.closest && event.target.closest('#listing-expand-all');
+        const btn = companyBtn || allBtn;
+        if (!btn || !root.contains(btn)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const scope = companyBtn ? btn.closest('.company-group') : document.getElementById('job-listings-body');
+        const jobs = shownBoardJobs(scope);
+        const open = !jobs.some(listingIsExpanded);
+        jobs.forEach(job => {{
+          const toggle = job.querySelector('.job-description-toggle');
+          if (!toggle) return;
+          const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+          if (isOpen !== open) toggle.click();
+        }});
+        syncListingExpandToggles();
+      }});
     }}
 
     function wireCompanyHideActiveButtons() {{
@@ -41720,6 +42027,7 @@ def build_html(
       refreshSectionVisibility();
       refreshCompanyFilterDots(countsByCompany);
       updateStats();
+      syncListingExpandToggles();
     }}
 
     function countVisibleHiddenPanelJobs() {{
@@ -41961,6 +42269,7 @@ def build_html(
           savedPanel.classList.toggle('is-collapsed');
           const savedOpen = !savedPanel.classList.contains('is-collapsed');
           savedBtn.textContent = savedOpen ? 'Hide saved description' : 'Saved description';
+          syncListingExpandToggles();
         }};
         if (savedPanel.classList.contains('is-collapsed') && savedPanel.dataset.descLoaded !== '1') {{
           void loadJobDescription(savedKey, savedPanel).then(finishSaved);
@@ -41990,6 +42299,7 @@ def build_html(
         const open = !panel.classList.contains('is-collapsed');
         btn.setAttribute('aria-expanded', open ? 'true' : 'false');
         btn.textContent = open ? 'Hide listing' : 'Show listing';
+        syncListingExpandToggles();
         return;
       }}
       if (!panel?.classList.contains('job-description')) return;
@@ -41999,12 +42309,14 @@ def build_html(
           const expanded = panel.classList.toggle('is-collapsed');
           btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
           btn.textContent = expanded ? 'Expand description' : 'Collapse description';
+          syncListingExpandToggles();
         }});
         return;
       }}
       const expanded = panel.classList.toggle('is-collapsed');
       btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
       btn.textContent = expanded ? 'Expand description' : 'Collapse description';
+      syncListingExpandToggles();
     }});
 
     document.querySelectorAll('.company-sort-btn').forEach(btn => {{

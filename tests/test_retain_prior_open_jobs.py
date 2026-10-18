@@ -210,6 +210,148 @@ class RetainPriorOpenJobsTests(unittest.TestCase):
         ids = {j.job_id for j in merged[0].jobs}
         self.assertEqual(ids, {"1", "9"})
 
+    def test_complete_board_list_drops_prior_missing_from_list(self) -> None:
+        prior = self._co(
+            [
+                self._job(
+                    title="Still Listed",
+                    url="https://job-boards.greenhouse.io/reddit/jobs/111",
+                    job_id="111",
+                ),
+                self._job(
+                    title="Senior Backend Engineer, Safety",
+                    url="https://job-boards.greenhouse.io/reddit/jobs/8093006",
+                    job_id="8093006",
+                ),
+            ]
+        )
+        fresh = self._co(
+            [
+                self._job(
+                    title="Still Listed",
+                    url="https://job-boards.greenhouse.io/reddit/jobs/111",
+                    job_id="111",
+                )
+            ],
+            note="Board scan (1 total, 1 parsed) + 0 watch IDs",
+        )
+        fresh.listed_job_ids = {"111"}
+        merged = self.qj.retain_prior_open_jobs(fresh, prior)
+        ids = {j.job_id for j in merged.jobs}
+        self.assertEqual(ids, {"111"})
+        self.assertIn("dropped 1 prior job", merged.search_note)
+        self.assertNotIn("retained", merged.search_note)
+
+    def test_complete_list_still_url_checks_job_that_remains_listed(self) -> None:
+        prior = self._co(
+            [
+                self._job(
+                    title="Parsed",
+                    url="https://job-boards.greenhouse.io/acme/jobs/111",
+                    job_id="111",
+                ),
+                self._job(
+                    title="Filtered",
+                    url="https://job-boards.greenhouse.io/acme/jobs/222",
+                    job_id="222",
+                ),
+            ]
+        )
+        fresh = self._co(
+            [
+                self._job(
+                    title="Parsed",
+                    url="https://job-boards.greenhouse.io/acme/jobs/111",
+                    job_id="111",
+                )
+            ],
+            note="Board scan (2 total, 1 parsed) + 0 watch IDs",
+        )
+        fresh.listed_job_ids = {"111", "222"}
+        merged = self.qj.retain_prior_open_jobs(fresh, prior)
+        by_id = {j.job_id: j for j in merged.jobs}
+        self.assertIn("222", by_id)
+        self.assertTrue(by_id["222"].force_url_verify)
+        self.assertNotIn("absent from the company list", merged.search_note)
+
+    def test_url_id_counts_as_on_the_list(self) -> None:
+        prior = self._co(
+            [
+                self._job(
+                    title="No stored id",
+                    url="https://job-boards.greenhouse.io/reddit/jobs/8093006",
+                    job_id="",
+                )
+            ]
+        )
+        fresh = self._co(
+            [
+                self._job(
+                    title="Other",
+                    url="https://job-boards.greenhouse.io/reddit/jobs/111",
+                    job_id="111",
+                )
+            ],
+            note="Board scan (1 total, 1 parsed) + 0 watch IDs",
+        )
+        fresh.listed_job_ids = {"111"}
+        merged = self.qj.retain_prior_open_jobs(fresh, prior)
+        self.assertEqual({j.job_id for j in merged.jobs}, {"111"})
+
+    def test_suspicious_zero_keeps_only_ids_still_on_the_list(self) -> None:
+        prior = self._co(
+            [
+                self._job(
+                    title="Still there",
+                    url="https://job-boards.greenhouse.io/acme/jobs/111",
+                    job_id="111",
+                ),
+                self._job(
+                    title="Gone",
+                    url="https://job-boards.greenhouse.io/acme/jobs/222",
+                    job_id="222",
+                ),
+            ]
+        )
+        fresh = self._co(
+            [],
+            note="Board scan (1 total, 0 parsed) (skipped: 1 title, 0 location, 0 JD)",
+        )
+        fresh.listed_job_ids = {"111"}
+        merged = self.qj.retain_prior_open_jobs(fresh, prior)
+        self.assertEqual({j.job_id for j in merged.jobs}, {"111"})
+        self.assertIn("dropped 1 prior job", merged.search_note)
+
+    def test_listed_id_in_url_path_counts(self) -> None:
+        lever_id = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        prior = self._co(
+            [
+                self._job(
+                    title="Platform Engineer",
+                    url=f"https://jobs.lever.co/acme/{lever_id}",
+                    job_id="",
+                )
+            ]
+        )
+        fresh = self._co(
+            [
+                self._job(
+                    title="Other",
+                    url="https://jobs.lever.co/acme/other-id",
+                    job_id="other-id",
+                )
+            ],
+            note="Lever board acme (1 total, 1 parsed)",
+        )
+        fresh.listed_job_ids = {"other-id"}
+        merged = self.qj.retain_prior_open_jobs(fresh, prior)
+        self.assertEqual({j.job_id for j in merged.jobs}, {"other-id"})
+        self.assertIn("dropped 1 prior job", merged.search_note)
+
+        fresh.listed_job_ids = {"other-id", lever_id}
+        merged = self.qj.retain_prior_open_jobs(fresh, prior)
+        self.assertTrue(any(lever_id in j.url for j in merged.jobs))
+
 
 if __name__ == "__main__":
     unittest.main()
