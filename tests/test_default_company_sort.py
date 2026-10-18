@@ -32,6 +32,13 @@ class DefaultCompanySortTests(unittest.TestCase):
         self.assertIn("activeCompanySort = 'date';", clear_fn)
         self.assertNotIn("activeCompanySort = 'salary';", clear_fn)
 
+    def test_showing_count_skips_terminal_pipeline_rows(self) -> None:
+        fn = SRC.split("function entryPipelineVisible(entry)", 1)[1].split(
+            "function entryWouldBeVisible", 1
+        )[0]
+        self.assertIn("if (isTerminal(st)) return false;", fn)
+        self.assertNotIn("if (st === 'pass') return false;", fn)
+
     def test_rating_sort_hides_employer_browse_links(self) -> None:
         self.assertIn("function syncEmployerBrowseLinks(root)", SRC)
         self.assertIn("activeCompanySort === 'rating'", SRC)

@@ -140,6 +140,49 @@ class JobListingFrameTests(unittest.TestCase):
         self.assertIn("Senior Site Reliability", html)
         self.assertNotIn("data-listing-url", html)
 
+    def test_smartrecruiters_uses_local_posting(self) -> None:
+        url = "https://jobs.smartrecruiters.com/mirantis/744000151683079"
+        self.assertEqual(self.qj.listing_frame_url_for_card(url), "")
+        company, pid = self.qj.smartrecruiters_company_and_posting_id(url)
+        self.assertEqual(company, "mirantis")
+        self.assertEqual(pid, "744000151683079")
+        html_doc = self.qj.smartrecruiters_listing_html_from_posting(
+            {
+                "name": "Senior Principal Engineer",
+                "postingUrl": url,
+                "jobAd": {
+                    "sections": {
+                        "jobDescription": {
+                            "title": "Job Description",
+                            "text": "<p>Set the technical direction across the k0rdent engineering department.</p>"
+                            "<script>alert(1)</script>",
+                        },
+                        "qualifications": {
+                            "title": "Qualifications",
+                            "text": "<ul><li>Expert-level proficiency across Kubernetes.</li></ul>",
+                        },
+                    }
+                },
+            },
+            url,
+        )
+        self.assertIn("Senior Principal Engineer", html_doc)
+        self.assertIn("Job Description", html_doc)
+        self.assertIn("k0rdent engineering department", html_doc)
+        self.assertNotIn("<script>", html_doc)
+        self.assertNotIn("alert(1)", html_doc)
+        original = self.qj.smartrecruiters_listing_document
+        self.qj.smartrecruiters_listing_document = lambda _url: html_doc
+        self.qj._LISTING_SNAPSHOTS.pop(url, None)
+        try:
+            block = self.qj.render_job_description_block("Stored summary.", url)
+        finally:
+            self.qj.smartrecruiters_listing_document = original
+            self.qj._LISTING_SNAPSHOTS.pop(url, None)
+        self.assertIn("data-listing-snapshot", block)
+        self.assertNotIn("data-listing-url", block)
+        self.assertIn("Senior Principal Engineer", block)
+
     def test_unframed_listing_uses_local_snapshot(self) -> None:
         url = "https://www.linkedin.com/jobs/view/123"
         original_capture = self.qj._capture_listing_snapshot

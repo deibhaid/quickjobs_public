@@ -32360,7 +32360,8 @@ def job_listing_frame_url(url: str) -> str:
     """Job URL when the listing page can load in a card frame.
 
     Workday, LinkedIn, and company career landings keep the stored description.
-    Direct Greenhouse, Ashby, Lever, and SmartRecruiters postings are framed.
+    Direct Greenhouse, Ashby, Lever, and SmartRecruiters postings are recognized
+    here. Greenhouse, Ashby, and SmartRecruiters then use a local copy.
     """
     raw = str(url or "").strip()
     if not raw.startswith(("http://", "https://")):
@@ -32537,7 +32538,7 @@ def greenhouse_company_embed_url(url: str, company: dict[str, Any] | None) -> st
 
 
 def listing_frame_url_for_job(url: str, company: dict[str, Any] | None = None) -> str:
-    """Frame URL for a card. Greenhouse and Ashby use a local posting instead."""
+    """Frame URL for a card. Greenhouse, Ashby, and SmartRecruiters use a local posting instead."""
     del company
     return listing_frame_url_for_card(url)
 
@@ -32556,6 +32557,10 @@ def listing_frame_url_for_card(url: str) -> str:
     if _listing_frame_host_is(host, "ashbyhq.com"):
         return ""
     if _listing_frame_host_is(host, "greenhouse.io"):
+        return ""
+    # jobs.smartrecruiters.com sends X-Frame-Options: SAMEORIGIN, so the card
+    # shows a local copy from the posting API instead of the live page.
+    if _listing_frame_host_is(host, "smartrecruiters.com"):
         return ""
     return frame
 
@@ -33514,6 +33519,85 @@ def greenhouse_listing_document(
     return _styled_listing_document(title, content, page)
 
 
+_SR_JOB_URL_RE = re.compile(
+    r"https://jobs\.smartrecruiters\.com/(?P<company>[^/?#]+)/(?P<pid>\d+)",
+    re.I,
+)
+_SR_SECTION_ORDER = (
+    "companyDescription",
+    "jobDescription",
+    "qualifications",
+    "additionalInformation",
+)
+
+
+def smartrecruiters_company_and_posting_id(url: str) -> tuple[str, str]:
+    match = _SR_JOB_URL_RE.search(str(url or "").strip())
+    if not match:
+        return "", ""
+    return match.group("company"), match.group("pid")
+
+
+def smartrecruiters_listing_html_from_posting(data: dict[str, Any], page_url: str) -> str:
+    """Title and job-ad sections from a SmartRecruiters posting payload."""
+    if not isinstance(data, dict):
+        return ""
+    job_ad = data.get("jobAd") if isinstance(data.get("jobAd"), dict) else {}
+    sections = job_ad.get("sections") if isinstance(job_ad.get("sections"), dict) else {}
+    parts: list[str] = []
+    seen: set[str] = set()
+
+    def add(key: str) -> None:
+        if key in seen:
+            return
+        sec = sections.get(key)
+        if not isinstance(sec, dict):
+            return
+        seen.add(key)
+        title = re.sub(r"\s+", " ", str(sec.get("title") or "")).strip()
+        text = re.sub(
+            r"<script\b[^>]*>.*?</script>",
+            "",
+            str(sec.get("text") or ""),
+            flags=re.I | re.S,
+        ).strip()
+        if not text:
+            return
+        if title:
+            parts.append(f"<h2>{html.escape(title)}</h2>")
+        parts.append(text)
+
+    for key in _SR_SECTION_ORDER:
+        add(key)
+    for key in sections:
+        add(str(key))
+    body = "".join(parts)
+    plain = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", body)).strip()
+    if len(plain) < 80:
+        return ""
+    title = re.sub(r"\s+", " ", str(data.get("name") or "")).strip()
+    page = str(data.get("postingUrl") or page_url or "").strip() or "about:blank"
+    return _styled_listing_document(title, body, page)
+
+
+def smartrecruiters_listing_document(url: str) -> str:
+    """Job description from SmartRecruiters' public posting API."""
+    company, pid = smartrecruiters_company_and_posting_id(url)
+    if not company or not pid:
+        return ""
+    api = (
+        "https://api.smartrecruiters.com/v1/companies/"
+        f"{urllib.parse.quote(company)}/postings/{urllib.parse.quote(pid)}"
+    )
+    try:
+        req = urllib.request.Request(api, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=12) as resp:
+            data = json.loads(resp.read().decode("utf-8", "replace"))
+    except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError, ValueError):
+        return ""
+    return smartrecruiters_listing_html_from_posting(data if isinstance(data, dict) else {}, url)
+
+
 def ashby_listing_document(url: str) -> str:
     """Job description from the Ashby posting page, without loading its application shell."""
     raw = str(url or "").strip()
@@ -33581,6 +33665,14 @@ def listing_snapshot_html(url: str, company: dict[str, Any] | None = None) -> st
             return cached
         print(f"Listing snapshot: {raw}", file=sys.stderr)
         html_doc = greenhouse_listing_document(raw, company)
+        _LISTING_SNAPSHOTS[raw] = html_doc
+        return html_doc
+    if _listing_frame_host_is(host, "smartrecruiters.com"):
+        cached = _LISTING_SNAPSHOTS.get(raw)
+        if cached is not None:
+            return cached
+        print(f"Listing snapshot: {raw}", file=sys.stderr)
+        html_doc = smartrecruiters_listing_document(raw)
         _LISTING_SNAPSHOTS[raw] = html_doc
         return html_doc
     if "careers.oracle.com" in raw.lower():
@@ -41093,7 +41185,9 @@ def build_html(
     function entryPipelineVisible(entry) {{
       if (!entry?.k) return true;
       const st = readPipeline()[pipelineKeyForApplyKey(entry.k)]?.status || '';
-      if (st === 'pass') return false;
+      // Main-list count and shells: Active and Saved only.
+      // Applied, screen, rejected, ghosted, and pass are not shown here.
+      if (isTerminal(st)) return false;
       return true;
     }}
 
@@ -42291,7 +42385,43 @@ def build_html(
           if (snap) {{
             frame.srcdoc = snap.innerHTML + '<script>document.addEventListener("click",function(event){{var btn=event.target.closest("button");if(!btn)return;var label=((btn.innerText||btn.getAttribute("aria-label")||"")+"").replace(/\\s+/g," ").trim().toLowerCase();if(!/^(accept all|accept|reject all|reject|allow all|agree|i agree|got it)$/.test(label))return;var banner=document.getElementById("versionized-cookie-banner");if(!banner){{var node=btn.parentElement;while(node&&node!==document.documentElement){{var mark=typeof node.className==="string"?node.className:"";if(/cookie-banner|cookie-notice/i.test(mark)){{banner=node;break;}}node=node.parentElement;}}}}if(banner&&banner!==btn)banner.remove();}});' + '<' + '/script>';
           }} else if (btn.dataset.listingUrl) {{
-            frame.src = btn.dataset.listingUrl;
+            const sr = String(btn.dataset.listingUrl).match(/^https:\\/\\/jobs\\.smartrecruiters\\.com\\/([^/?#]+)\\/(\\d+)\\/?$/i);
+            if (sr) {{
+              const srDoc = (data) => {{
+                const sections = (data && data.jobAd && data.jobAd.sections) || {{}};
+                const order = ['companyDescription', 'jobDescription', 'qualifications', 'additionalInformation'];
+                const parts = [];
+                const seen = new Set();
+                const add = (key) => {{
+                  if (seen.has(key)) return;
+                  const sec = sections[key];
+                  if (!sec) return;
+                  seen.add(key);
+                  const title = String(sec.title || '').replace(/\\s+/g, ' ').trim();
+                  const text = String(sec.text || '').replace(/<script\\b[^>]*>[\\s\\S]*?<\\/script>/gi, '').trim();
+                  if (!text) return;
+                  if (title) parts.push('<h2>' + title.replace(/[&<>]/g, (ch) => ({{'&':'&amp;','<':'&lt;','>':'&gt;'}}[ch])) + '</h2>');
+                  parts.push(text);
+                }};
+                order.forEach(add);
+                Object.keys(sections).forEach(add);
+                const title = String((data && data.name) || '').replace(/\\s+/g, ' ').trim();
+                const page = String((data && data.postingUrl) || btn.dataset.listingUrl || 'about:blank');
+                return '<!DOCTYPE html><html><head><meta charset="utf-8"><base href="' + page.replace(/"/g, '&quot;') + '"><style>body{{margin:0;padding:28px 32px 48px;background:#fff;color:#1d2226;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5;}}h1{{font-size:2rem;font-weight:700;line-height:1.2;margin:0 0 1.25rem;color:#111;}}h2{{font-size:1.25rem;font-weight:700;line-height:1.3;margin:1.5rem 0 0.6rem;color:#111;}}.job-listing-body{{font-size:1rem;}}.job-listing-body p{{margin:0 0 1rem;}}.job-listing-body ul,.job-listing-body ol{{margin:0 0 1rem;padding-left:1.25rem;}}.job-listing-body a{{color:#0a66c2;}}</style></head><body>' + (title ? '<h1>' + title.replace(/[&<>]/g, (ch) => ({{'&':'&amp;','<':'&lt;','>':'&gt;'}}[ch])) + '</h1>' : '') + '<div class="job-listing-body">' + parts.join('') + '</div></body></html>';
+              }};
+              frame.srcdoc = '<!DOCTYPE html><html><body style="font-family:sans-serif;padding:28px">Loading listing…</body></html>';
+              const api = 'https://api.smartrecruiters.com/v1/companies/' + encodeURIComponent(sr[1]) + '/postings/' + encodeURIComponent(sr[2]);
+              fetch(api).then((res) => {{
+                if (!res.ok) throw new Error(String(res.status));
+                return res.json();
+              }}).then((data) => {{
+                frame.srcdoc = srDoc(data);
+              }}).catch(() => {{
+                frame.srcdoc = '<!DOCTYPE html><html><body style="font-family:sans-serif;padding:28px"><p>This listing could not be loaded.</p></body></html>';
+              }});
+            }} else {{
+              frame.src = btn.dataset.listingUrl;
+            }}
           }}
           panel.appendChild(frame);
         }}
